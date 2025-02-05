@@ -25,3 +25,7 @@ func (p *PeerController) List(params *mapper.QueryParams) ([]*entity.Peer, error
 func (p *PeerController) Update(dto *dto.PeerDto) (*entity.Peer, error) {
 	return p.peerMapper.Update(dto)
 }
+
+func (p *PeerController) GetNetworkMap(appId, userId string) (*entity.NetworkMap, error) {
+	return p.peerMapper.GetNetworkMap(appId, userId)
+}

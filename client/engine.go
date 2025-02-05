@@ -2,11 +2,6 @@ package client
 
 import (
 	"fmt"
-	"github.com/vishvananda/netlink"
-	"golang.zx2c4.com/wireguard/conn"
-	wg "golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"linkany/internal"
 	controlclient "linkany/management/client"
 	grpcclient "linkany/management/grpc/client"
@@ -24,6 +19,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/vishvananda/netlink"
+	"golang.zx2c4.com/wireguard/conn"
+	wg "golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/tun"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var (
@@ -39,12 +40,12 @@ type Engine struct {
 	Name   string
 	device *wg.Device
 	//agent         *ice.Agent
-	tieBreaker uint64
-	client     controlclient.ClientInterface
-	bind       conn.Bind
-	drpClient  *drp.Client
-	OnSync     func(client controlclient.ClientInterface) (*config.DeviceConf, error)
-	updated    atomic.Bool
+	tieBreaker    uint64
+	client        controlclient.ClientInterface
+	bind          conn.Bind
+	drpClient     *drp.Client
+	GetNetworkMap func(client controlclient.ClientInterface) (*config.DeviceConf, error)
+	updated       atomic.Bool
 
 	pm           *config.PeersManager
 	agentManager *internal.AgentManager
@@ -188,7 +189,7 @@ func (e *Engine) Start(ticker *time.Ticker, quit chan struct{}) error {
 	//		select {
 	//		case <-ticker.C:
 	//			// do stuff
-	//			conf, err := e.OnSync(e.client)
+	//			conf, err := e.GetNetworkMap(e.client)
 	//			if err != nil {
 	//				log.Fatalf("sync peers failed: %v", err)
 	//				break
@@ -208,7 +209,7 @@ func (e *Engine) Start(ticker *time.Ticker, quit chan struct{}) error {
 	//	}
 	//}()
 	// List peers from control plane, first time, after, use watch
-	conf, err := e.OnSync(e.client)
+	conf, err := e.GetNetworkMap(e.client)
 	if err != nil {
 		log.Printf("sync peers failed: %v", err)
 	}

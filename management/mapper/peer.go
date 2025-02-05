@@ -9,6 +9,25 @@ import (
 	"strings"
 )
 
+// PeerInterface is an interface for peer mapper
+type PeerInterface interface {
+	Register(e *dto.PeerDto) (*entity.Peer, error)
+	Update(e *dto.PeerDto) (*entity.Peer, error)
+	Delete(e *dto.PeerDto) error
+
+	// GetByAppId returns a peer by appId, every client has its own appId
+	GetByAppId(appId string) (*entity.Peer, error)
+
+	GetNetworkMap(appId, userId string) (*entity.NetworkMap, error)
+
+	// List returns a list of peers by userId，when client start up, it will call this method to get all the peers once
+	// after that, it will call Watch method to get the latest peers
+	List(params *QueryParams) ([]*entity.Peer, error)
+
+	// Watch returns a channel that will be used to send the latest peers to the client
+	//Watch() (<-chan *entity.Peer, error)
+}
+
 var (
 	_ PeerInterface = (*PeerMapper)(nil)
 )
@@ -75,8 +94,8 @@ func Generate(params *QueryParams) (string, []interface{}) {
 	var wrappers []interface{}
 	filters := params.Generate()
 	for i, filter := range filters {
-		if i <= len(filters)-1 {
-			sb.WriteString(fmt.Sprintf("%s = ?,", filter.Key))
+		if i < len(filters)-1 {
+			sb.WriteString(fmt.Sprintf("%s = ? and ", filter.Key))
 		} else {
 			sb.WriteString(fmt.Sprintf("%s = ?", filter.Key))
 		}
@@ -122,6 +141,8 @@ func (p *PeerMapper) GetNetworkMap(appId, userId string) (*entity.NetworkMap, er
 	}
 
 	return &entity.NetworkMap{
-		UserId: userId, Peer: current, Peers: peers,
+		UserId: userId,
+		Peer:   current,
+		Peers:  peers,
 	}, nil
 }

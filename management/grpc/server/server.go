@@ -14,6 +14,7 @@ import (
 	"linkany/management/utils"
 	"log"
 	"net"
+	"strconv"
 )
 
 // Server is used to implement helloworld.GreeterServer.
@@ -41,7 +42,7 @@ func NewServer(cfg *ServerConfig) *Server {
 
 func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
 	var req mgt.LoginRequest
-	if err := proto.Unmarshal(in.Body, &mgt.LoginRequest{}); err != nil {
+	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
 
@@ -68,16 +69,16 @@ func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 
 // List will return a list of response
 func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
-	var req mgt.LoginRequest
-	if err := proto.Unmarshal(in.Body, &mgt.LoginRequest{}); err != nil {
+	var req mgt.Request
+	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
-	user, err := s.userController.Get(req.GetUsername())
-	fmt.Println(user) // TODO remove
+	user, err := s.userController.Get(req.GetToken())
 	if err != nil {
 		return nil, err
 	}
-	peers, err := s.peerController.List(&mapper.QueryParams{}) // TODO add
+	log.Println(user)
+	peers, err := s.peerController.GetNetworkMap(req.AppId, strconv.Itoa(int(user.ID)))
 	if err != nil {
 		return nil, err
 	}
@@ -241,12 +242,12 @@ func (s *Server) handleKeepalive(eventType mgt.EventType, current *mgt.Peer, pee
 }
 
 func (s *Server) Start() error {
-	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 50051))
 	if err != nil {
 		return err
 	}
 	grpcServer := grpc.NewServer()
 	mgt.RegisterManagementServiceServer(grpcServer, s)
-	log.Printf("Server listening at %v", listen.Addr())
+	log.Printf("Grpc server listening at %v", listen.Addr())
 	return grpcServer.Serve(listen)
 }

@@ -19,3 +19,10 @@ type PlanDto struct {
 // SupportDto is a data transfer object for Support entity
 type SupportDto struct {
 }
+
+type InviteDto struct {
+	InvitationId int64
+	InviterId    int64
+	Email        string
+	Network      string // 192.168.0.0/24
+}
