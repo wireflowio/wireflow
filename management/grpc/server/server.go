@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
+	"k8s.io/klog/v2"
 	"linkany/management/controller"
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
 	"linkany/management/mapper"
 	"linkany/management/utils"
-	"log"
 	"net"
 	"strconv"
 )
@@ -45,8 +45,7 @@ func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
-
-	log.Printf("Received username: %s, password: %s", req.Username, req.Password)
+	klog.Infof("Received username: %s, password: %s", req.Username, req.Password)
 
 	token, err := s.userController.Login(&dto.UserDto{
 		Username: req.Username,
@@ -77,7 +76,7 @@ func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Mana
 	if err != nil {
 		return nil, err
 	}
-	log.Println(user)
+	klog.Infoln(user)
 	peers, err := s.peerController.GetNetworkMap(req.AppId, strconv.Itoa(int(user.ID)))
 	if err != nil {
 		return nil, err
@@ -93,32 +92,21 @@ func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Mana
 
 // Watch once request, will return a stream of watched response
 func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
-	//TODO implement the logic here
 	var err error
 	var msg *mgt.ManagementMessage
-	for {
-		msg, err = server.Recv()
-		if err != nil {
-			return err
-		}
-
-		var req mgt.Request
-		if err = proto.Unmarshal(msg.Body, &req); err != nil {
-			return err
-		}
-
-		// create a chan for the peer
-		watchChannel := CreateChannel(req.PubKey)
-
-		go func() {
-			handleMessage(watchChannel, req, server)
-		}()
+	msg, err = server.Recv()
+	if err != nil {
+		return err
 	}
 
-	return nil
-}
+	var req mgt.Request
+	if err = proto.Unmarshal(msg.Body, &req); err != nil {
+		return err
+	}
 
-func handleMessage(watchChannel chan *utils.WatchMessage, req mgt.Request, server mgt.ManagementService_WatchServer) error {
+	// create a chan for the peer
+	watchChannel := CreateChannel(req.PubKey)
+	klog.Infof("peer %v is now watching", req.PubKey)
 	for {
 		select {
 		case wc := <-watchChannel:
@@ -133,6 +121,7 @@ func handleMessage(watchChannel chan *utils.WatchMessage, req mgt.Request, serve
 			}
 		}
 	}
+
 }
 
 // Keepalive acts as a client is living, if 10s not receive the heartbeat, the client will set to offline,
@@ -154,7 +143,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 
 	user, err := s.tokenr.Parse(req.Token)
 	if err != nil {
-		log.Fatalf("invalid token")
+		klog.Errorf("invalid token")
 		return err
 	}
 
@@ -178,7 +167,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 	for {
 		msg, err = server.Recv()
 		if err != nil {
-			log.Fatalf("peer %s connected broken, notify user's clients remove this peer", pubKey)
+			klog.Errorf("peer %s connected broken, notify user's clients remove this peer", pubKey)
 			peers, err = s.peerController.List(&mapper.QueryParams{
 				PubKey: &pubKey,
 				UserId: &userId,
@@ -186,7 +175,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 			})
 
 			if err != nil {
-				log.Fatalf("list peers failed: %v", err)
+				klog.Errorf("list peers failed: %v", err)
 			}
 
 			s.handleKeepalive(mgt.DeleteEvent, currentPeer, peers)
@@ -209,7 +198,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 
 			if err != nil {
 				close(onlineChannel)
-				log.Fatalf("list peers failed: %v", err)
+				klog.Errorf("list peers failed: %v", err)
 			}
 
 			s.handleKeepalive(mgt.AddEvent, currentPeer, peers)
@@ -248,6 +237,6 @@ func (s *Server) Start() error {
 	}
 	grpcServer := grpc.NewServer()
 	mgt.RegisterManagementServiceServer(grpcServer, s)
-	log.Printf("Grpc server listening at %v", listen.Addr())
+	klog.Infof("Grpc server listening at %v", listen.Addr())
 	return grpcServer.Serve(listen)
 }

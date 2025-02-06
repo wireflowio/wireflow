@@ -7,9 +7,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"io"
+	"k8s.io/klog/v2"
 	"linkany/management/grpc/mgt"
-	"log"
-	"time"
 )
 
 type GrpcConfig struct {
@@ -30,7 +29,7 @@ func NewGrpcClient(config *GrpcConfig) (*GrpcClient, error) {
 	// Set up a connection to the server.
 	conn, err := grpc.NewClient(config.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		klog.Errorf("did not connect: %v", err)
 		return nil, err
 	}
 	c := mgt.NewManagementServiceClient(conn)
@@ -68,15 +67,15 @@ func (c *GrpcClient) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt
 }
 
 func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callback func(networkMap mgt.NetworkMap) error) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	//defer cancel()
 	stream, err := c.client.Watch(ctx)
 	if err != nil {
-		log.Fatalf("client watch failed: %v", err)
+		klog.Errorf("client watch failed: %v", err)
 	}
 
 	if err = stream.Send(in); err != nil {
-		log.Fatalf("client watch: stream.Send(%v) failed: %v", in, err)
+		klog.Errorf("client watch: stream.Send(%v) failed: %v", in, err)
 	}
 
 	ch := make(chan struct{})
@@ -85,18 +84,16 @@ func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callb
 			in, err := stream.Recv()
 			if err == io.EOF {
 				// read done.
-				log.Fatalf("read done")
 				close(ch)
 				return
 			}
 			if err != nil {
-				log.Fatalf("err: %v", err)
-				continue
+				klog.Errorf("err: %v", err)
 			}
 
 			var networkMap mgt.NetworkMap
 			if err := proto.Unmarshal(in.Body, &networkMap); err != nil {
-				log.Fatalf("Failed to parse network map: %v", err)
+				klog.Errorf("Failed to parse network map: %v", err)
 				continue
 			}
 
