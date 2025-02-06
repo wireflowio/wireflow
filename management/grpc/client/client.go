@@ -66,7 +66,7 @@ func (c *GrpcClient) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt
 	return c.client.Login(ctx, in)
 }
 
-func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callback func(networkMap mgt.NetworkMap) error) error {
+func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callback func(wm *mgt.WatchMessage) error) error {
 	//ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	//defer cancel()
 	stream, err := c.client.Watch(ctx)
@@ -91,16 +91,48 @@ func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callb
 				klog.Errorf("err: %v", err)
 			}
 
-			var networkMap mgt.NetworkMap
-			if err := proto.Unmarshal(in.Body, &networkMap); err != nil {
+			var watchMessage mgt.WatchMessage
+			if err := proto.Unmarshal(in.Body, &watchMessage); err != nil {
 				klog.Errorf("Failed to parse network map: %v", err)
 				continue
 			}
 
-			callback(networkMap)
+			if err = callback(&watchMessage); err != nil {
+				klog.Errorf("Failed to callback: %v", err)
+			}
 		}
 	}()
 
 	<-ch
 	return nil
+}
+
+func (c *GrpcClient) Keepalive(ctx context.Context, in *mgt.ManagementMessage) error {
+	stream, err := c.client.Keepalive(ctx)
+	if err != nil {
+		klog.Errorf("client keep alive failed: %v", err)
+	}
+
+	if err = stream.Send(in); err != nil {
+		klog.Errorf("client keepalive: stream.Send(%v) failed: %v", in, err)
+	}
+
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			klog.Errorf("connected failed: %v", err)
+		}
+
+		var req mgt.Request
+		if err = proto.Unmarshal(msg.Body, &req); err != nil {
+			klog.Errorf("failed unmarshal check packet: %v", err)
+			continue
+		}
+		klog.Infof("got check packet from server: %v", msg)
+
+		if err = stream.Send(in); err != nil {
+			klog.Errorf("failed send keepalive packet: %v", err)
+		}
+
+	}
 }

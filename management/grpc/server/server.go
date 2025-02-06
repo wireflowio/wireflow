@@ -15,6 +15,7 @@ import (
 	"linkany/management/utils"
 	"net"
 	"strconv"
+	"time"
 )
 
 // Server is used to implement helloworld.GreeterServer.
@@ -109,8 +110,8 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 	klog.Infof("peer %v is now watching", req.PubKey)
 	for {
 		select {
-		case wc := <-watchChannel:
-			bs, err := proto.Marshal(wc.Peer)
+		case wm := <-watchChannel:
+			bs, err := proto.Marshal(wm)
 			if err != nil {
 				return err
 			}
@@ -124,16 +125,15 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 
 }
 
-// Keepalive acts as a client is living, if 10s not receive the heartbeat, the client will set to offline,
-// otherwise set to online.
-// if recvice 3 times, will notify add event for peers.
+// Keepalive acts as a client is living， server will send 'ping' packet to client
+// client will response packet to server with in 10 seconds, if not, client is offline, otherwise onlie.
 func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 	var err error
 	var msg *mgt.ManagementMessage
 	var pubKey string
-	var count int
 	var userId string
 
+	ctx := context.Background()
 	msg, err = server.Recv()
 	var req mgt.Request
 	if err = proto.Unmarshal(msg.Body, &req); err != nil {
@@ -149,7 +149,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 
 	userId = fmt.Sprintf("%v", user.ID)
 	// record
-	var wc chan *utils.WatchMessage
+	var wc chan *mgt.WatchMessage
 	wc = utils.NewWatchManager().Get(pubKey)
 	if wc == nil {
 		return fmt.Errorf("fatal error, peer has not connected to managent server")
@@ -162,9 +162,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 	var online = 1
 	var peers []*entity.Peer
 
-	onlineChannel := make(chan interface{})
-	close(onlineChannel)
-	for {
+	check := func(ctx context.Context) error {
 		msg, err = server.Recv()
 		if err != nil {
 			klog.Errorf("peer %s connected broken, notify user's clients remove this peer", pubKey)
@@ -178,46 +176,79 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 				klog.Errorf("list peers failed: %v", err)
 			}
 
-			s.handleKeepalive(mgt.DeleteEvent, currentPeer, peers)
-
+			s.handleKeepalive(mgt.EventType_DELETE, currentPeer, peers)
+			dtoParam := &dto.PeerDto{PubKey: pubKey, Online: 0}
+			_, err = s.peerController.Update(dtoParam)
 			return err
 		}
 
 		var req mgt.Request
 		if err = proto.Unmarshal(msg.Body, &req); err != nil {
-			close(onlineChannel)
 			return err
 		}
 
-		if count == 3 {
-			peers, err = s.peerController.List(&mapper.QueryParams{
-				PubKey: &pubKey,
-				UserId: &userId,
-				Online: &online,
-			})
+		peers, err = s.peerController.List(&mapper.QueryParams{
+			PubKey: &pubKey,
+			UserId: &userId,
+			Online: &online,
+		})
 
-			if err != nil {
-				close(onlineChannel)
-				klog.Errorf("list peers failed: %v", err)
-			}
-
-			s.handleKeepalive(mgt.AddEvent, currentPeer, peers)
+		if err != nil {
+			klog.Errorf("list peers failed: %v", err)
+			return err
 		}
 
-		count++
-
-		go func() {
-			for {
-				select {
-				case <-onlineChannel:
-					// offline
-					dto := &dto.PeerDto{PubKey: pubKey, Online: 0}
-					s.peerController.Update(dto)
-				}
-			}
-		}()
 		return nil
+
 	}
+
+	newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err = check(newCtx); err != nil {
+		klog.Errorf("check failed: %v", err)
+		return err
+	} else {
+		s.handleKeepalive(mgt.EventType_ADD, currentPeer, peers)
+	}
+
+	timer := time.NewTimer(30 * time.Second)
+	for {
+		select {
+		case <-timer.C:
+			if err = server.Send(&mgt.ManagementMessage{Body: []byte("ping")}); err != nil {
+				klog.Errorf("send ping failed: %v", err)
+				continue
+			}
+
+			var checkChannel chan interface{}
+			// work
+			go func() {
+				if err = check(ctx); err != nil {
+					klog.Errorf("check failed: %v", err)
+				}
+				close(checkChannel)
+			}()
+
+			// check 10s receive the response
+			newCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			select {
+			case <-newCtx.Done():
+				//timeout
+				s.handleKeepalive(mgt.EventType_DELETE, currentPeer, peers)
+				dtoParam := &dto.PeerDto{PubKey: pubKey, Online: 0}
+				_, err = s.peerController.Update(dtoParam)
+				return nil
+			case <-checkChannel:
+				// online
+				dtoParam := &dto.PeerDto{PubKey: pubKey, Online: 1}
+				_, err = s.peerController.Update(dtoParam)
+				klog.Infof("peer %v is online", pubKey)
+			}
+		}
+	}
+
 }
 
 func (s *Server) handleKeepalive(eventType mgt.EventType, current *mgt.Peer, peers []*entity.Peer) {
