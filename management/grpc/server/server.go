@@ -16,6 +16,7 @@ import (
 	"linkany/management/grpc/mgt"
 	"linkany/management/mapper"
 	"linkany/management/utils"
+	"log"
 	"net"
 	"strconv"
 	"time"
@@ -70,7 +71,47 @@ func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 	}, nil
 }
 
-// List will return a list of response
+// List, will return a list of response
+func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
+	var req mgt.RegistryRequest
+	if err := proto.Unmarshal(in.Body, &mgt.RegistryRequest{}); err != nil {
+		return nil, err
+	}
+
+	log.Printf("Received peer info: %+v", req)
+
+	peer, err := s.peerController.Registry(&dto.PeerDto{
+		UserID:              req.UserId,
+		Hostname:            req.Hostname,
+		AppID:               req.AppId,
+		Address:             req.Address,
+		PersistentKeepalive: int(req.PersistentKeepalive),
+		PublicKey:           req.PublicKey,
+		PrivateKey:          req.PrivateKey,
+		AllowedIPs:          req.AllowedIps,
+		CreateDate:          time.Now(),
+		HostIP:              req.HostIp,
+		SrflxIP:             req.SrflxIp,
+		TieBreaker:          req.TieBreaker,
+		UpdatedAt:           time.Now(),
+		DeletedAt:           time.Now(),
+		CreatedAt:           time.Now(),
+		Ufrag:               req.Ufrag,
+		Pwd:                 req.Pwd,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bs, err := json.Marshal(peer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mgt.ManagementMessage{Body: bs}, nil
+}
+
+// List, will return a list of response
 func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
 	var req mgt.Request
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
@@ -280,7 +321,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pu
 	}
 
 	// update peer online status
-	dtoParam := &dto.PeerDto{PubKey: pubKey, Online: online}
+	dtoParam := &dto.PeerDto{PublicKey: pubKey, Online: online}
 	_, err = s.peerController.Update(dtoParam)
 	return err
 }

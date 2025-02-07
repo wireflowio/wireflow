@@ -41,13 +41,44 @@ func NewPeerMapper(db *DatabaseService) *PeerMapper {
 }
 
 func (p *PeerMapper) Register(e *dto.PeerDto) (*entity.Peer, error) {
-	//TODO implement me
-	panic("implement me")
+	peer := &entity.Peer{
+		ID:                  e.ID,
+		InstanceID:          e.InstanceID,
+		UserID:              e.UserID,
+		Name:                e.Name,
+		Hostname:            e.Hostname,
+		AppID:               e.AppID,
+		InsPrivateKey:       e.InsPrivateKey,
+		InsPublicKey:        e.InsPublicKey,
+		Address:             e.Address,
+		Endpoint:            e.Endpoint,
+		PersistentKeepalive: e.PersistentKeepalive,
+		PublicKey:           e.PublicKey,
+		PrivateKey:          e.PrivateKey,
+		AllowedIPs:          e.AllowedIPs,
+		CreateDate:          e.CreateDate,
+		HostIP:              e.HostIP,
+		SrflxIP:             e.SrflxIP,
+		RelayIP:             e.RelayIP,
+		TieBreaker:          e.TieBreaker,
+		UpdatedAt:           e.UpdatedAt,
+		DeletedAt:           e.DeletedAt,
+		CreatedAt:           e.CreatedAt,
+		Ufrag:               e.Ufrag,
+		Pwd:                 e.Pwd,
+		Port:                e.Port,
+		Status:              e.Status,
+	}
+	err := p.Create(peer).Error
+	if err != nil {
+		return nil, err
+	}
+	return peer, nil
 }
 
 func (p *PeerMapper) Update(e *dto.PeerDto) (*entity.Peer, error) {
 	var peer entity.Peer
-	if err := p.Where("public_key = ?", e.PubKey).First(&peer).Error; err != nil {
+	if err := p.Where("public_key = ?", e.PublicKey).First(&peer).Error; err != nil {
 		return nil, err
 	}
 
