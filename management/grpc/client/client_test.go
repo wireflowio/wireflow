@@ -7,15 +7,26 @@ import (
 	"linkany/internal"
 	pb "linkany/management/grpc/mgt"
 	"linkany/pkg/config"
+	"sync"
 	"testing"
 )
 
+var group sync.WaitGroup
+
 func TestNewGrpcClient(t *testing.T) {
-	t.Run("TestGrpcClient_List", TestGrpcClient_List)
+
+	group.Add(2)
+	go func() {
+		defer group.Done()
+		t.Run("TestGrpcClient_List", TestGrpcClient_List)
+	}()
 
 	go func() {
+		group.Done()
 		t.Run("TestGrpcClient_Watch", TestGrpcClient_Watch)
 	}()
+
+	group.Wait()
 
 	t.Run("TestGrpcClient_Keepalive", TestGrpcClient_Keepalive)
 }

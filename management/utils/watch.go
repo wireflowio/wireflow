@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"k8s.io/klog/v2"
 	"linkany/management/grpc/mgt"
 	"sync"
 )
@@ -8,14 +9,6 @@ import (
 var lock sync.Mutex
 var once sync.Once
 var manager *WatchManager
-
-//// WatchMessage is the message sent to the chan when a watch event is triggered,
-//// it contains the event type and the peer that was updated, will seed to every client
-//type WatchMessage struct {
-//	// The key of the updated object
-//	Type mgt.EventType `json:"event_type"`
-//	Peer *mgt.Peer     `json:"peer"`
-//}
 
 // NewWatchMessage creates a new WatchMessage, when a peer is added, updated or deleted
 func NewWatchMessage(eventType mgt.EventType, peer *mgt.Peer) *mgt.WatchMessage {
@@ -32,14 +25,16 @@ type WatchManager struct {
 
 // NewWatchManager create a whole manager for connected peers
 func NewWatchManager() *WatchManager {
-	defer lock.Unlock()
 	lock.Lock()
+	defer lock.Unlock()
 	if manager != nil {
 		return manager
 	}
-	manager = &WatchManager{
-		m: make(map[string]chan *mgt.WatchMessage),
-	}
+	once.Do(func() {
+		manager = &WatchManager{
+			m: make(map[string]chan *mgt.WatchMessage),
+		}
+	})
 
 	return manager
 }
@@ -49,6 +44,7 @@ func (w *WatchManager) Add(key string, ch chan *mgt.WatchMessage) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
+	klog.Infof("manager: %v, ch: %v", w, ch)
 	w.m[key] = ch
 }
 
@@ -73,5 +69,7 @@ func (w *WatchManager) Send(key string, msg *mgt.WatchMessage) {
 func (w *WatchManager) Get(key string) chan *mgt.WatchMessage {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	return w.m[key]
+	ch := w.m[key]
+	klog.Infof("Get channel: %v, manager: %v", ch, w)
+	return ch
 }

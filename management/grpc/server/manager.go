@@ -7,8 +7,8 @@ import (
 
 func CreateChannel(pubKey string) chan *mgt.WatchMessage {
 	manager := utils.NewWatchManager()
-	ch := make(chan *mgt.WatchMessage)
-	manager.Add(pubKey, make(chan *mgt.WatchMessage))
+	ch := make(chan *mgt.WatchMessage, 1000)
+	manager.Add(pubKey, ch)
 
 	return ch
 }

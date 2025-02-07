@@ -2,13 +2,16 @@ package client
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"io"
 	"k8s.io/klog/v2"
 	"linkany/management/grpc/mgt"
+	"time"
 )
 
 type GrpcConfig struct {
@@ -26,12 +29,17 @@ type GrpcClient struct {
 
 func NewGrpcClient(config *GrpcConfig) (*GrpcClient, error) {
 	flag.Parse()
+	keepAliveArgs := keepalive.ClientParameters{
+		Time:    20 * time.Second,
+		Timeout: 20 * time.Second,
+	}
 	// Set up a connection to the server.
 	conn, err := grpc.NewClient(config.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		klog.Errorf("did not connect: %v", err)
 		return nil, err
 	}
+	grpc.WithKeepaliveParams(keepAliveArgs)
 	c := mgt.NewManagementServiceClient(conn)
 
 	return &GrpcClient{client: c}, nil
@@ -109,30 +117,52 @@ func (c *GrpcClient) Watch(ctx context.Context, in *mgt.ManagementMessage, callb
 
 func (c *GrpcClient) Keepalive(ctx context.Context, in *mgt.ManagementMessage) error {
 	stream, err := c.client.Keepalive(ctx)
+	var errChan = make(chan error, 1)
 	if err != nil {
 		klog.Errorf("client keep alive failed: %v", err)
+		return err
 	}
 
 	if err = stream.Send(in); err != nil {
 		klog.Errorf("client keepalive: stream.Send(%v) failed: %v", in, err)
 	}
+	defer func() {
+		if err = stream.CloseSend(); err != nil {
+			klog.Errorf("close send failed: %v", err)
+		}
+		err = <-errChan
+		if err != nil {
+			klog.Errorf("keepalive failed: %v", err)
+		}
+
+	}()
 
 	for {
 		msg, err := stream.Recv()
-		if err != nil {
-			klog.Errorf("connected failed: %v", err)
+		if errors.Is(err, io.EOF) {
+			klog.Warningf("server closed the stream")
+			return nil
+		} else if err != nil {
+			klog.Errorf("recv msg failed: %v", err)
+			errChan <- err
+			return err
 		}
 
 		var req mgt.Request
 		if err = proto.Unmarshal(msg.Body, &req); err != nil {
 			klog.Errorf("failed unmarshal check packet: %v", err)
-			continue
+			return err
 		}
-		klog.Infof("got check packet from server: %v", msg)
+		klog.Infof("got check packet from server: %v", &req)
 
 		if err = stream.Send(in); err != nil {
-			klog.Errorf("failed send keepalive packet: %v", err)
+			if errors.Is(err, io.EOF) {
+				klog.Warningf("server closed the stream")
+				return nil
+			}
+			klog.Errorf("send check packet failed: %v", err)
 		}
 
 	}
+
 }
