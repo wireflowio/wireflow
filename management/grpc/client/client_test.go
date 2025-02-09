@@ -32,7 +32,7 @@ func TestNewGrpcClient(t *testing.T) {
 }
 
 func TestGrpcClient_List(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":50051"})
+	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestGrpcClient_List(t *testing.T) {
 }
 
 func TestGrpcClient_Watch(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":50051"})
+	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestGrpcClient_Watch(t *testing.T) {
 }
 
 func TestGrpcClient_Keepalive(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":50051"})
+	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
