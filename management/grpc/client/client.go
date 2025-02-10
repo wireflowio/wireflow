@@ -166,3 +166,7 @@ func (c *GrpcClient) Keepalive(ctx context.Context, in *mgt.ManagementMessage) e
 	}
 
 }
+
+func (c *GrpcClient) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
+	return c.client.Registry(ctx, in)
+}

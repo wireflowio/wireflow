@@ -9,6 +9,7 @@ import (
 	"linkany/pkg/config"
 	"sync"
 	"testing"
+	"time"
 )
 
 var group sync.WaitGroup
@@ -29,6 +30,8 @@ func TestNewGrpcClient(t *testing.T) {
 	group.Wait()
 
 	t.Run("TestGrpcClient_Keepalive", TestGrpcClient_Keepalive)
+
+	t.Run("TestGrpcClient_Register", TestGrpcClient_Register)
 }
 
 func TestGrpcClient_List(t *testing.T) {
@@ -129,6 +132,46 @@ func TestGrpcClient_Keepalive(t *testing.T) {
 	if err := client.Keepalive(ctx, &pb.ManagementMessage{
 		PubKey: "",
 		Body:   body,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestGrpcClient_Register(t *testing.T) {
+	client, err := NewGrpcClient(&GrpcConfig{Addr: "127.0.0.1:32051"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//cfg, err := config.GetLocalConfig()
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+
+	requset := &pb.RegistryRequest{
+		Hostname:            "test",
+		Address:             "test",
+		PersistentKeepalive: 25,
+		PublicKey:           "test",
+		PrivateKey:          "test",
+		CreateDate:          time.Now().String(),
+		TieBreaker:          1,
+		UpdatedAt:           time.Now().String(),
+		DeletedAt:           time.Now().String(),
+		CreatedAt:           time.Now().String(),
+		Ufrag:               "test",
+		Pwd:                 "test",
+	}
+
+	ctx := context.Background()
+	body, err := proto.Marshal(requset)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := client.Registry(ctx, &pb.ManagementMessage{
+		Body: body,
 	}); err != nil {
 		t.Fatal(err)
 	}

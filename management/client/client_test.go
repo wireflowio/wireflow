@@ -29,7 +29,6 @@ func TestClient_Login(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(u)
 }
 
 func TestFetchPeers(t *testing.T) {

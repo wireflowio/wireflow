@@ -89,9 +89,3 @@ message RegistryRequest {
   int32 port = 25;
   string status = 26;
 }
-
-enum EventType {
-  ADD = 0;
-  UPDATE = 1;
-  DELETE = 2;
-}
