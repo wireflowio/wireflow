@@ -82,22 +82,19 @@ func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.
 
 	peer, err := s.peerController.Registry(&dto.PeerDto{
 		UserID:              req.UserId,
-		Hostname:            req.Hostname,
 		AppID:               req.AppId,
 		Address:             req.Address,
 		PersistentKeepalive: int(req.PersistentKeepalive),
 		PublicKey:           req.PublicKey,
 		PrivateKey:          req.PrivateKey,
 		AllowedIPs:          req.AllowedIps,
-		CreateDate:          time.Now(),
-		HostIP:              req.HostIp,
-		SrflxIP:             req.SrflxIp,
 		TieBreaker:          req.TieBreaker,
 		UpdatedAt:           time.Now(),
 		DeletedAt:           time.Now(),
 		CreatedAt:           time.Now(),
 		Ufrag:               req.Ufrag,
 		Pwd:                 req.Pwd,
+		Status:              int(req.Status),
 	})
 	if err != nil {
 		return nil, err
@@ -321,7 +318,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pu
 	}
 
 	// update peer online status
-	dtoParam := &dto.PeerDto{PublicKey: pubKey, Online: online}
+	dtoParam := &dto.PeerDto{PublicKey: pubKey}
 	_, err = s.peerController.Update(dtoParam)
 	return err
 }

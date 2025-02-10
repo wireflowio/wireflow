@@ -68,24 +68,25 @@ message RegistryRequest {
   string name = 4;
   string hostname = 5;
   string app_id = 6;
-  string ins_private_key = 7;
-  string ins_public_key = 8;
-  string address = 9;
-  string endpoint = 10;
-  int32 persistent_keepalive = 11;
-  string public_key = 12;
-  string private_key = 13;
-  string allowed_ips = 14;
-  string create_date = 15;
-  string host_ip = 16;
-  string srflx_ip = 17;
-  string relay_ip = 18;
-  uint64 tie_breaker = 19;
-  string updated_at = 20;
-  string deleted_at = 21;
-  string created_at = 22;
-  string ufrag = 23;
-  string pwd = 24;
-  int32 port = 25;
-  string status = 26;
+  string address = 7;
+  string endpoint = 8;
+  int32 persistent_keepalive = 9;
+  string public_key = 10;
+  string private_key = 11;
+  string allowed_ips = 12;
+  string relay_ip = 13;
+  uint64 tie_breaker = 14;
+  string updated_at = 15;
+  string deleted_at = 16;
+  string created_at = 17;
+  string ufrag = 18;
+  string pwd = 19;
+  int32 port = 20;
+  int32 status = 21;
+}
+
+enum EventType {
+  ADD = 0;
+  UPDATE = 1;
+  DELETE = 2;
 }
