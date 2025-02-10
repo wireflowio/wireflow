@@ -327,7 +327,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pu
 }
 
 func (s *Server) Start() error {
-	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 50051))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 32051))
 	if err != nil {
 		return err
 	}
