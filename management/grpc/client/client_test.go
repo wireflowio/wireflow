@@ -155,17 +155,18 @@ func TestGrpcClient_Register(t *testing.T) {
 		PersistentKeepalive: 25,
 		PublicKey:           "test",
 		PrivateKey:          "test",
-		CreateDate:          time.Now().String(),
 		TieBreaker:          1,
 		UpdatedAt:           time.Now().String(),
 		DeletedAt:           time.Now().String(),
 		CreatedAt:           time.Now().String(),
 		Ufrag:               "test",
 		Pwd:                 "test",
+		Status:              1,
 	}
 
 	ctx := context.Background()
 	body, err := proto.Marshal(requset)
+	fmt.Println("body:", body)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -48,17 +48,12 @@ func (p *PeerMapper) Register(e *dto.PeerDto) (*entity.Peer, error) {
 		Name:                e.Name,
 		Hostname:            e.Hostname,
 		AppID:               e.AppID,
-		InsPrivateKey:       e.InsPrivateKey,
-		InsPublicKey:        e.InsPublicKey,
 		Address:             e.Address,
 		Endpoint:            e.Endpoint,
 		PersistentKeepalive: e.PersistentKeepalive,
 		PublicKey:           e.PublicKey,
 		PrivateKey:          e.PrivateKey,
 		AllowedIPs:          e.AllowedIPs,
-		CreateDate:          e.CreateDate,
-		HostIP:              e.HostIP,
-		SrflxIP:             e.SrflxIP,
 		RelayIP:             e.RelayIP,
 		TieBreaker:          e.TieBreaker,
 		UpdatedAt:           e.UpdatedAt,
@@ -81,8 +76,6 @@ func (p *PeerMapper) Update(e *dto.PeerDto) (*entity.Peer, error) {
 	if err := p.Where("public_key = ?", e.PublicKey).First(&peer).Error; err != nil {
 		return nil, err
 	}
-
-	peer.Online = e.Online
 
 	p.Save(peer)
 

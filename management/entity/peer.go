@@ -9,6 +9,7 @@ type Peer struct {
 	InstanceID          int64     `gorm:"column:instance_id" json:"instance_id"`
 	UserID              int64     `gorm:"column:user_id" json:"user_id"`
 	Name                string    `gorm:"column:name;size:20" json:"name"`
+	Hostname            string    `gorm:"column:hostname;size:50" json:"hostname"`
 	AppID               string    `gorm:"column:app_id;size:20" json:"app_id"`
 	Address             string    `gorm:"column:address;size:50" json:"address"`
 	Endpoint            string    `gorm:"column:endpoint;size:50" json:"endpoint"`
