@@ -74,7 +74,7 @@ func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 // Registry, will return a list of response
 func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
 	var req mgt.RegistryRequest
-	if err := proto.Unmarshal(in.Body, &mgt.RegistryRequest{}); err != nil {
+	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
 

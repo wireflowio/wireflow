@@ -62,10 +62,10 @@ message WatchMessage {
 }
 
 message RegistryRequest {
-  int64 ID = 1;
+  int64 id = 1;
   int64 instance_id = 2;
   int64 user_id = 3;
-  string Name = 4;
+  string name = 4;
   string hostname = 5;
   string app_id = 6;
   string address = 7;
@@ -75,7 +75,7 @@ message RegistryRequest {
   string private_key = 11;
   string allowed_ips = 12;
   string relay_ip = 13;
-  uint64 tie_breaker = 14;
+  int64 tie_breaker = 14;
   string updated_at = 15;
   string deleted_at = 16;
   string created_at = 17;

@@ -18,7 +18,7 @@ type Peer struct {
 	PrivateKey          string    `gorm:"column:private_key;size:50" json:"private_key"`
 	AllowedIPs          string    `gorm:"column:allowed_ips;size:50" json:"allowed_ips"`
 	RelayIP             string    `gorm:"column:relay_ip;size:100" json:"relay_ip"`
-	TieBreaker          uint64    `gorm:"column:tie_breaker" json:"tie_breaker"`
+	TieBreaker          int64     `gorm:"column:tie_breaker" json:"tie_breaker"`
 	UpdatedAt           time.Time `gorm:"column:updated_at" json:"updated_at"`
 	DeletedAt           time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt           time.Time `gorm:"column:created_at" json:"created_at"`
