@@ -231,7 +231,7 @@ func (e *Engine) Start() error {
 	}
 
 	//TODO set device config
-	klog.Infof("networkmap: %s", conf)
+	klog.Infof("networkmap: %v", conf)
 	// set device config
 	deviceConfig := &config.DeviceConfig{
 		PrivateKey: e.keyManager.GetKey(),
