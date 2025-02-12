@@ -36,7 +36,7 @@ func NewServer(cfg *ServerConfig) *Server {
 	s := &Server{
 		Engine:            e,
 		listen:            cfg.Listen,
-		userController:    controller.NewUserController(mapper.NewUserMapper(cfg.DatabaseService)),
+		userController:    controller.NewUserController(mapper.NewUserMapper(cfg.DatabaseService, cfg.Rdb)),
 		peerControlloer:   controller.NewPeerController(mapper.NewPeerMapper(cfg.DatabaseService)),
 		planController:    controller.NewPlanController(mapper.NewPlanMapper(cfg.DatabaseService)),
 		supportController: controller.NewSupportController(mapper.NewSupportMapper(cfg.DatabaseService)),
