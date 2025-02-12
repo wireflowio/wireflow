@@ -2,8 +2,8 @@ package iface
 
 import "linkany/pkg/config"
 
-// WGConfigure is the interface for configuring WireGuard interfaces.
-type WGConfigure interface {
+// WGConfigureInterface is the interface for configuring WireGuard interfaces.
+type WGConfigureInterface interface {
 	// ConfigureWG configures the WireGuard interface.
 	ConfigureWG() error
 
@@ -15,7 +15,7 @@ type WGConfigure interface {
 
 	GetPeersManager() *config.PeersManager
 
-	//RemovePeer(peer *SetPeer) error
+	RemovePeer(peer *SetPeer) error
 	//
 	//AddAllowedIPs(peer *SetPeer) error
 	//

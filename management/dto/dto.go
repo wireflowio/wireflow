@@ -25,7 +25,7 @@ type PeerDto struct {
 	RelayIP             string    `gorm:"column:relay_ip;size:100" json:"relay_ip"`
 	TieBreaker          int64     `gorm:"column:tie_breaker" json:"tie_breaker"`
 	UpdatedAt           time.Time `gorm:"column:updated_at" json:"updated_at"`
-	DeletedAt           time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	DeletedAt           time.Time `gorm:"column:deleted_at;default:NULL" json:"deleted_at"`
 	CreatedAt           time.Time `gorm:"column:created_at" json:"created_at"`
 	Ufrag               string    `gorm:"column:ufrag;size:30" json:"ufrag"`
 	Pwd                 string    `gorm:"column:pwd;size:50" json:"pwd"`

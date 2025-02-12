@@ -2,9 +2,11 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"linkany/internal"
+	"linkany/management/entity"
 	pb "linkany/management/grpc/mgt"
 	"linkany/pkg/config"
 	"sync"
@@ -35,7 +37,7 @@ func TestNewGrpcClient(t *testing.T) {
 }
 
 func TestGrpcClient_List(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
+	client, err := NewClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,10 +69,17 @@ func TestGrpcClient_List(t *testing.T) {
 	}
 
 	t.Log(resp)
+
+	var net entity.NetworkMap
+	if err = json.Unmarshal(resp.Body, &net); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(net)
 }
 
 func TestGrpcClient_Watch(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
+	client, err := NewClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +116,8 @@ func TestGrpcClient_Watch(t *testing.T) {
 }
 
 func TestGrpcClient_Keepalive(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
+	client, err := NewClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,16 +148,48 @@ func TestGrpcClient_Keepalive(t *testing.T) {
 
 }
 
-func TestGrpcClient_Register(t *testing.T) {
-	client, err := NewGrpcClient(&GrpcConfig{Addr: "127.0.0.1:32051"})
+func TestClient_Get(t *testing.T) {
+	client, err := NewClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//cfg, err := config.GetLocalConfig()
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
+	cfg, err := config.GetLocalConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	requset := &pb.Request{
+		AppId:  cfg.AppId,
+		Token:  cfg.Token,
+		PubKey: "a+BYvXq6/xrvsnKbgORSL6lwFzqtfXV0VnTzwdo+Vnw=",
+	}
+
+	ctx := context.Background()
+	body, err := proto.Marshal(requset)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := client.Get(ctx, &pb.ManagementMessage{Body: body})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var peer config.Peer
+	if err = json.Unmarshal(resp.Body, &peer); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(peer)
+
+}
+
+func TestGrpcClient_Register(t *testing.T) {
+	client, err := NewClient(&GrpcConfig{Addr: internal.ManagementDomain + ":32051"})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	requset := &pb.RegistryRequest{
 		Hostname:            "test",
@@ -157,7 +199,6 @@ func TestGrpcClient_Register(t *testing.T) {
 		PrivateKey:          "test",
 		TieBreaker:          1,
 		UpdatedAt:           time.Now().String(),
-		DeletedAt:           time.Now().String(),
 		CreatedAt:           time.Now().String(),
 		Ufrag:               "test",
 		Pwd:                 "test",
@@ -166,7 +207,7 @@ func TestGrpcClient_Register(t *testing.T) {
 
 	ctx := context.Background()
 	body, err := proto.Marshal(requset)
-	fmt.Println("body:", body)
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,4 +218,15 @@ func TestGrpcClient_Register(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	resp, err := client.Get(ctx, &pb.ManagementMessage{Body: body})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var peer config.Peer
+	if err = json.Unmarshal(resp.Body, &peer); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println(peer)
 }

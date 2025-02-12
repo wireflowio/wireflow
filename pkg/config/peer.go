@@ -16,9 +16,9 @@ type Config struct {
 
 // DeviceConf will used to fetchPeers,then config to the device
 type DeviceConf struct {
-	DrpUrl string       `json:"drpUrl,omitempty"` // a drp server user created.
-	Device DeviceConfig `json:"device,omitempty"`
-	Peers  []*Peer      `json:"list,omitempty"`
+	DrpUrl string        `json:"drpUrl,omitempty"` // a drp server user created.
+	Device *DeviceConfig `json:"device,omitempty"`
+	Peers  []*Peer       `json:"list,omitempty"`
 }
 
 // Peer peers sync from linkany server will be transfered to
@@ -28,13 +28,16 @@ type Peer struct {
 	P2PFlag             atomic.Bool
 	ConnectionState     atomic.Bool `json:"checkingStatue,omitempty"`
 	Name                string      `json:"name,omitempty"`
-	PublicKey           string      `json:"publicKey,omitempty"`
+	Hostname            string      `json:"hostname,omitempty"`
+	AppID               string      `json:"app_id,omitempty"`
+	PrivateKey          string      `json:"private_key,omitempty"`
+	PublicKey           string      `json:"public_key,omitempty"`
 	Address             string      `json:"address,omitempty"`
 	Remove              bool        `json:"remove,omitempty"`
 	Endpoint            string      `json:"endpoint,omitempty"`
-	TieBreaker          uint32      `json:"tieBreaker,omitempty"`
-	PersistentKeepalive int         `json:"persistentKeepalive,omitempty"`
-	AllowedIps          string      `json:"allowedIps,omitempty"`
+	TieBreaker          uint32      `json:"tie_breaker,omitempty"`
+	PersistentKeepalive int         `json:"persistent_keepalive,omitempty"`
+	AllowedIps          string      `json:"allowed_ips,omitempty"`
 	PresharedKey        string      `json:"presharedKey,omitempty"`
 	ReplacePeers        bool        `json:"replacePeers,omitempty"`
 	Port                int         `json:"port,omitempty"`
@@ -42,7 +45,7 @@ type Peer struct {
 	Pwd                 string      `json:"pwd,omitempty"`
 	HostIP              string      `json:"hostIP,omitempty"`
 	SrflxIP             string      `json:"srflxIP,omitempty"`
-	RelayIP             string      `json:"relayIP,omitempty"`
+	RelayIP             string      `json:"relay_ip,omitempty"`
 	Status              int         `json:"status,omitempty"` // 1: online 0: offline
 }
 
@@ -82,7 +85,9 @@ func (d *DeviceConfig) String() string {
 	var sb strings.Builder
 	//sb.WriteString("set=1\n")
 	printf(&sb, "private_key", d.PrivateKey, keyf)
-	printf(&sb, "listen_port", strconv.Itoa(d.ListenPort), nil)
+	if d.ListenPort != 0 {
+		printf(&sb, "listen_port", strconv.Itoa(d.ListenPort), nil)
+	}
 	printf(&sb, "fwmark", strconv.Itoa(d.Fwmark), nil)
 	return sb.String()
 }
@@ -181,7 +186,7 @@ func (d *DeviceConf) Parse(str string) (*DeviceConf, error) {
 	deviceConfig := true
 
 	conf := &DeviceConf{
-		Device: DeviceConfig{},
+		Device: &DeviceConfig{},
 		Peers:  make([]*Peer, 0),
 	}
 	setPeer := new(setPeer)

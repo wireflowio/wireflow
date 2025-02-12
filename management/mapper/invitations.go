@@ -11,6 +11,7 @@ type InvitationInterface interface {
 	Invite(dto *dto.InviteDto) error
 	Get(userId, email string) (*entity.Invitations, error)
 	Update(dto *dto.InviteDto) error
+	List(paras *QueryParams) ([]*entity.Invitations, error)
 }
 
 type InvitationMapper struct {
@@ -51,4 +52,12 @@ func (im *InvitationMapper) Update(dto *dto.InviteDto) error {
 	inv.AcceptAt = time.Now()
 	im.Save(&inv)
 	return nil
+}
+
+func (im *InvitationMapper) List(params *QueryParams) ([]*entity.Invitations, error) {
+	var invs []*entity.Invitations
+	if err := im.Where("invitation_id = ?", params.UserId).Find(&invs).Error; err != nil {
+		return nil, err
+	}
+	return invs, nil
 }

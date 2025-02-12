@@ -13,10 +13,11 @@ import (
 	"k8s.io/klog/v2"
 	"linkany/management/controller"
 	"linkany/management/dto"
+	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
 	"linkany/management/mapper"
 	"linkany/management/utils"
-	"log"
+	"linkany/pkg/redis"
 	"net"
 	"strconv"
 	"time"
@@ -35,12 +36,13 @@ type ServerConfig struct {
 	Port            int
 	Database        mapper.DatabaseConfig
 	DataBaseService *mapper.DatabaseService
+	Rdb             *redis.Client
 }
 
 func NewServer(cfg *ServerConfig) *Server {
 	return &Server{
 		port:           cfg.Port,
-		userController: controller.NewUserController(mapper.NewUserMapper(cfg.DataBaseService)),
+		userController: controller.NewUserController(mapper.NewUserMapper(cfg.DataBaseService, cfg.Rdb)),
 		peerController: controller.NewPeerController(mapper.NewPeerMapper(cfg.DataBaseService)),
 	}
 }
@@ -77,11 +79,16 @@ func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
-
-	log.Printf("Received peer info: %+v", req)
+	klog.Infof("Received peer info: %+v", req)
+	user, err := s.userController.Get(req.GetToken())
+	if err != nil {
+		klog.Errorf("get user info err: %s\n", err.Error())
+		return nil, err
+	}
 
 	peer, err := s.peerController.Registry(&dto.PeerDto{
-		UserID:              req.UserId,
+		Hostname:            req.Hostname,
+		UserID:              int64(user.ID),
 		AppID:               req.AppId,
 		Address:             req.Address,
 		PersistentKeepalive: int(req.PersistentKeepalive),
@@ -90,7 +97,6 @@ func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.
 		AllowedIPs:          req.AllowedIps,
 		TieBreaker:          req.TieBreaker,
 		UpdatedAt:           time.Now(),
-		DeletedAt:           time.Now(),
 		CreatedAt:           time.Now(),
 		Ufrag:               req.Ufrag,
 		Pwd:                 req.Pwd,
@@ -108,7 +114,26 @@ func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.
 	return &mgt.ManagementMessage{Body: bs}, nil
 }
 
-// List, will return a list of response
+func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
+	var req mgt.Request
+	if err := proto.Unmarshal(in.Body, &req); err != nil {
+		return nil, err
+	}
+
+	peer, err := s.peerController.GetByAppId(req.AppId)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := json.Marshal(peer)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mgt.ManagementMessage{Body: b}, nil
+}
+
+// List will return a list of response
 func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
 	var req mgt.Request
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
@@ -119,12 +144,12 @@ func (s *Server) List(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Mana
 		return nil, err
 	}
 	klog.Infoln(user)
-	peers, err := s.peerController.GetNetworkMap(req.AppId, strconv.Itoa(int(user.ID)))
+	networkMap, err := s.peerController.GetNetworkMap(req.AppId, strconv.Itoa(int(user.ID)))
 	if err != nil {
 		return nil, err
 	}
 
-	bs, err := json.Marshal(peers)
+	bs, err := json.Marshal(networkMap)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +232,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 		return fmt.Errorf("peer has not connected to managent server")
 	}
 
-	currentPeer := &mgt.Peer{
+	currentPeer := &entity.Peer{
 		PublicKey: pubKey,
 	}
 
@@ -282,7 +307,7 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 				k.Online.Store(false)
 			case <-checkChannel:
 				klog.Infof("peer %s is online", pubKey)
-				//if !k.Online.Load() {
+				//if !k.Status.Load() {
 				if err = s.sendWatchMessage(mgt.EventType_ADD, currentPeer, pubKey, userId, 1); err != nil {
 					return err
 				}
@@ -294,11 +319,11 @@ func (s *Server) Keepalive(server mgt.ManagementService_KeepaliveServer) error {
 	}
 }
 
-func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pubKey, userId string, online int) error {
+func (s *Server) sendWatchMessage(eventType mgt.EventType, current *entity.Peer, pubKey, userId string, status int) error {
 	peers, err := s.peerController.List(&mapper.QueryParams{
 		PubKey: &pubKey,
 		UserId: &userId,
-		Online: &online,
+		Status: &status,
 	})
 
 	if err != nil {
@@ -310,7 +335,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pu
 	for _, peer := range peers {
 		wc := manager.Get(peer.PublicKey)
 		klog.Infof("fetch the actual channel: %v", wc)
-		message := utils.NewWatchMessage(eventType, current)
+		message := utils.NewWatchMessage(eventType, []*entity.Peer{current})
 		// add to channel, will send to client
 		if wc != nil {
 			wc <- message
@@ -318,7 +343,8 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *mgt.Peer, pu
 	}
 
 	// update peer online status
-	dtoParam := &dto.PeerDto{PublicKey: pubKey}
+	dtoParam := &dto.PeerDto{PublicKey: pubKey, Status: status}
+	klog.Infof("update peer status ,publicKey: %v, status: %v", pubKey, status)
 	_, err = s.peerController.Update(dtoParam)
 	return err
 }
@@ -332,4 +358,34 @@ func (s *Server) Start() error {
 	mgt.RegisterManagementServiceServer(grpcServer, s)
 	klog.Infof("Grpc server listening at %v", listen.Addr())
 	return grpcServer.Serve(listen)
+}
+
+func (s *Server) VerifyToken(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
+	var req mgt.Request
+	if err := proto.Unmarshal(in.Body, &req); err != nil {
+		return nil, err
+	}
+
+	user, err := s.tokenr.Parse(req.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := s.tokenr.Verify(user.Username, user.Password, req.Token)
+	if err != nil {
+		return nil, err
+	}
+
+	if b {
+		body, err := proto.Marshal(&mgt.LoginResponse{Token: req.Token})
+		if err != nil {
+			return nil, err
+		}
+
+		return &mgt.ManagementMessage{
+			Body: body,
+		}, nil
+	}
+
+	return nil, errors.New("invalid token")
 }

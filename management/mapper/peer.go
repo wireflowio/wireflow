@@ -1,10 +1,12 @@
 package mapper
 
 import (
+	"errors"
 	"fmt"
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
+	"log"
 	"reflect"
 	"strings"
 )
@@ -41,6 +43,13 @@ func NewPeerMapper(db *DatabaseService) *PeerMapper {
 }
 
 func (p *PeerMapper) Register(e *dto.PeerDto) (*entity.Peer, error) {
+	count := p.GetAddress() + 1
+	if count == -1 {
+		return nil, errors.New("the address can not be allocated")
+	}
+
+	addressIP := fmt.Sprintf("10.0.%d.%d", (count-1)/254, ((count-1)%254)+1)
+
 	peer := &entity.Peer{
 		ID:                  e.ID,
 		InstanceID:          e.InstanceID,
@@ -48,12 +57,12 @@ func (p *PeerMapper) Register(e *dto.PeerDto) (*entity.Peer, error) {
 		Name:                e.Name,
 		Hostname:            e.Hostname,
 		AppID:               e.AppID,
-		Address:             e.Address,
+		Address:             addressIP,
 		Endpoint:            e.Endpoint,
 		PersistentKeepalive: e.PersistentKeepalive,
 		PublicKey:           e.PublicKey,
 		PrivateKey:          e.PrivateKey,
-		AllowedIPs:          e.AllowedIPs,
+		AllowedIPs:          addressIP + "/32",
 		RelayIP:             e.RelayIP,
 		TieBreaker:          e.TieBreaker,
 		UpdatedAt:           e.UpdatedAt,
@@ -76,6 +85,7 @@ func (p *PeerMapper) Update(e *dto.PeerDto) (*entity.Peer, error) {
 	if err := p.Where("public_key = ?", e.PublicKey).First(&peer).Error; err != nil {
 		return nil, err
 	}
+	peer.Status = e.Status
 
 	p.Save(peer)
 
@@ -153,11 +163,11 @@ func (p *PeerMapper) GetNetworkMap(appId, userId string) (*entity.NetworkMap, er
 		return nil, err
 	}
 
-	var online = 1
+	var status = 1
 	peers, err := p.List(&QueryParams{
 		PubKey: &current.PublicKey,
 		UserId: &userId,
-		Online: &online,
+		Status: &status,
 	})
 
 	if err != nil {
@@ -169,4 +179,17 @@ func (p *PeerMapper) GetNetworkMap(appId, userId string) (*entity.NetworkMap, er
 		Peer:   current,
 		Peers:  peers,
 	}, nil
+}
+
+// GetAddress get peer address
+func (p *PeerMapper) GetAddress() int64 {
+	var count int64
+	if err := p.Model(&entity.Peer{}).Count(&count).Error; err != nil {
+		log.Printf("err： %s", err.Error())
+		return -1
+	}
+	if count > 253 {
+		return -1
+	}
+	return count
 }

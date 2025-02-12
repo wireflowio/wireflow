@@ -16,7 +16,7 @@ func up() *cobra.Command {
 		Short:        "up",
 		Use:          "up [command]",
 		SilenceUsage: true,
-		Long:         `linkanyd start up`,
+		Long:         `linkany start up`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runLinkanyd(opts)
 		},

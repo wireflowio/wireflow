@@ -1,10 +1,12 @@
 package entity
 
 import (
+	"gorm.io/gorm"
 	"time"
 )
 
 type Peer struct {
+	gorm.Model
 	ID                  int64     `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
 	InstanceID          int64     `gorm:"column:instance_id" json:"instance_id"`
 	UserID              int64     `gorm:"column:user_id" json:"user_id"`
@@ -20,7 +22,7 @@ type Peer struct {
 	RelayIP             string    `gorm:"column:relay_ip;size:100" json:"relay_ip"`
 	TieBreaker          int64     `gorm:"column:tie_breaker" json:"tie_breaker"`
 	UpdatedAt           time.Time `gorm:"column:updated_at" json:"updated_at"`
-	DeletedAt           time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	DeletedAt           time.Time `gorm:"column:deleted_at;default:NULL" json:"deleted_at"`
 	CreatedAt           time.Time `gorm:"column:created_at" json:"created_at"`
 	Ufrag               string    `gorm:"column:ufrag;size:30" json:"ufrag"`
 	Pwd                 string    `gorm:"column:pwd;size:50" json:"pwd"`

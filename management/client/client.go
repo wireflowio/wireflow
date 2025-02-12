@@ -8,36 +8,22 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/linkanyio/ice"
 	"github.com/pion/logging"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"io"
 	"k8s.io/klog/v2"
 	"linkany/internal"
+	"linkany/management/entity"
 	grpcclient "linkany/management/grpc/client"
 	"linkany/management/grpc/mgt"
 	"linkany/pkg/config"
 	"linkany/pkg/drp"
 	"linkany/pkg/probe"
+	"linkany/signaling/grpc/signaling"
 	turnclient "linkany/turn/client"
 	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
-)
-
-type ClientInterface interface {
-	// Register will register a device to linkany center
-	Register() (*config.DeviceConf, error)
-
-	Login(user *config.User) error
-
-	List() (*config.DeviceConf, error)
-
-	GetUsers() []*config.User
-}
-
-var (
-	_ ClientInterface = (*Client)(nil)
+	"time"
 )
 
 type PeerMap struct {
@@ -47,17 +33,17 @@ type PeerMap struct {
 
 // Client is client of linkany, will fetch config from origin server interval
 type Client struct {
-	km              *internal.KeyManager
+	keyManager      *internal.KeyManager
+	signalChannel   chan *signaling.EncryptMessage
 	ch              chan *probe.DirectChecker
-	pm              *config.PeersManager
+	peersManager    *config.PeersManager
 	TieBreaker      uint32
 	stunUri         string
 	ufrag           string
 	pwd             string
 	ifaceName       string
 	conf            *config.LocalConfig
-	httpClient      *http.Client
-	grpcClient      *grpcclient.GrpcClient
+	grpcClient      *grpcclient.Client
 	agent           *ice.Agent
 	conn4           net.PacketConn
 	udpMux          *ice.UDPMuxDefault
@@ -71,30 +57,31 @@ type Client struct {
 }
 
 type ClientConfig struct {
-	Pm              *config.PeersManager
+	PeersManager    *config.PeersManager
 	Conf            *config.LocalConfig
 	PeerCh          chan *probe.DirectChecker
 	Agent           *ice.Agent
 	UdpMux          *ice.UDPMuxDefault
 	UniversalUdpMux *ice.UniversalUDPMuxDefault
-	Km              *internal.KeyManager
+	KeyManager      *internal.KeyManager
 	AgentManager    *internal.AgentManager
-	GrpcClient      *grpcclient.GrpcClient
+	GrpcClient      *grpcclient.Client
 	Ufrag           string
 	Pwd             string
-	OfferManager    internal.OfferManager
 	ProberManager   *probe.NetProber
 	TurnClient      *turnclient.Client
+	SignalChannel   chan *signaling.EncryptMessage
+	DrpClient       *drp.Client
 }
 
-func NewClient(config *ClientConfig) ClientInterface {
+func NewClient(config *ClientConfig) *Client {
 	client := &Client{
-		km:              config.Km,
+		drpClient:       config.DrpClient,
+		keyManager:      config.KeyManager,
 		TieBreaker:      ice.NewTieBreaker(),
 		ch:              config.PeerCh,
 		conf:            config.Conf,
-		pm:              config.Pm,
-		httpClient:      http.DefaultClient,
+		peersManager:    config.PeersManager,
 		udpMux:          config.UdpMux,
 		universalUdpMux: config.UniversalUdpMux,
 		agentManager:    config.AgentManager,
@@ -103,17 +90,14 @@ func NewClient(config *ClientConfig) ClientInterface {
 		proberManager:   config.ProberManager,
 		turnClient:      config.TurnClient,
 		grpcClient:      config.GrpcClient,
+		signalChannel:   config.SignalChannel,
 	}
 
 	return client
 }
 
-//func (c *Client) SetDrpClient(client *drp.Client) {
-//	c.offerManager = client
-//}
-
-// Register will register device to linkany center
-func (c *Client) Register() (*config.DeviceConf, error) {
+// RegisterToManagement will register device to linkany center
+func (c *Client) RegisterToManagement() (*config.DeviceConf, error) {
 	// TODO implement this function
 	return nil, nil
 }
@@ -190,24 +174,24 @@ func (c *Client) Login(user *config.User) error {
 	return nil
 }
 
-// List fetch user's all peer and configuration to linkany instance
+// List get user's networkmap
 func (c *Client) List() (*config.DeviceConf, error) {
+	ctx := context.Background()
 	var conf *config.DeviceConf
 	var err error
-	//appId, err := config.GetAppId()
-	//if err != nil {
-	//	return nil, err
-	//}
-	info, err := config.GetLocalUserInfo()
+
+	info, err := config.GetLocalConfig()
 	if err != nil {
 		return nil, err
 	}
-	ctx := context.Background()
-	loginRequest := &mgt.LoginRequest{
-		Username: info.Username,
+
+	request := &mgt.Request{
+		AppId:  c.conf.AppId,
+		Token:  info.Token,
+		PubKey: c.keyManager.GetPublicKey(),
 	}
 
-	body, err := proto.Marshal(loginRequest)
+	body, err := proto.Marshal(request)
 	if err != nil {
 		return nil, err
 	}
@@ -219,87 +203,135 @@ func (c *Client) List() (*config.DeviceConf, error) {
 	if err != nil {
 		return nil, err
 	}
-	//var peers []*config.Peer
-	//if err := json.Unmarshal(resp.Body, peers); err != nil {
-	//	return nil, err
-	//}
 
-	var networkMap mgt.NetworkMap
-	if err := proto.Unmarshal(resp.Body, &networkMap); err != nil {
+	var networkMap entity.NetworkMap
+	if err := json.Unmarshal(resp.Body, &networkMap); err != nil {
 		return nil, err
 	}
 
-	for _, nPeer := range networkMap.Peers {
-		peer := &config.Peer{
-			PublicKey:           nPeer.PublicKey,
-			Endpoint:            nPeer.Endpoint,
-			Address:             nPeer.Address,
-			AllowedIps:          nPeer.AllowedIps,
-			PersistentKeepalive: int(nPeer.PersistentKeepalive),
+	conf = &config.DeviceConf{}
+
+	for _, p := range networkMap.Peers {
+		if err := c.AddPeer(p); err != nil {
+			klog.Errorf("add peer failed: %v", err)
 		}
-		mappedPeer := c.pm.GetPeer(peer.PublicKey)
-		if mappedPeer == nil {
-			mappedPeer = peer
-			c.pm.AddPeer(peer.PublicKey, peer)
-			klog.Infof("add peer to local cache, key: %s, peer: %v", peer.PublicKey, peer)
-		} else if mappedPeer.Connected.Load() {
-			continue
-		}
-		agent, ok := c.agentManager.Get(peer.PublicKey)
-
-		if agent == nil || !ok {
-			l := logging.NewDefaultLoggerFactory()
-			l.DefaultLogLevel = logging.LogLevelDebug
-			agent, err = internal.NewAgent(&internal.AgentParams{
-				LoggerFacotry:   l,
-				StunUrl:         "stun:81.68.109.143:3478",
-				UdpMux:          c.universalUdpMux.UDPMuxDefault,
-				UniversalUdpMux: c.universalUdpMux,
-				Ufrag:           c.ufrag,
-				Pwd:             c.pwd,
-				OnCandidate: func(c ice.Candidate) {
-					if c != nil {
-						klog.Infof("new candidate: %v", c.Marshal())
-					}
-				},
-			})
-
-			klog.Infof("creating agent for peer: %s", peer.PublicKey)
-			if err := agent.OnConnectionStateChange(func(connectionState ice.ConnectionState) {
-				switch connectionState {
-				case ice.ConnectionStateDisconnected:
-					peer.Connected.Store(false)
-					c.agentManager.Remove(peer.PublicKey)
-					klog.Infof("agent disconnected, remove agent")
-					break
-				case ice.ConnectionStateFailed:
-					peer.P2PFlag.Store(true)
-					peer.Connected.Store(true)
-					peer.Endpoint = "relay"
-					c.agentManager.Remove(peer.PublicKey)
-					klog.Infof("check connection failed, will use relay, remove agent")
-					break
-				default:
-					c.pm.AddPeer(peer.PublicKey, peer)
-				}
-			}); err != nil {
-				return nil, err
-			}
-
-			c.agentManager.Add(peer.PublicKey, agent)
-		}
-
-		// start probeConn
-		if !peer.ConnectionState.Load() {
-			go c.probeConn(agent, peer)
-		}
-
 	}
 
 	return conf, nil
 }
 
-func GetCandidates(agent *ice.Agent) string {
+func (c *Client) ToConfigPeer(peer *entity.Peer) *config.Peer {
+
+	return &config.Peer{
+		PublicKey:           peer.PublicKey,
+		Endpoint:            peer.Endpoint,
+		Address:             peer.Address,
+		AllowedIps:          peer.AllowedIPs,
+		PersistentKeepalive: peer.PersistentKeepalive,
+	}
+}
+
+func (c *Client) WatchMessage(msg *mgt.WatchMessage) error {
+	var err error
+	var peers []entity.Peer
+	if err = json.Unmarshal(msg.Body, &peers); err != nil {
+		return err
+	}
+
+	for _, peer := range peers {
+		switch msg.Type {
+		case mgt.EventType_DELETE:
+			//TODO remove peer from local cache & agentManager
+			c.peersManager.Remove(peer.PublicKey)
+		case mgt.EventType_ADD:
+			if err = c.AddPeer(&peer); err != nil {
+				klog.Errorf("add peer failed: %v", err)
+			}
+		}
+	}
+
+	return nil
+
+}
+
+func (c *Client) AddPeer(p *entity.Peer) error {
+	var err error
+	if p.PublicKey == c.keyManager.GetPublicKey() {
+		klog.Warningf("self peer, skip")
+		err = errors.New("self peer, skip")
+		return err
+	}
+	peer := c.ToConfigPeer(p)
+	mappedPeer := c.peersManager.GetPeer(peer.PublicKey)
+	if mappedPeer == nil {
+		mappedPeer = peer
+		c.peersManager.AddPeer(peer.PublicKey, peer)
+		klog.Infof("add peer to local cache, key: %s, peer: %v", peer.PublicKey, peer)
+	} else if mappedPeer.Connected.Load() {
+		return nil
+	}
+
+	agent, ok := c.agentManager.Get(peer.PublicKey)
+	gatherCh := make(chan interface{})
+
+	if agent == nil || !ok {
+		l := logging.NewDefaultLoggerFactory()
+		l.DefaultLogLevel = logging.LogLevelDebug
+		agent, err = internal.NewAgent(&internal.AgentParams{
+			LoggerFacotry:   l,
+			StunUrl:         "stun:81.68.109.143:3478",
+			UdpMux:          c.universalUdpMux.UDPMuxDefault,
+			UniversalUdpMux: c.universalUdpMux,
+			Ufrag:           c.ufrag,
+			Pwd:             c.pwd,
+			OnCandidate: func(c ice.Candidate) {
+				if c != nil {
+					klog.Infof("new candidate: %v", c.Marshal())
+				} else {
+					klog.Infof("all candidates has been gathered.")
+					close(gatherCh)
+				}
+			},
+		})
+
+		klog.Infof("creating agent for peer: %s", peer.PublicKey)
+		if err := agent.OnConnectionStateChange(func(connectionState ice.ConnectionState) {
+			switch connectionState {
+			case ice.ConnectionStateDisconnected:
+				peer.Connected.Store(false)
+				c.agentManager.Remove(peer.PublicKey)
+				klog.Infof("agent disconnected, remove agent")
+				break
+			case ice.ConnectionStateFailed:
+				peer.P2PFlag.Store(true)
+				peer.Connected.Store(true)
+				peer.Endpoint = "relay"
+				c.agentManager.Remove(peer.PublicKey)
+				klog.Infof("check connection failed, will use relay, remove agent")
+				break
+			default:
+				c.peersManager.AddPeer(peer.PublicKey, peer)
+			}
+		}); err != nil {
+			return err
+		}
+
+		c.agentManager.Add(peer.PublicKey, agent)
+	}
+
+	// start probeConn
+	go func() {
+		err := c.probeConn(agent, peer, gatherCh)
+		if err != nil {
+			klog.Errorf("probeConn failed: %v", err)
+		}
+	}()
+
+	return nil
+}
+
+func GetCandidates(agent *ice.Agent, gatherCh chan interface{}) string {
+	<-gatherCh
 	var err error
 	var ch = make(chan struct{})
 	var candidates []ice.Candidate
@@ -327,15 +359,15 @@ func GetCandidates(agent *ice.Agent) string {
 		}
 	}
 
+	klog.Infof("gathered candidates >>>: %v", candString)
 	return candString
 }
 
-func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
+func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer, gatherCh chan interface{}) error {
 	peer.ConnectionState.Store(true)
 	directContact := func(agent *ice.Agent, peer *config.Peer) error {
 		//send NodeInfo
-		var err error
-		candidates := GetCandidates(agent)
+		candidates := GetCandidates(agent, gatherCh)
 		directOffer := internal.NewDirectOffer(&internal.DirectOfferConfig{
 			WgPort:     51820,
 			Ufrag:      c.ufrag,
@@ -343,13 +375,8 @@ func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
 			LocalKey:   c.agentManager.GetLocalKey(),
 			Candidates: candidates,
 		})
-		dstPubKey, err := wgtypes.ParseKey(peer.PublicKey)
-		if err != nil {
-			klog.Errorf("parse public key failed: %v", err)
-			return err
-		}
 
-		prober := c.proberManager.GetProber(dstPubKey)
+		prober := c.proberManager.GetProber(peer.PublicKey)
 		if prober == nil {
 			c.proberMux.Lock()
 			defer c.proberMux.Unlock()
@@ -358,23 +385,40 @@ func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
 				RelayOfferManager:  c.drpClient,
 				AgentManager:       c.agentManager,
 				WGConfiger:         c.proberManager.GetWgConfiger(),
-				Key:                dstPubKey,
+				Key:                peer.PublicKey,
 				ProberManager:      c.proberManager,
 				IsForceRelay:       c.proberManager.IsForceRelay(),
 				TurnClient:         c.turnClient,
+				SignalingChannel:   c.signalChannel,
 			})
-			c.proberManager.AddProber(dstPubKey, prober)
+			c.proberManager.AddProber(peer.PublicKey, prober)
 		}
 
-		if err := prober.Start(c.km.GetPublicKey(), dstPubKey, directOffer); err != nil {
-			klog.Errorf("send directOffer failed: %v", err)
-			return err
+		limitRetries := 7
+		retries := 0
+		timer := time.NewTimer(1 * time.Second)
+		for {
+			if retries > limitRetries {
+				return errors.New("direct check until limit times")
+			}
+
+			select {
+			case <-timer.C:
+				if prober.ConnectionState != internal.ConnectionStateConnected {
+					if err := prober.Start(c.keyManager.GetPublicKey(), peer.PublicKey, directOffer); err != nil {
+						klog.Errorf("send directOffer failed: %v", err)
+					}
+				}
+				retries++
+				timer.Reset(10 * time.Second)
+			}
+
 		}
 
 		return nil
 	}
 
-	relayConact := func(peer *config.Peer) error {
+	relayContact := func(peer *config.Peer) error {
 		//send NodeInfo
 		var err error
 
@@ -387,11 +431,7 @@ func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
 
 		relayOffer := probe.NewOffer(relayInfo.MappedAddr, *relayAddr, c.agentManager.GetLocalKey(), probe.OfferTypeRelayOffer)
 
-		dstPubKey, err := wgtypes.ParseKey(peer.PublicKey)
-		if err != nil {
-			klog.Errorf("parse public key failed: %v", err)
-			return err
-		}
+		dstPubKey := peer.PublicKey
 
 		prober := c.proberManager.GetProber(dstPubKey)
 		if prober == nil {
@@ -410,7 +450,7 @@ func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
 			c.proberManager.AddProber(dstPubKey, prober)
 		}
 
-		if err := prober.Start(c.km.GetPublicKey(), dstPubKey, relayOffer); err != nil {
+		if err := prober.Start(c.keyManager.GetPublicKey(), dstPubKey, relayOffer); err != nil {
 			klog.Errorf("send relayOffer failed: %v", err)
 			return err
 		}
@@ -419,9 +459,23 @@ func (c *Client) probeConn(agent *ice.Agent, peer *config.Peer) error {
 	}
 
 	if c.proberManager.IsForceRelay() {
-		go relayConact(peer)
+		go func() {
+			err := relayContact(peer)
+			if err != nil {
+
+			}
+		}()
 	} else {
-		go directContact(agent, peer)
+		go func() {
+			err := directContact(agent, peer)
+			if err != nil {
+				klog.Errorf("directContact failed: %v", err)
+				// use relay
+				if err = relayContact(peer); err != nil {
+					klog.Errorf("relayContact failed, unavaiable connect to peer: %v, %v", err, peer.PublicKey)
+				}
+			}
+		}()
 	}
 
 	return nil
@@ -434,6 +488,99 @@ func (c *Client) GetUsers() []*config.User {
 	return users
 }
 
-func (c *Client) SetDrpClient(client *drp.Client) {
-	c.drpClient = client
+func (c *Client) Get(ctx context.Context) (*config.Peer, error) {
+	req := &mgt.Request{
+		AppId: c.conf.AppId,
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	msg, err := c.grpcClient.Get(ctx, &mgt.ManagementMessage{Body: body})
+	if err != nil {
+		return nil, err
+	}
+
+	var peer config.Peer
+	if err := json.Unmarshal(msg.Body, &peer); err != nil {
+		return nil, err
+	}
+	return &peer, nil
+}
+
+func (c *Client) Watch(ctx context.Context, callback func(msg *mgt.WatchMessage) error) error {
+
+	req := &mgt.Request{
+		PubKey: c.keyManager.GetPublicKey(),
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return c.grpcClient.Watch(ctx, &mgt.ManagementMessage{Body: body}, callback)
+}
+
+func (c *Client) Keepalive(ctx context.Context) error {
+	req := &mgt.Request{
+		PubKey: c.keyManager.GetPublicKey(),
+		Token:  c.conf.Token,
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return c.grpcClient.Keepalive(ctx, &mgt.ManagementMessage{Body: body})
+}
+
+// Register will register device to linkany center
+func (c *Client) Register(privateKey, publicKey, token string) (*config.DeviceConf, error) {
+	var err error
+	ctx := context.Background()
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		klog.Errorf("get hostname failed: %v", err)
+		return nil, err
+	}
+
+	homeDir, err := os.UserHomeDir()
+	path := filepath.Join(homeDir, ".linkany/config.json")
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0755)
+
+	defer file.Close()
+	var local config.LocalConfig
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&local)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	registryRequest := &mgt.RegistryRequest{
+		Token:               token,
+		Hostname:            hostname,
+		AppId:               local.AppId,
+		PersistentKeepalive: 25,
+		PrivateKey:          privateKey,
+		PublicKey:           publicKey,
+		Ufrag:               c.ufrag,
+		Pwd:                 c.pwd,
+		Status:              1,
+	}
+	body, err := proto.Marshal(registryRequest)
+	if err != nil {
+		return nil, err
+	}
+	_, err = c.grpcClient.Registry(ctx, &mgt.ManagementMessage{
+		Body: body,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return &config.DeviceConf{}, nil
 }
