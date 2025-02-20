@@ -541,13 +541,16 @@ func (c *Client) clear(pubKey string) {
 
 func (c *Client) RemovePeer(peer *entity.Peer) error {
 	c.clear(peer.PublicKey)
-	if err := c.wgConfigure.AddPeer(&iface.SetPeer{
+	wgConfigure := c.proberManager.GetWgConfiger()
+	if err := wgConfigure.RemovePeer(&iface.SetPeer{
 		PublicKey: peer.PublicKey,
+		Remove:    true,
 	}); err != nil {
 		return err
 	}
 
-	iface.RemoveRoute()("delete", c.wgConfigure.GetAddress(), c.wgConfigure.GetIfaceName())
+	//TODO add check when no same network peers exists, then delete the route.
+	iface.SetRoute()("delete", wgConfigure.GetAddress(), wgConfigure.GetIfaceName())
 	return nil
 }
 
