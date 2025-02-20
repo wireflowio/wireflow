@@ -255,9 +255,20 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 		return fmt.Errorf("peer has not connected to managent server")
 	}
 
-	currentPeer := &entity.Peer{
-		PublicKey: pubKey,
+	peers, err := s.peerController.List(&mapper.QueryParams{
+		PubKey: &pubKey,
+	})
+
+	if err != nil {
+		klog.Errorf("list peers failed: %v", err)
+		return err
 	}
+
+	if len(peers) == 0 {
+		return fmt.Errorf("peer not found")
+	}
+
+	currentPeer := peers[0]
 
 	k := NewWatchKeeper()
 
