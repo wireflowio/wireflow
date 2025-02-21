@@ -8,6 +8,8 @@ control for you own secure private network.
 
 ## Technology
 
+## Network Topology
+
 ## Quick start
 
 - First, you need register an account on linkany, and then login.
@@ -17,7 +19,40 @@ control for you own secure private network.
 
 ## Installation
 
+serval way to install linkany, you can choose the way you like.
+
+### Docker
+
+```bash
+docker run -d --privilege --name linkany -p 51820:51820/udp linkany/linkany
+```
+
+### Binary
+
+```bash
+bash <(curl -s https://linkany.io/install.sh)
+```
+
+### Source
+
+```bash
+git clone https://github.com/linkanyio/linkany.git
+make build && install
+```
+
+### App
+
+Download the app from the [linkany.io](https://linkany.io) and install it.
+
+### Nas
+
 ## About relay
+
+if direct connect to the network failed, you can use relay to connect to the network. We provide a free relay server for
+relaying your data, but you can also use your own relay server. We also provide a relay image to help you deploy the
+relay server easily, also you can use coturn[] which is a great turn server.
+
+## How to deploy relay
 
 ## Features
 
