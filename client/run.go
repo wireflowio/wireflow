@@ -31,7 +31,7 @@ func Start(interfaceName string, isRelay bool) error {
 	//	return wg.LogLevelError
 	//}()
 	logger := wg.NewLogger(
-		wg.LogLevelVerbose,
+		wg.LogLevelError,
 		fmt.Sprintf("(%s) ", interfaceName),
 	)
 

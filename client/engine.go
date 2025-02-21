@@ -65,6 +65,7 @@ type EngineParams struct {
 	ForceRelay      bool
 	ManagementAddr  string
 	SignalingAddr   string
+	ShowWgLog       bool
 }
 
 func (e *Engine) IpcHandle(conn net.Conn) {
