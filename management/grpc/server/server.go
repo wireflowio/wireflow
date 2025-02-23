@@ -206,6 +206,7 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 	// create a chan for the peer
 	watchChannel := CreateChannel(req.PubKey)
 	s.logger.Infof("peer %v is now watching, channel: %v", req.PubKey, watchChannel)
+	closeCh := make(chan interface{})
 	go func() {
 		for {
 			select {
@@ -214,12 +215,14 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 				bs, err := proto.Marshal(wm)
 				if err != nil {
 					errChan <- err
+					close(closeCh)
 					return
 				}
 
 				msg := &mgt.ManagementMessage{PubKey: req.PubKey, Body: bs}
 				if err = server.Send(msg); err != nil {
 					errChan <- err
+					close(closeCh)
 					return
 				}
 			default:
@@ -228,7 +231,7 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 		}
 	}()
 
-	time.Sleep(1000 * time.Second)
+	<-closeCh
 	return nil
 }
 
