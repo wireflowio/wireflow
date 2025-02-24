@@ -21,7 +21,7 @@ type Server struct {
 	logger *log.Logger
 	signaling.UnimplementedSignalingServiceServer
 	listen      string
-	userService mapper.UserInterface
+	userService service.UserInterface
 	indexTable  *drp.IndexTable
 	mgtClient   *client.Client
 
@@ -32,7 +32,7 @@ type ServerConfig struct {
 	Logger      *log.Logger
 	Port        int
 	Listen      string
-	UserService mapper.UserInterface
+	UserService service.UserInterface
 	Table       *drp.IndexTable
 }
 

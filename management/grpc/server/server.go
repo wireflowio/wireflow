@@ -29,7 +29,7 @@ type Server struct {
 	logger *log.Logger
 	mgt.UnimplementedManagementServiceServer
 	userController *controller.UserController
-	peerController *controller.PeerController
+	peerController *controller.NodeController
 	port           int
 	tokenr         *utils.Tokener
 }
@@ -37,8 +37,8 @@ type Server struct {
 type ServerConfig struct {
 	Logger          *log.Logger
 	Port            int
-	Database        mapper.DatabaseConfig
-	DataBaseService *mapper.DatabaseService
+	Database        service.DatabaseConfig
+	DataBaseService *service.DatabaseService
 	Rdb             *redis.Client
 }
 
@@ -71,8 +71,8 @@ func NewServer(cfg *ServerConfig) *Server {
 	return &Server{
 		logger:         cfg.Logger,
 		port:           cfg.Port,
-		userController: controller.NewUserController(mapper.NewUserMapper(cfg.DataBaseService, cfg.Rdb)),
-		peerController: controller.NewPeerController(mapper.NewPeerMapper(cfg.DataBaseService)),
+		userController: controller.NewUserController(service.NewUserMapper(cfg.DataBaseService, cfg.Rdb)),
+		peerController: controller.NewPeerController(service.NewNodeServiceInstance(cfg.DataBaseService)),
 	}
 }
 
@@ -262,7 +262,7 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 		return fmt.Errorf("peer has not connected to managent server")
 	}
 
-	peers, err := s.peerController.List(&mapper.QueryParams{
+	peers, err := s.peerController.List(&service.QueryParams{
 		PubKey: &pubKey,
 	})
 
@@ -381,9 +381,9 @@ func (s *Server) recv(stream mgt.ManagementService_KeepaliveServer) (*mgt.Reques
 
 }
 
-func (s *Server) sendWatchMessage(eventType mgt.EventType, current *entity.Peer, pubKey, userId string, status int) error {
+func (s *Server) sendWatchMessage(eventType mgt.EventType, current *entity.Node, pubKey, userId string, status int) error {
 	state := 1
-	peers, err := s.peerController.List(&mapper.QueryParams{
+	peers, err := s.peerController.List(&service.QueryParams{
 		UserId: &userId,
 		Status: &state,
 	})
@@ -400,7 +400,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *entity.Peer,
 		}
 		wc := manager.Get(peer.PublicKey)
 		s.logger.Verbosef("fetch actual channel %v for peer: %v, current peer pubKey: %v", wc, peer.PublicKey, current.PublicKey)
-		message := utils.NewWatchMessage(eventType, []*entity.Peer{current})
+		message := utils.NewWatchMessage(eventType, []*entity.Node{current})
 		// add to channel, will send to client
 		if wc != nil {
 			wc <- message
