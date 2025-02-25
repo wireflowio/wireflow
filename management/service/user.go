@@ -50,7 +50,7 @@ type userServiceImpl struct {
 	rdb     *redis.Client
 }
 
-func NewUserService(db *DatabaseService, rdb *redis.Client) *userServiceImpl {
+func NewUserService(db *DatabaseService, rdb *redis.Client) UserService {
 	return &userServiceImpl{DatabaseService: db, tokener: utils.NewTokener(), rdb: rdb}
 }
 

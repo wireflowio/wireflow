@@ -53,7 +53,7 @@ type nodeServiceImpl struct {
 	*DatabaseService
 }
 
-func NewNodeServiceImpl(db *DatabaseService) *nodeServiceImpl {
+func NewNodeService(db *DatabaseService) NodeService {
 	return &nodeServiceImpl{DatabaseService: db, logger: log.NewLogger(log.Loglevel, fmt.Sprintf("[%s] ", "peermapper"))}
 }
 

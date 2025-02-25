@@ -14,7 +14,7 @@ import (
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
-	"linkany/management/mapper"
+	"linkany/management/service"
 	"linkany/management/utils"
 	"linkany/pkg/linkerrors"
 	"linkany/pkg/log"
@@ -71,8 +71,8 @@ func NewServer(cfg *ServerConfig) *Server {
 	return &Server{
 		logger:         cfg.Logger,
 		port:           cfg.Port,
-		userController: controller.NewUserController(service.NewUserMapper(cfg.DataBaseService, cfg.Rdb)),
-		peerController: controller.NewPeerController(service.NewNodeServiceInstance(cfg.DataBaseService)),
+		userController: controller.NewUserController(service.NewUserService(cfg.DataBaseService, cfg.Rdb)),
+		peerController: controller.NewPeerController(service.NewNodeService(cfg.DataBaseService)),
 	}
 }
 
