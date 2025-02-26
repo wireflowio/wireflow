@@ -6,9 +6,8 @@ import (
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
+	"linkany/management/utils"
 	"linkany/pkg/log"
-	"reflect"
-	"strings"
 )
 
 // NodeService is an interface for peer mapper
@@ -123,7 +122,7 @@ func (p *nodeServiceImpl) List(params *QueryParams) ([]*entity.Node, error) {
 	var sql string
 	var wrappers []interface{}
 
-	sql, wrappers = Generate(params)
+	sql, wrappers = utils.Generate(params)
 
 	p.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
 	if err := p.Where(sql, wrappers...).Find(&peers).Error; err != nil {
