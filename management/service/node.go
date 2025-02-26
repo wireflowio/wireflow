@@ -133,23 +133,6 @@ func (p *nodeServiceImpl) List(params *QueryParams) ([]*entity.Node, error) {
 	return peers, nil
 }
 
-// Generate will generate dynamic sql
-func Generate(params *QueryParams) (string, []interface{}) {
-	var sb strings.Builder
-	var wrappers []interface{}
-	filters := params.Generate()
-	for i, filter := range filters {
-		if i < len(filters)-1 {
-			sb.WriteString(fmt.Sprintf("%s = ? and ", filter.Key))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s = ?", filter.Key))
-		}
-		wrappers = append(wrappers, reflect.ValueOf(filter.Value).Elem().Interface())
-	}
-
-	return sb.String(), wrappers
-}
-
 // Watch when register or update called, first call Watch
 func (p *nodeServiceImpl) Watch(appId string) (<-chan *mgt.ManagementMessage, error) {
 
