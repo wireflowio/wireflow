@@ -28,7 +28,7 @@ type UserService interface {
 	//ListInvitations list user invite from others
 	ListInvitations(params *dto.InvitationParams) ([]*entity.Invitation, error)
 
-	//ListInvites user invite others list
+	//listInvites user invite others list
 	ListInvites(params *dto.InvitationParams) ([]*entity.Invites, error)
 
 	// User Permit
@@ -118,14 +118,45 @@ func (u *userServiceImpl) Get(token string) (*entity.User, error) {
 
 // Invitation
 func (u *userServiceImpl) Invite(dto *dto.InviteDto) error {
-	return u.Create(&entity.Invitation{
+
+	tx := u.Begin()
+	var err error
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err = tx.Create(&entity.Invites{
 		InvitationId: dto.InvitationId,
 		InviterId:    dto.InviterId,
 		MobilePhone:  dto.MobilePhone,
 		Email:        dto.Email,
+		Group:        dto.Group,
+		Permission:   dto.Permissions,
 		AcceptStatus: entity.NewInvite,
 		InvitedAt:    time.Now(),
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+
+	if err = tx.Create(&entity.Invitation{
+		InvitationId: dto.InvitationId,
+		InviterId:    dto.InviterId,
+		AcceptStatus: entity.NewInvite,
+		Permission:   dto.Permissions,
+		Group:        dto.Group,
+		Network:      dto.Network,
+	}).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (u *userServiceImpl) GetInvitation(userId, email string) (*entity.Invitation, error) {
@@ -142,7 +173,6 @@ func (u *userServiceImpl) UpdateInvitation(dto *dto.InviteDto) error {
 		return err
 	}
 	inv.AcceptStatus = entity.Accept
-	inv.AcceptAt = time.Now()
 	u.Save(&inv)
 	return nil
 }
@@ -150,7 +180,11 @@ func (u *userServiceImpl) UpdateInvitation(dto *dto.InviteDto) error {
 func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) ([]*entity.Invites, error) {
 	var invs []*entity.Invites
 	sql, wrappers := utils.Generate(params)
-	if err := u.Where(sql, wrappers).Find(&invs).Error; err != nil {
+	db := u.DB
+	if sql != "" {
+		db = u.Where(sql, wrappers)
+	}
+	if err := db.Offset((params.PageNo - 1) * params.PageSize).Limit(params.PageSize).Find(&invs).Error; err != nil {
 		return nil, err
 	}
 	return invs, nil
@@ -158,8 +192,12 @@ func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) ([]*entity.I
 
 func (u *userServiceImpl) ListInvitations(params *dto.InvitationParams) ([]*entity.Invitation, error) {
 	var invs []*entity.Invitation
+	db := u.DB
 	sql, wrappers := utils.Generate(params)
-	if err := u.Where(sql, wrappers).Find(&invs).Error; err != nil {
+	if sql != "" {
+		db = u.Where(sql, wrappers)
+	}
+	if err := db.Offset((params.PageNo - 1) * params.PageSize).Limit(params.PageSize).Find(&invs).Error; err != nil {
 		return nil, err
 	}
 	return invs, nil

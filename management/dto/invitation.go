@@ -31,8 +31,13 @@ func (p *InvitationParams) Generate() []*KeyValue {
 		result = append(result, newKeyValue("status", p.Status))
 	}
 
-	result = append(result, newKeyValue("page_no", p.PageNo))
-	result = append(result, newKeyValue("page_size", p.PageSize))
+	if p.PageNo == 0 {
+		p.PageNo = PageNo
+	}
+
+	if p.PageSize == 0 {
+		p.PageSize = 10
+	}
 
 	return result
 }

@@ -1,5 +1,12 @@
 package dto
 
+const (
+	// PageNo default page number
+	PageNo = 1
+	// PageSize default page size
+	PageSize = 10
+)
+
 type PageModel struct {
 	Total    int
 	PageNo   int

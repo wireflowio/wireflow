@@ -12,9 +12,12 @@ type Invites struct {
 	InviterId    int64 // inviter user id
 	MobilePhone  string
 	Email        string
+	GroupId      uint64
+	Group        string
+	Permission   string
 	AcceptStatus AcceptStatus
 	InvitedAt    time.Time
-	CanceledAt   time.Time
+	CanceledAt   NullTime
 }
 
 // Invitation user invite other join its network
@@ -22,12 +25,14 @@ type Invitation struct {
 	gorm.Model
 	InvitationId int64 // invitation user id
 	InviterId    int64 // inviter user id
-	MobilePhone  string
-	Email        string
 	AcceptStatus AcceptStatus
+	Permission   string
+	GroupId      uint64
+	Group        string
 	Network      string //192.168.0.0/24
-	InvitedAt    time.Time
-	AcceptAt     time.Time
+	InvitedAt    NullTime
+	AcceptAt     NullTime
+	RejectAt     NullTime
 }
 
 func (i *Invites) TableName() string {
