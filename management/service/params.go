@@ -18,15 +18,15 @@ func (qp *QueryParams) Generate() []*dto.KeyValue {
 	var result []*dto.KeyValue
 
 	if qp.PubKey != nil {
-		result = append(result, dto.NewKV("pub_key", qp.PubKey))
+		result = append(result, dto.newKeyValue("pub_key", qp.PubKey))
 	}
 
 	if qp.UserId != nil {
-		result = append(result, dto.NewKV("user_id", qp.UserId))
+		result = append(result, dto.newKeyValue("user_id", qp.UserId))
 	}
 
 	if qp.Status != nil {
-		result = append(result, dto.NewKV("status", qp.Status))
+		result = append(result, dto.newKeyValue("status", qp.Status))
 	}
 
 	return result

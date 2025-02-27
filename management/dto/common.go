@@ -20,7 +20,7 @@ type KeyValue struct {
 	Value interface{}
 }
 
-func NewKV(k string, v interface{}) *KeyValue {
+func newKeyValue(k string, v interface{}) *KeyValue {
 	return &KeyValue{
 		Key:   k,
 		Value: v,
