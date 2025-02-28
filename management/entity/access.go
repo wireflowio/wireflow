@@ -14,7 +14,8 @@ type AccessPolicy struct {
 	Effect      string `json:"effect"`                // 效果：allow/deny
 	Description string `json:"description,omitempty"` // 策略描述
 	Status      bool   `json:"status"`                // 策略状态：启用/禁用
-	CreatedBy   uint   `json:"created_by"`            // 创建者
+	CreatedBy   string `json:"created_by"`            // 创建者
+	UpdatedBy   string
 }
 
 func (a *AccessPolicy) TableName() string {
@@ -24,13 +25,13 @@ func (a *AccessPolicy) TableName() string {
 // AccessRule rule for access policy
 type AccessRule struct {
 	gorm.Model
-	PolicyID   uint      `json:"policy_id"`            // 所属策略ID
-	SourceType string    `json:"source_type"`          // 源类型：node/tag/all
-	SourceID   string    `json:"source_id"`            // 源标识（节点ID或标签）
-	TargetType string    `json:"target_type"`          // 目标类型：node/tag/all
-	TargetID   string    `json:"target_id"`            // 目标标识（节点ID或标签）
-	Actions    []string  `json:"actions"`              // 允许的操作列表
-	Conditions Condition `json:"conditions,omitempty"` // 额外条件（如时间限制、带宽限制等）
+	PolicyID   uint   `json:"policy_id"`            // 所属策略ID
+	SourceType string `json:"source_type"`          // 源类型：node/tag/all
+	SourceID   string `json:"source_id"`            // 源标识（节点ID或标签）
+	TargetType string `json:"target_type"`          // 目标类型：node/tag/all
+	TargetID   string `json:"target_id"`            // 目标标识（节点ID或标签）
+	Actions    string `json:"actions"`              // 允许的操作列表
+	Conditions string `json:"conditions,omitempty"` // 额外条件（如时间限制、带宽限制等）
 }
 
 func (a *AccessRule) TableName() string {
