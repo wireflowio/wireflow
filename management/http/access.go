@@ -17,13 +17,13 @@ func (s *Server) createAccessPolicy() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req dto.AccessPolicyDto
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(client.BadRequest(err))
+			WriteBadRequest(c.JSON, err.Error())
 			return
 		}
 
 		err := s.accessController.CreatePolicy(&entity.AccessPolicy{})
 		if err != nil {
-			c.JSON(client.InternalServerError(err))
+			WriteError(c.JSON, err.Error())
 			return
 		}
 		WriteOK(c.JSON, nil)

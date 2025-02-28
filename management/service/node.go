@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"linkany/management/dto"
@@ -40,6 +41,12 @@ type NodeService interface {
 	RemoveGroupMember(memberID string) error
 	ListGroupMembers(groupID string) ([]*entity.GroupMember, error)
 	GetGroupMember(memberID string) (*entity.GroupMember, error)
+
+	//Node Tag
+	AddNodeTag(ctx context.Context, dto *dto.TagDto) error
+	UpdateNodeTag(ctx context.Context, dto *dto.TagDto) error
+	RemoveNodeTag(ctx context.Context, tagId uint64) error
+	ListNodeTags(ctx context.Context, nodeID uint64) ([]*entity.NodeTag, error)
 }
 
 var (
@@ -90,15 +97,15 @@ func (p *nodeServiceImpl) Register(e *dto.PeerDto) (*entity.Node, error) {
 }
 
 func (p *nodeServiceImpl) Update(e *dto.PeerDto) (*entity.Node, error) {
-	var peer entity.Node
-	if err := p.Where("public_key = ?", e.PublicKey).First(&peer).Error; err != nil {
+	var node entity.Node
+	if err := p.Where("public_key = ?", e.PublicKey).First(&node).Error; err != nil {
 		return nil, err
 	}
-	peer.Status = e.Status
+	node.Status = e.Status
 
-	p.Save(peer)
+	p.Save(node)
 
-	return &peer, nil
+	return &node, nil
 }
 
 func (p *nodeServiceImpl) Delete(e *dto.PeerDto) error {
@@ -242,4 +249,39 @@ func (p *nodeServiceImpl) GetGroupMember(memberID string) (*entity.GroupMember, 
 		return nil, err
 	}
 	return &member, nil
+}
+
+// Node Tags
+func (p *nodeServiceImpl) AddNodeTag(ctx context.Context, dto *dto.TagDto) error {
+	return p.Create(&entity.NodeTag{
+		Tag:       dto.Tag,
+		NodeID:    dto.NodeID,
+		CreatedBy: dto.Username,
+	}).Error
+}
+
+func (p *nodeServiceImpl) UpdateNodeTag(ctx context.Context, dto *dto.TagDto) error {
+
+	var tag entity.NodeTag
+	if err := p.Where("id = ?", dto.TagId).Find(&tag).Error; err != nil {
+		return err
+	}
+
+	tag.Tag = dto.Tag
+	tag.UpdatedBy = dto.Username
+	p.Save(tag)
+	return nil
+}
+
+func (p *nodeServiceImpl) RemoveNodeTag(ctx context.Context, tagId uint64) error {
+	return p.Where("id = ?", tagId).Delete(&entity.NodeTag{}).Error
+}
+
+func (p *nodeServiceImpl) ListNodeTags(ctx context.Context, nodeID uint64) ([]*entity.NodeTag, error) {
+	var nodeTags []*entity.NodeTag
+	if err := p.Where("node_id = ?", nodeID).Find(&nodeTags).Error; err != nil {
+		return nil, err
+	}
+
+	return nodeTags, nil
 }

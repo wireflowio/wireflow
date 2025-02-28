@@ -31,7 +31,7 @@ type Server struct {
 	userController *controller.UserController
 	peerController *controller.NodeController
 	port           int
-	tokenr         *utils.Tokener
+	tokenr         *service.TokenService
 }
 
 type ServerConfig struct {

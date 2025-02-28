@@ -1,6 +1,9 @@
 package entity
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+	"time"
+)
 
 // AccessPolicy policy for node
 type AccessPolicy struct {
@@ -45,9 +48,13 @@ type Condition struct {
 // NodeTag node label
 type NodeTag struct {
 	gorm.Model
-	NodeID  uint   `json:"node_id"`
-	Tag     string `json:"tag"`
-	GroupID uint   `json:"group_id"`
+	NodeID    uint64 `json:"node_id"`
+	Tag       string `json:"tag"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt
+	CreatedBy string
+	UpdatedBy string
 }
 
 func (n *NodeTag) TableName() string {
