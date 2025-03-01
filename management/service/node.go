@@ -8,6 +8,7 @@ import (
 	"linkany/management/entity"
 	"linkany/management/grpc/mgt"
 	"linkany/management/utils"
+	"linkany/management/vo"
 	"linkany/pkg/log"
 )
 
@@ -42,11 +43,11 @@ type NodeService interface {
 	ListGroupMembers(groupID string) ([]*entity.GroupMember, error)
 	GetGroupMember(memberID string) (*entity.GroupMember, error)
 
-	//Node Tag
+	//Node Label
 	AddNodeTag(ctx context.Context, dto *dto.TagDto) error
 	UpdateNodeTag(ctx context.Context, dto *dto.TagDto) error
 	RemoveNodeTag(ctx context.Context, tagId uint64) error
-	ListNodeTags(ctx context.Context, nodeID uint64) ([]*entity.NodeTag, error)
+	ListNodeTags(ctx context.Context, params *dto.LabelParams) (*dto.PageVo, error)
 }
 
 var (
@@ -253,35 +254,46 @@ func (p *nodeServiceImpl) GetGroupMember(memberID string) (*entity.GroupMember, 
 
 // Node Tags
 func (p *nodeServiceImpl) AddNodeTag(ctx context.Context, dto *dto.TagDto) error {
-	return p.Create(&entity.NodeTag{
-		Tag:       dto.Tag,
-		NodeID:    dto.NodeID,
+	return p.Create(&entity.Label{
+		Label:     dto.Label,
 		CreatedBy: dto.Username,
 	}).Error
 }
 
 func (p *nodeServiceImpl) UpdateNodeTag(ctx context.Context, dto *dto.TagDto) error {
-
-	var tag entity.NodeTag
-	if err := p.Where("id = ?", dto.TagId).Find(&tag).Error; err != nil {
+	var tag entity.Label
+	if err := p.Where("id = ?", dto.ID).Find(&tag).Error; err != nil {
 		return err
 	}
 
-	tag.Tag = dto.Tag
+	tag.Label = dto.Label
 	tag.UpdatedBy = dto.Username
 	p.Save(tag)
 	return nil
 }
 
 func (p *nodeServiceImpl) RemoveNodeTag(ctx context.Context, tagId uint64) error {
-	return p.Where("id = ?", tagId).Delete(&entity.NodeTag{}).Error
+	return p.Where("id = ?", tagId).Delete(&entity.Label{}).Error
 }
 
-func (p *nodeServiceImpl) ListNodeTags(ctx context.Context, nodeID uint64) ([]*entity.NodeTag, error) {
-	var nodeTags []*entity.NodeTag
-	if err := p.Where("node_id = ?", nodeID).Find(&nodeTags).Error; err != nil {
+func (p *nodeServiceImpl) ListNodeTags(ctx context.Context, params *dto.LabelParams) (*dto.PageVo, error) {
+	var labels []vo.LabelVo
+	result := new(dto.PageVo)
+	sql, wrappers := utils.Generate(params)
+	db := p.DB
+	if sql != "" {
+		db = db.Where(sql, wrappers)
+	}
+
+	if err := db.Model(&entity.Label{}).Count(&result.Total).Error; err != nil {
 		return nil, err
 	}
 
-	return nodeTags, nil
+	if err := db.Model(&entity.Label{}).Offset((params.PageNo - 1) * params.PageSize).Limit(params.PageSize).Find(&labels).Error; err != nil {
+		return nil, err
+	}
+
+	result.Data = labels
+
+	return result, nil
 }

@@ -46,20 +46,32 @@ type Condition struct {
 	}
 }
 
-// NodeTag node label
-type NodeTag struct {
+// Label node label
+type Label struct {
 	gorm.Model
-	NodeID    uint64 `json:"node_id"`
-	Tag       string `json:"tag"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt
-	CreatedBy string
-	UpdatedBy string
+	//NodeID    uint64 `json:"node_id"`
+	Label     string    `json:"label"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedBy string    `json:"createdBy"`
+	UpdatedBy string    `json:"updatedBy"`
 }
 
-func (n *NodeTag) TableName() string {
-	return "la_node_tag"
+func (n *Label) TableName() string {
+	return "la_label"
+}
+
+type NodeLabel struct {
+	gorm.Model
+	NodeId        uint64
+	LabelId       uint64
+	CreatedBy     string
+	LastUpdatedBy string
+	LastUpdatedAt NullTime
+}
+
+func (n *NodeLabel) TableName() string {
+	return "la_node_label"
 }
 
 // AccessLog access log for node

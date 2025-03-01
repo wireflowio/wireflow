@@ -42,7 +42,7 @@ func (t *TokenService) Generate(username, password string) (string, error) {
 func (t *TokenService) Verify(username, password string) (bool, error) {
 
 	var user entity.User
-	if err := t.Where("username = ?", username).Find(&user); err != nil {
+	if err := t.Where("username = ?", username).Find(&user).Error; err != nil {
 		return false, fmt.Errorf("user not found")
 	}
 

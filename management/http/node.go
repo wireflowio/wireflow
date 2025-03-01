@@ -8,7 +8,7 @@ import (
 
 func (s *Server) RegisterNodeRoutes() {
 	nodeGroup := s.RouterGroup.Group(PREFIX + "/node")
-	nodeGroup.GET("/:appId", s.authCheck(), s.getNodeByAppId())
+	nodeGroup.GET("/appId/:appId", s.authCheck(), s.getNodeByAppId())
 	nodeGroup.POST("/", s.authCheck(), s.createNode())
 	nodeGroup.PUT("/", s.authCheck(), s.updateNode())
 	nodeGroup.DELETE("/", s.authCheck(), s.deleteNode())
@@ -26,11 +26,11 @@ func (s *Server) RegisterNodeRoutes() {
 	nodeGroup.GET("/group/member/:memberID", s.authCheck(), s.getGroupMember())
 	nodeGroup.GET("/group/member/list/:groupID", s.authCheck(), s.listGroupMembers())
 
-	// Node Tag
-	nodeGroup.POST("/tag", s.authCheck(), s.createNodeTag())
-	nodeGroup.PUT("/tag", s.authCheck(), s.updateNodeTag())
-	nodeGroup.DELETE("/tag", s.authCheck(), s.deleteNodeTag())
-	nodeGroup.GET("/tag/list", s.authCheck(), s.listNodeTags())
+	// Node Label
+	nodeGroup.POST("/label", s.authCheck(), s.createNodeTag())
+	nodeGroup.PUT("/label", s.authCheck(), s.updateNodeTag())
+	nodeGroup.DELETE("/label", s.authCheck(), s.deleteNodeTag())
+	nodeGroup.GET("/label/list", s.authCheck(), s.listNodeTags())
 
 }
 
@@ -225,7 +225,7 @@ func (s *Server) getGroupMember() gin.HandlerFunc {
 	}
 }
 
-// Node Tag
+// Node Label
 func (s *Server) createNodeTag() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tagDto dto.TagDto
@@ -233,6 +233,8 @@ func (s *Server) createNodeTag() gin.HandlerFunc {
 			WriteBadRequest(c.JSON, err.Error())
 			return
 		}
+
+		tagDto.Username = c.GetHeader("username")
 
 		tag, err := s.nodeController.CreateTag(c, &tagDto)
 		if err != nil {
@@ -269,7 +271,7 @@ func (s *Server) deleteNodeTag() gin.HandlerFunc {
 			return
 		}
 
-		err := s.nodeController.DeleteTag(c, tagDto.TagId)
+		err := s.nodeController.DeleteTag(c, uint64(tagDto.ID))
 		if err != nil {
 			WriteError(c.JSON, err.Error())
 			return
@@ -280,17 +282,18 @@ func (s *Server) deleteNodeTag() gin.HandlerFunc {
 
 func (s *Server) listNodeTags() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tagDto dto.TagDto
-		if err := c.ShouldBindJSON(&tagDto); err != nil {
+		var params dto.LabelParams
+		if err := c.ShouldBindJSON(&params); err != nil {
 			c.JSON(client.BadRequest(err))
 			return
 		}
 
-		tags, err := s.nodeController.ListTags(c, tagDto.NodeID)
+		vo, err := s.nodeController.ListTags(c, &params)
 		if err != nil {
-			c.JSON(client.InternalServerError(err))
+			WriteError(c.JSON, err.Error())
 			return
 		}
-		c.JSON(client.Success(tags))
+
+		WriteOK(c.JSON, vo)
 	}
 }

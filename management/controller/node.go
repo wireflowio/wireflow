@@ -79,7 +79,7 @@ func (p *NodeController) GetGroupMember(memberID string) (*entity.GroupMember, e
 }
 
 // Node tag
-func (p *NodeController) CreateTag(ctx context.Context, dto *dto.TagDto) (*entity.NodeTag, error) {
+func (p *NodeController) CreateTag(ctx context.Context, dto *dto.TagDto) (*entity.Label, error) {
 	return nil, p.nodeService.AddNodeTag(ctx, dto)
 }
 
@@ -91,6 +91,6 @@ func (p *NodeController) DeleteTag(ctx context.Context, tagId uint64) error {
 	return p.nodeService.RemoveNodeTag(ctx, tagId)
 }
 
-func (p *NodeController) ListTags(ctx context.Context, nodeId uint64) ([]*entity.NodeTag, error) {
-	return p.nodeService.ListNodeTags(ctx, nodeId)
+func (p *NodeController) ListTags(ctx context.Context, params *dto.LabelParams) (*dto.PageVo, error) {
+	return p.nodeService.ListNodeTags(ctx, params)
 }
