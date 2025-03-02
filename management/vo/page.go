@@ -3,6 +3,6 @@ package vo
 import "linkany/management/dto"
 
 type PageVo struct {
-	Data interface{}
+	Data interface{} `json:"data"`
 	dto.PageModel
 }
