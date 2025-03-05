@@ -192,7 +192,7 @@ func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) (*vo.PageVo,
 		return nil, err
 	}
 
-	if err := db.Model(&entity.Invites{}).Offset((params.PageNo - 1) * params.PageSize).Limit(params.PageSize).Find(&invs).Error; err != nil {
+	if err := db.Model(&entity.Invites{}).Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&invs).Error; err != nil {
 		return nil, err
 	}
 
@@ -227,9 +227,9 @@ func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) (*vo.PageVo,
 	}
 
 	result.Data = insVos
-	result.Current = params.PageNo
-	result.PageNo = params.PageNo
-	result.PageSize = params.PageSize
+	result.Current = params.Page
+	result.Page = params.Page
+	result.Size = params.Size
 	return result, nil
 }
 
@@ -246,7 +246,7 @@ func (u *userServiceImpl) ListInvitations(params *dto.InvitationParams) (*vo.Pag
 		return nil, err
 	}
 
-	if err := u.Model(&entity.Invitation{}).Offset((params.PageNo - 1) * params.PageSize).Limit(params.PageSize).Find(&invs).Error; err != nil {
+	if err := u.Model(&entity.Invitation{}).Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&invs).Error; err != nil {
 		return nil, err
 	}
 
@@ -274,9 +274,9 @@ func (u *userServiceImpl) ListInvitations(params *dto.InvitationParams) (*vo.Pag
 	}
 
 	result.Data = insVos
-	result.Current = params.PageNo
-	result.PageNo = params.PageNo
-	result.PageSize = params.PageSize
+	result.Current = params.Page
+	result.Page = params.Page
+	result.Size = params.Size
 
 	return result, nil
 }
