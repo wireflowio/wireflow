@@ -149,13 +149,25 @@ func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Manag
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
-
-	peer, err := s.peerController.GetByAppId(req.AppId)
+	user, err := s.userController.Get(req.Token)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := json.Marshal(peer)
+	peer, count, err := s.peerController.GetByAppId(req.AppId, strconv.Itoa(int(user.ID)))
+	if err != nil {
+		return nil, err
+	}
+
+	type result struct {
+		peer  *entity.Node
+		count int64
+	}
+	body := result{
+		peer:  peer,
+		count: count,
+	}
+	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}

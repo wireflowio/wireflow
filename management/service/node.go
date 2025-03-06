@@ -21,7 +21,7 @@ type NodeService interface {
 	Delete(e *dto.PeerDto) error
 
 	// GetByAppId returns a peer by appId, every client has its own appId
-	GetByAppId(appId string) (*entity.Node, error)
+	GetByAppId(appId, userid string) (*entity.Node, int64, error)
 
 	GetNetworkMap(appId, userId string) (*entity.NetworkMap, error)
 
@@ -124,13 +124,21 @@ func (p *nodeServiceImpl) Delete(e *dto.PeerDto) error {
 	return nil
 }
 
-func (p *nodeServiceImpl) GetByAppId(appId string) (*entity.Node, error) {
-	var peer entity.Node
-	if err := p.Where("app_id = ?", appId).Find(&peer).Error; err != nil {
-		return nil, err
+func (p *nodeServiceImpl) GetByAppId(appId, userId string) (*entity.Node, int64, error) {
+	var (
+		peer  entity.Node
+		count int64
+	)
+
+	if err := p.Model(&entity.Node{}).Where("user_id = ?", userId).Count(&count).Error; err != nil {
+		return nil, -1, nil
 	}
 
-	return &peer, nil
+	if err := p.Where("app_id = ?", appId).Find(&peer).Error; err != nil {
+		return nil, -1, err
+	}
+
+	return &peer, count, nil
 }
 
 // List params will filter
@@ -153,7 +161,7 @@ func (p *nodeServiceImpl) List(params *dto.QueryParams) ([]*entity.Node, error) 
 // Watch when register or update called, first call Watch
 func (p *nodeServiceImpl) Watch(appId string) (<-chan *mgt.ManagementMessage, error) {
 
-	peer, err := p.GetByAppId(appId)
+	peer, _, err := p.GetByAppId(appId, "")
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +177,7 @@ func (p *nodeServiceImpl) Watch(appId string) (<-chan *mgt.ManagementMessage, er
 
 // GetNetworkMap get user's network map
 func (p *nodeServiceImpl) GetNetworkMap(appId, userId string) (*entity.NetworkMap, error) {
-	current, err := p.GetByAppId(appId)
+	current, _, err := p.GetByAppId(appId, "")
 	if err != nil {
 		return nil, err
 	}
