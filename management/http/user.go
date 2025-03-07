@@ -10,6 +10,7 @@ func (s *Server) RegisterUserRoutes() {
 	userGroup.POST("/register", s.register())
 	userGroup.POST("/login", s.login())
 	userGroup.GET("/list", s.authCheck(), s.getUsers())
+	userGroup.GET("/info", s.authCheck(), s.getUserInfo())
 
 	// user invite
 	userGroup.POST("/invite", s.authCheck(), s.invite())
@@ -18,6 +19,18 @@ func (s *Server) RegisterUserRoutes() {
 	userGroup.GET("/invitation/list", s.authCheck(), s.listInvitations())
 	userGroup.GET("/invite/list", s.authCheck(), s.listInvites())
 
+}
+
+func (s *Server) getUserInfo() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		user, err := s.userController.Get(token)
+		if err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+		WriteOK(c.JSON, user)
+	}
 }
 
 // user invite
@@ -31,6 +44,9 @@ func (s *Server) invite() gin.HandlerFunc {
 			WriteError(c.JSON, err.Error())
 			return
 		}
+
+		username := c.GetString("username")
+		req.Username = username
 
 		if err := s.userController.Invite(&req); err != nil {
 			WriteError(c.JSON, err.Error())
@@ -74,6 +90,11 @@ func (s *Server) updateInvitation() gin.HandlerFunc {
 func (s *Server) listInvitations() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.InvitationParams
+		var err error
+		if err = c.ShouldBindQuery(&params); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
 		invitations, err := s.userController.ListUserInvitations(&params)
 		if err != nil {
 			WriteError(c.JSON, err.Error())
@@ -86,6 +107,11 @@ func (s *Server) listInvitations() gin.HandlerFunc {
 func (s *Server) listInvites() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.InvitationParams
+		var err error
+		if err = c.ShouldBindQuery(&params); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
 		invites, err := s.userController.ListUserInvites(&params)
 		if err != nil {
 			WriteError(c.JSON, err.Error())

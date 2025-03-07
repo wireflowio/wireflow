@@ -25,13 +25,10 @@ func handleRole(role GroupRoleType) {
 // Node full node structure
 type Node struct {
 	gorm.Model
-	// NodeType indicates the type of the node, e.g., "server", "peer", "client"
-	NodeType            string `gorm:"column:node_type;size:20" json:"node_type"`
 	Name                string `gorm:"column:name;size:20" json:"name"`
-	Description         string `json:"description"`
-	GroupID             uint   `json:"group_id"`   // belong to which group
-	CreatedBy           uint   `json:"created_by"` // ownerID
-	InstanceID          int64  `gorm:"column:instance_id" json:"instance_id"`
+	Description         string `gorm:"column:description;size:255" json:"description"`
+	GroupID             uint   `gorm:"column:group_id;size:20" json:"groupID"`     // belong to which group
+	CreatedBy           uint   `gorm:"column:created_by;size:64" json:"createdBy"` // ownerID
 	UserID              int64  `gorm:"column:user_id" json:"user_id"`
 	Hostname            string `gorm:"column:hostname;size:50" json:"hostname"`
 	AppID               string `gorm:"column:app_id;size:20" json:"app_id"`
@@ -55,15 +52,13 @@ func (Node) TableName() string {
 
 // NodeGroup a node may be in multi groups
 type NodeGroup struct {
-	ID          string    `gorm:"column:id;size:64" json:"id"`
-	Name        string    `gorm:"column:name;size:64" json:"name"`
-	Description string    `gorm:"column:description;size:255" json:"description"`
-	OwnerID     uint      `gorm:"column:owner_id;size:20" json:"ownerId"`
-	IsPublic    bool      `gorm:"column:is_public" json:"isPublic"`
-	CreatedBy   string    `gorm:"column:created_by;size:64" json:"createdBy"`
-	UpdatedBy   string    `gorm:"column:updated_by;size:64" json:"updatedBy"`
-	CreatedAt   time.Time `gorm:"column:created_at" json:"createdAt"`
-	UpdatedAt   time.Time `gorm:"column:updated_at" json:"updatedAt"`
+	gorm.Model
+	Name        string `gorm:"column:name;size:64" json:"name"`
+	Description string `gorm:"column:description;size:255" json:"description"`
+	OwnerID     uint   `gorm:"column:owner_id;size:20" json:"ownerId"`
+	IsPublic    bool   `gorm:"column:is_public" json:"isPublic"`
+	CreatedBy   string `gorm:"column:created_by;size:64" json:"createdBy"`
+	UpdatedBy   string `gorm:"column:updated_by;size:64" json:"updatedBy"`
 }
 
 func (NodeGroup) TableName() string {

@@ -44,10 +44,10 @@ type ServerConfig struct {
 
 type RegistryRequest struct {
 	ID                  int64      `json:"id"`
-	InstanceID          int64      `json:"instance_id"`
 	UserID              int64      `json:"user_id"`
 	Name                string     `json:"name"`
 	Hostname            string     `json:"hostname"`
+	Description         string     `json:"description"`
 	AppID               string     `json:"app_id"`
 	Address             string     `json:"address"`
 	Endpoint            string     `json:"endpoint"`
@@ -160,12 +160,12 @@ func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Manag
 	}
 
 	type result struct {
-		peer  *entity.Node
-		count int64
+		Peer  *entity.Node
+		Count int64
 	}
-	body := result{
-		peer:  peer,
-		count: count,
+	body := &result{
+		Peer:  peer,
+		Count: count,
 	}
 	b, err := json.Marshal(body)
 	if err != nil {

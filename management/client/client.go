@@ -458,18 +458,16 @@ func (c *Client) Get(ctx context.Context) (*config.Peer, int64, error) {
 	if err != nil {
 		return nil, -1, err
 	}
-
-	var peer config.Peer
-
+	
 	type Result struct {
-		peer  config.Peer
-		count int64
+		Peer  config.Peer
+		Count int64
 	}
 	var result Result
 	if err := json.Unmarshal(msg.Body, &result); err != nil {
 		return nil, -1, err
 	}
-	return &peer, result.count, nil
+	return &result.Peer, result.Count, nil
 }
 
 func (c *Client) Watch(ctx context.Context, callback func(msg *mgt.WatchMessage) error) error {
