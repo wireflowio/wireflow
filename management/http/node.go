@@ -185,7 +185,7 @@ func (s *Server) deleteGroup() gin.HandlerFunc {
 func (s *Server) listGroups() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.GroupParams
-		if err := c.ShouldBindQuery(params); err != nil {
+		if err := c.ShouldBindQuery(&params); err != nil {
 			c.JSON(client.BadRequest(err))
 			return
 		}

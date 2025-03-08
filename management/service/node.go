@@ -312,6 +312,9 @@ func (p *nodeServiceImpl) ListGroups(ctx context.Context, params *dto.GroupParam
 		return nil, err
 	}
 	result.Data = nodeGroups
+	result.Current = params.Page
+	result.Page = params.Page
+	result.Size = params.Size
 
 	return result, nil
 }
