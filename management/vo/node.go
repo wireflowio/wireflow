@@ -9,11 +9,11 @@ type NodeGroupVo struct {
 	ID          uint           `json:"id"`
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
-	CreatedAt   time.Time      `json:"created_at"`
-	DeletedAt   gorm.DeletedAt `json:"deleted_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	CreatedBy   string         `json:"created_by"`
-	UpdatedBy   string         `json:"updated_by"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	DeletedAt   gorm.DeletedAt `json:"deletedAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+	CreatedBy   string         `json:"createdBy"`
+	UpdatedBy   string         `json:"updatedBy"`
 }
 
 type NodeVo struct {
@@ -22,16 +22,16 @@ type NodeVo struct {
 	Description         string `json:"description,omitempty"`
 	GroupID             uint   `json:"groupID,omitempty"`   // belong to which group
 	CreatedBy           uint   `json:"createdBy,omitempty"` // ownerID
-	UserID              int64  `json:"user_id,omitempty"`
+	UserID              int64  `json:"userId,omitempty"`
 	Hostname            string `json:"hostname,omitempty"`
-	AppID               string `json:"app_id,omitempty"`
+	AppID               string `json:"appId,omitempty"`
 	Address             string `json:"address,omitempty"`
 	Endpoint            string `json:"endpoint,omitempty"`
-	PersistentKeepalive int    `json:"persistent_keepalive,omitempty"`
-	PublicKey           string `json:"public_key,omitempty"`
-	AllowedIPs          string `json:"allowed_ips,omitempty"`
-	RelayIP             string `json:"relay_ip,omitempty"`
-	TieBreaker          int64  `json:"tie_breaker"`
+	PersistentKeepalive int    `json:"persistentKeepalive,omitempty"`
+	PublicKey           string `json:"publicKey,omitempty"`
+	AllowedIPs          string `json:"allowedIps,omitempty"`
+	RelayIP             string `json:"relayIp,omitempty"`
+	TieBreaker          int64  `json:"tieBreaker"`
 	Ufrag               string `json:"ufrag"`
 	Pwd                 string `json:"pwd"`
 	Port                int    `json:"port"`

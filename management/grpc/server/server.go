@@ -116,7 +116,7 @@ func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.
 		return nil, err
 	}
 
-	peer, err := s.peerController.Registry(&dto.PeerDto{
+	peer, err := s.peerController.Registry(&dto.NodeDto{
 		Hostname:            req.Hostname,
 		UserID:              int64(user.ID),
 		AppID:               req.AppID,
@@ -421,7 +421,7 @@ func (s *Server) sendWatchMessage(eventType mgt.EventType, current *vo.NodeVo, p
 	}
 
 	// update peer online status
-	dtoParam := &dto.PeerDto{PublicKey: pubKey, Status: status}
+	dtoParam := &dto.NodeDto{PublicKey: pubKey, Status: status}
 	s.logger.Verbosef("update peer status ,publicKey: %v, status: %v", pubKey, status)
 	_, err = s.peerController.Update(dtoParam)
 	return err

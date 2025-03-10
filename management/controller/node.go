@@ -29,7 +29,7 @@ func (p *NodeController) List(params *dto.QueryParams) ([]*vo.NodeVo, error) {
 	return p.nodeService.List(params)
 }
 
-func (p *NodeController) Update(dto *dto.PeerDto) (*entity.Node, error) {
+func (p *NodeController) Update(dto *dto.NodeDto) (*entity.Node, error) {
 	return p.nodeService.Update(dto)
 }
 
@@ -37,33 +37,12 @@ func (p *NodeController) GetNetworkMap(appId, userId string) (*vo.NetworkMap, er
 	return p.nodeService.GetNetworkMap(appId, userId)
 }
 
-func (p *NodeController) Delete(dto *dto.PeerDto) error {
+func (p *NodeController) Delete(dto *dto.NodeDto) error {
 	return p.nodeService.Delete(dto)
 }
 
-func (p *NodeController) Registry(peer *dto.PeerDto) (*entity.Node, error) {
+func (p *NodeController) Registry(peer *dto.NodeDto) (*entity.Node, error) {
 	return p.nodeService.Register(peer)
-}
-
-func (p *NodeController) GetNodeGroup(ctx context.Context, id string) (*vo.NodeGroupVo, error) {
-	return p.nodeService.GetNodeGroup(ctx, id)
-}
-
-// CreateGroup NodeGroup module
-func (p *NodeController) CreateGroup(ctx context.Context, dto *dto.NodeGroupDto) (*entity.NodeGroup, error) {
-	return nil, p.nodeService.CreateGroup(ctx, dto)
-}
-
-func (p *NodeController) UpdateGroup(ctx context.Context, dto *dto.NodeGroupDto) error {
-	return p.nodeService.UpdateGroup(ctx, dto)
-}
-
-func (p *NodeController) DeleteGroup(ctx context.Context, id string) error {
-	return p.nodeService.DeleteGroup(ctx, id)
-}
-
-func (p *NodeController) ListGroups(ctx context.Context, params *dto.GroupParams) (*vo.PageVo, error) {
-	return p.nodeService.ListGroups(ctx, params)
 }
 
 // AddGroupMember Add Group Member
