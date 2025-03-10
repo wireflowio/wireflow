@@ -81,10 +81,10 @@ func (s *Server) listNodes() gin.HandlerFunc {
 
 		peers, err := s.nodeController.List(params)
 		if err != nil {
-			c.JSON(client.InternalServerError(err))
+			WriteError(c.JSON, err.Error())
 			return
 		}
-		c.JSON(client.Success(peers))
+		WriteOK(c.JSON, peers)
 	}
 }
 

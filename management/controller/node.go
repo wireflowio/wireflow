@@ -25,7 +25,7 @@ func (p *NodeController) GetByAppId(appId, userId string) (*entity.Node, int64, 
 	return p.nodeService.GetByAppId(appId, userId)
 }
 
-func (p *NodeController) List(params *dto.QueryParams) ([]*entity.Node, error) {
+func (p *NodeController) List(params *dto.QueryParams) ([]*vo.NodeVo, error) {
 	return p.nodeService.List(params)
 }
 
@@ -33,7 +33,7 @@ func (p *NodeController) Update(dto *dto.PeerDto) (*entity.Node, error) {
 	return p.nodeService.Update(dto)
 }
 
-func (p *NodeController) GetNetworkMap(appId, userId string) (*entity.NetworkMap, error) {
+func (p *NodeController) GetNetworkMap(appId, userId string) (*vo.NetworkMap, error) {
 	return p.nodeService.GetNetworkMap(appId, userId)
 }
 
