@@ -23,6 +23,8 @@ func (s *Server) RegisterUserRoutes() {
 	// user invitation
 	userGroup.GET("/invitation/list", s.authCheck(), s.listInvitations())
 	userGroup.PUT("/invitation/u", s.authCheck(), s.updateInvitation())
+	userGroup.PUT("/invitation/r", s.authCheck(), s.rejectInvitation())
+	userGroup.PUT("/invitation/a", s.authCheck(), s.acceptInvitation())
 }
 
 func (s *Server) getUserInfo() gin.HandlerFunc {
@@ -114,6 +116,28 @@ func (s *Server) updateInvitation() gin.HandlerFunc {
 			return
 		}
 		if err := s.userController.UpdateInvitation(&dto); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+		WriteOK(c.JSON, nil)
+	}
+}
+
+func (s *Server) rejectInvitation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := s.userController.RejectInvitation(id); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+		WriteOK(c.JSON, nil)
+	}
+}
+
+func (s *Server) acceptInvitation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if err := s.userController.RejectInvitation(id); err != nil {
 			WriteError(c.JSON, err.Error())
 			return
 		}

@@ -35,6 +35,8 @@ type UserResourceGrantedPermission struct {
 	ResourceId    string             //资源id
 	Permission    string             //group:add
 	PermissionIds string             //group:add
+
+	AcceptStatus AcceptStatus
 }
 
 func (UserResourceGrantedPermission) TableName() string {

@@ -32,6 +32,8 @@ type UserService interface {
 	DeleteInvite(id string) error
 	GetInvitation(userId, email string) (*entity.Invitation, error)
 	UpdateInvitation(dto *dto.InvitationDto) error
+	RejectInvitation(id string) error
+	AcceptInvitation(id string) error
 
 	//ListInvitations list user invite from others
 	ListInvitations(params *dto.InvitationParams) (*vo.PageVo, error)
@@ -268,7 +270,7 @@ func addResourcePermission(tx *gorm.DB, dto *dto.InviteDto) error {
 
 func getActualPermission(tx *gorm.DB, resType utils.ResourceType, dto *dto.InviteDto) ([]string, []uint, error) {
 	var permissions []entity.Permissions
-	if err := tx.Model(&entity.Permissions{}).Where("id in ? and resource_type = ?", dto.PermissionIdList, resType).Find(&permissions).Error; err != nil {
+	if err := tx.Model(&entity.Permissions{}).Where("id in ? and permission_type = ?", dto.PermissionIdList, resType).Find(&permissions).Error; err != nil {
 		return nil, nil, err
 	}
 
@@ -369,6 +371,31 @@ func (u *userServiceImpl) UpdateInvitation(dto *dto.InvitationDto) error {
 				return err
 			}
 		}
+		return nil
+	})
+}
+
+func (u *userServiceImpl) RejectInvitation(id string) error {
+	return u.DB.Transaction(func(tx *gorm.DB) error {
+		var inv entity.Invitation
+		var err error
+		if err = tx.Model(&entity.Invitation{}).Where("id = ?", id).Find(&inv).Update("status = ?", entity.Rejected).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (u *userServiceImpl) AcceptInvitation(id string) error {
+	return u.DB.Transaction(func(tx *gorm.DB) error {
+		var inv entity.Invitation
+		var err error
+		if err = tx.Model(&entity.Invitation{}).Where("id = ?", id).Find(&inv).Update("status = ?", entity.Accept).Error; err != nil {
+			return err
+		}
+
+		// data insert to shared
+
 		return nil
 	})
 }
