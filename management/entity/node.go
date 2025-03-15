@@ -1,9 +1,9 @@
 package entity
 
 import (
-	"gorm.io/gorm"
 	"linkany/management/utils"
-	"time"
+
+	"gorm.io/gorm"
 )
 
 type GroupRoleType string
