@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"linkany/management/client"
 	"linkany/management/dto"
@@ -26,6 +27,7 @@ func (s *Server) RegisterNodeRoutes() {
 	nodeGroup.PUT("/label", s.authCheck(), s.updateLabel())
 	nodeGroup.DELETE("/label", s.authCheck(), s.deleteLabel())
 	nodeGroup.GET("/label/list", s.authCheck(), s.listLabel())
+	nodeGroup.GET("/label", s.authCheck(), s.getLabel())
 
 	// group node
 	nodeGroup.POST("/group/node", s.authCheck(), s.addGroupNode())
@@ -191,9 +193,11 @@ func (s *Server) createLabel() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tagDto dto.TagDto
 		if err := c.ShouldBindJSON(&tagDto); err != nil {
+			fmt.Println("err", err.Error())
 			WriteBadRequest(c.JSON, err.Error())
 			return
 		}
+		fmt.Println("label:", tagDto)
 		token := c.GetHeader("Authorization")
 		user, err := s.userController.Get(token)
 		tagDto.OwnerId = uint64(user.ID)
@@ -245,7 +249,7 @@ func (s *Server) deleteLabel() gin.HandlerFunc {
 func (s *Server) listLabel() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.LabelParams
-		if err := c.ShouldBindJSON(&params); err != nil {
+		if err := c.ShouldBindQuery(&params); err != nil {
 			c.JSON(client.BadRequest(err))
 			return
 		}
@@ -257,6 +261,20 @@ func (s *Server) listLabel() gin.HandlerFunc {
 		}
 
 		WriteOK(c.JSON, vo)
+	}
+}
+
+func (s *Server) getLabel() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		label, err := s.nodeController.GetLabel(c, id)
+		if err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+
+		WriteOK(c.JSON, label)
 	}
 }
 
@@ -294,7 +312,7 @@ func (s *Server) removeGroupNode() gin.HandlerFunc {
 func (s *Server) listGroupNodes() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var params dto.GroupNodeParams
-		if err := c.ShouldBindJSON(&params); err != nil {
+		if err := c.ShouldBindQuery(&params); err != nil {
 			c.JSON(client.BadRequest(err))
 			return
 		}
