@@ -31,6 +31,8 @@ type UserService interface {
 	// Invite a user join network
 	Invite(dto *dto.InviteDto) error
 	CancelInvite(id string) error
+	DeleteInvite(id string) error
+	GetInvite(ctx context.Context, id string) (*vo.InviteVo, error)
 	GetInvitation(userId, email string) (*entity.Invitation, error)
 	UpdateInvitation(dto *dto.InvitationDto) error
 	RejectInvitation(id uint) error
@@ -178,6 +180,109 @@ func (u *userServiceImpl) Invite(dto *dto.InviteDto) error {
 		return addResourcePermission(tx, invite.ID, dto)
 	})
 
+}
+
+func (u *userServiceImpl) GetInvite(ctx context.Context, id string) (*vo.InviteVo, error) {
+	result := new(vo.InviteVo)
+	var invite entity.Invites
+	if err := u.Where("id = ?", id).First(&invite).Error; err != nil {
+		return nil, err
+	}
+
+	var inviteUser, invitationUser entity.User
+	if err := u.Where("id = ?", invite.InviterId).First(&inviteUser).Error; err != nil {
+		return nil, err
+	}
+
+	if err := u.Where("id = ?", invite.InvitationId).First(&invitationUser).Error; err != nil {
+		return nil, err
+	}
+	uvo, err := u.genUserResourceVo(invite.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	result.UserResourceVo = uvo
+
+	return result, nil
+}
+
+func (u *userServiceImpl) genUserResourceVo(inviteId uint) (*vo.UserResourceVo, error) {
+	uvo := new(vo.UserResourceVo)
+	// get invite resource info
+	var sharedGroup []entity.SharedGroup
+	if err := u.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Find(&sharedGroup).Error; err != nil {
+		return nil, err
+	}
+
+	if sharedGroup != nil {
+		groupResourceVo := new(vo.GroupResourceVo)
+		uvo.GroupResourceVo = groupResourceVo
+		for _, group := range sharedGroup {
+			groupResourceVo.GroupIds = append(groupResourceVo.GroupIds, group.GroupId)
+			groupResourceVo.GroupNames = append(groupResourceVo.GroupNames, group.GroupName)
+		}
+	}
+
+	// shared node
+	var sharedNode []entity.SharedNode
+	if err := u.Model(&entity.SharedNode{}).Where("invite_id = ?", inviteId).Find(&sharedNode).Error; err != nil {
+		return nil, err
+	}
+
+	if sharedNode != nil {
+		nodeResourceVo := new(vo.NodeResourceVo)
+		uvo.NodeResourceVo = nodeResourceVo
+		for _, node := range sharedNode {
+			nodeResourceVo.NodeIds = append(nodeResourceVo.NodeIds, node.NodeId)
+			nodeResourceVo.NodeNames = append(nodeResourceVo.NodeNames, node.NodeName)
+		}
+	}
+
+	// shared policy
+	var sharedPolicy []entity.SharedPolicy
+	if err := u.Model(&entity.SharedPolicy{}).Where("invite_id = ?", inviteId).Find(&sharedPolicy).Error; err != nil {
+		return nil, err
+	}
+
+	if sharedPolicy != nil {
+		policyResourceVo := new(vo.PolicyResourceVo)
+		uvo.PolicyResourceVo = policyResourceVo
+		for _, policy := range sharedPolicy {
+			policyResourceVo.PolicyIds = append(policyResourceVo.PolicyIds, policy.PolicyId)
+			policyResourceVo.PolicyNames = append(policyResourceVo.PolicyNames, policy.PolicyName)
+		}
+	}
+
+	// share label
+	var sharedLabel []entity.SharedLabel
+	if err := u.Model(&entity.SharedLabel{}).Where("invite_id = ?", inviteId).Find(&sharedLabel).Error; err != nil {
+		return nil, err
+	}
+
+	if sharedLabel != nil {
+		labelResourceVo := new(vo.LabelResourceVo)
+		uvo.LabelResourceVo = labelResourceVo
+		for _, label := range sharedLabel {
+			labelResourceVo.LabelIds = append(labelResourceVo.LabelIds, label.LabelId)
+			labelResourceVo.LabelNames = append(labelResourceVo.LabelNames, label.LabelName)
+		}
+	}
+
+	// shared permissions
+	var sharedPermissions entity.UserResourceGrantedPermission
+	if err := u.Model(&entity.UserResourceGrantedPermission{}).Where("invite_id = ?", inviteId).Find(&sharedPermissions).Error; err != nil {
+		return nil, err
+	}
+
+	if sharedPermissions.ID != 0 {
+		permissionResourceVo := new(vo.PermissionResourceVo)
+		uvo.PermissionResourceVo = permissionResourceVo
+		permissionResourceVo.PermissionIds, _ = utils.Splits(sharedPermissions.PermissionIds, ",")
+		permissionResourceVo.PermissionNames = strings.Split(sharedPermissions.Permission, ",")
+	}
+
+	return uvo, nil
 }
 
 func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error {
@@ -365,6 +470,22 @@ func (u *userServiceImpl) CancelInvite(id string) error {
 	})
 }
 
+func (u *userServiceImpl) DeleteInvite(id string) error {
+	return u.DB.Transaction(func(tx *gorm.DB) error {
+		//delete role &  permissions
+
+		var invite entity.Invites
+
+		var err error
+		if err = tx.Model(&entity.Invites{}).Where("id = ?", id).Find(&invite).Delete(&entity.Invites{}).Error; err != nil {
+			return err
+		}
+
+		return deleteResourcePermission(tx, invite.ID)
+
+	})
+}
+
 func getGroupNames(tx *gorm.DB, ids []uint) string {
 	var result []string
 	for _, id := range ids {
@@ -505,6 +626,37 @@ func updateResourcePermission(tx *gorm.DB, inviteId uint, status entity.AcceptSt
 	return nil
 }
 
+func deleteResourcePermission(tx *gorm.DB, inviteId uint) error {
+	// update shared group
+	var (
+		err error
+	)
+	if err = tx.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedGroup{}).Error; err != nil {
+		return err
+	}
+
+	// update shared node
+	if err = tx.Model(&entity.SharedNode{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedNode{}).Error; err != nil {
+		return err
+	}
+
+	// update shared label
+	if err = tx.Model(&entity.SharedLabel{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedLabel{}).Error; err != nil {
+		return err
+	}
+
+	// update shared policy
+	if err = tx.Model(&entity.SharedPolicy{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedPolicy{}).Error; err != nil {
+		return err
+	}
+
+	// update shared perissions
+	if err = tx.Model(&entity.UserResourceGrantedPermission{}).Where("invite_id = ?", inviteId).Delete(&entity.UserResourceGrantedPermission{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) (*vo.PageVo, error) {
 
 	var invs []*entity.Invites
@@ -536,18 +688,24 @@ func (u *userServiceImpl) ListInvites(params *dto.InvitationParams) (*vo.PageVo,
 			return nil, err
 		}
 
+		uvo, err := u.genUserResourceVo(inv.ID)
+		if err != nil {
+			return nil, err
+		}
+
 		insVo := &vo.InviteVo{
-			ID:           uint64(inv.ID),
-			InviteeName:  inviteUser.Username,
-			InviterName:  invitationUser.Username,
-			MobilePhone:  invitationUser.Mobile,
-			Email:        invitationUser.Email,
-			Avatar:       invitationUser.Avatar,
-			Role:         inv.Role,
-			GroupName:    inv.Group,
-			Permissions:  inv.Permissions,
-			AcceptStatus: inv.AcceptStatus.String(),
-			InvitedAt:    inv.InvitedAt,
+			UserResourceVo: uvo,
+			ID:             uint64(inv.ID),
+			InviteeName:    inviteUser.Username,
+			InviterName:    invitationUser.Username,
+			MobilePhone:    invitationUser.Mobile,
+			Email:          invitationUser.Email,
+			Avatar:         invitationUser.Avatar,
+			Role:           inv.Role,
+			GroupName:      inv.Group,
+			Permissions:    inv.Permissions,
+			AcceptStatus:   inv.AcceptStatus.String(),
+			InvitedAt:      inv.InvitedAt,
 		}
 
 		insVos = append(insVos, insVo)

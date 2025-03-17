@@ -45,20 +45,6 @@ func (UserResourceGrantedPermission) TableName() string {
 	return "la_user_resource_granted_permission"
 }
 
-// UserGrantedPermission user granted permission
-// whole level
-type UserGrantedPermission struct {
-	gorm.Model
-	OwnId      uint
-	InvitedId  uint
-	Permission string
-}
-
-// granted role's permissions will add here
-func (UserGrantedPermission) TableName() string {
-	return "la_user_granted_permission"
-}
-
 func (u *User) TableName() string {
 	return "la_user"
 }

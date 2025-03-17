@@ -87,8 +87,6 @@ type NodeGroupDto struct {
 	UpdatedBy   string `json:"updatedBy"`
 
 	GroupRelationDto
-	//Nodes    []string `json:"nodes"`
-	//Policies []string `json:"policies"`
 }
 
 type GroupRelationDto struct {
