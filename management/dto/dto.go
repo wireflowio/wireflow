@@ -15,8 +15,8 @@ type UserDto struct {
 
 // NodeDto is a data transfer object for Peer entity
 type NodeDto struct {
-	ID                  int64             `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
-	UserID              int64             `gorm:"column:user_id" json:"user_id"`
+	ID                  uint              `gorm:"primaryKey;autoIncrement;column:id" json:"id"`
+	UserID              uint              `gorm:"column:user_id" json:"user_id"`
 	Name                string            `gorm:"column:name;size:20" json:"name"`
 	Hostname            string            `gorm:"column:hostname;size:50" json:"hostname"`
 	Description         string            `gorm:"column:description;size:255" json:"description"`

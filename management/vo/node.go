@@ -34,8 +34,8 @@ type NodeVo struct {
 	Name                string            `json:"name,omitempty"`
 	Description         string            `json:"description,omitempty"`
 	GroupID             uint              `json:"groupID,omitempty"`   // belong to which group
-	CreatedBy           uint              `json:"createdBy,omitempty"` // ownerID
-	UserID              int64             `json:"userId,omitempty"`
+	CreatedBy           string            `json:"createdBy,omitempty"` // ownerID
+	UserID              uint              `json:"userId,omitempty"`
 	Hostname            string            `json:"hostname,omitempty"`
 	AppID               string            `json:"appId,omitempty"`
 	Address             string            `json:"address,omitempty"`
