@@ -50,8 +50,8 @@ type SupportDto struct {
 // 被邀请: InvitationId
 // 邀请表主键: InviteId
 type InviteDto struct {
-	Username         string
-	InviteUsername   string
+	InviteeName      string
+	InviterName      string
 	InvitationId     int64
 	InviteeId        int64
 	MobilePhone      string

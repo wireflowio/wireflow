@@ -57,7 +57,7 @@ func (s *Server) invite() gin.HandlerFunc {
 		}
 
 		username := c.GetString("username")
-		req.Username = username
+		req.InviterName = username
 
 		if req.GroupIds != "" {
 			req.GroupIdList, err = utils.Splits(req.GroupIds, ",")
