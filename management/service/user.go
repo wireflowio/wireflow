@@ -279,6 +279,9 @@ func (u *userServiceImpl) genUserResourceVo(inviteId uint) (*vo.UserResourceVo, 
 		permissionResourceVo := new(vo.PermissionResourceVo)
 		uvo.PermissionResourceVo = permissionResourceVo
 		for _, sharedPermission := range sharedPermissions {
+			if utils.Contains(permissionResourceVo.PermissionIds, sharedPermission.PermissionId) {
+				continue
+			}
 			permissionResourceVo.PermissionIds = append(permissionResourceVo.PermissionIds, sharedPermission.PermissionId)
 			permissionResourceVo.PermissionNames = append(permissionResourceVo.PermissionNames, sharedPermission.PermissionValue)
 		}
@@ -302,7 +305,7 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 		for _, policyId := range dto.PolicyIdList {
 
 			// insert into shared policy
-			sharedPOlicy := &entity.SharedPolicy{
+			sharedPolicy := &entity.SharedPolicy{
 				OwnerId:      uint(dto.InviteeId),
 				UserId:       uint(dto.InvitationId),
 				InviteId:     inviteId,
@@ -311,11 +314,21 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				GrantedAt:    utils.NewNullTime(time.Now()),
 			}
 
-			if err = tx.Model(&entity.SharedPolicy{}).Create(sharedPOlicy).Error; err != nil {
+			if err = tx.Model(&entity.SharedPolicy{}).Create(sharedPolicy).Error; err != nil {
 				return err
 			}
 
-			if err = createResourcePermission(tx, uint(dto.InvitationId), uint(dto.InviteeId), policyId, names, values, ids); err != nil {
+			if err = createResourcePermission(&createPermissonParams{
+				Tx:               tx,
+				ResourceType:     utils.Policy,
+				OwnerId:          sharedPolicy.OwnerId,
+				InvitationId:     sharedPolicy.UserId,
+				InviteId:         inviteId,
+				ResourceId:       sharedPolicy.ID,
+				PermissionTexts:  names,
+				PermissionValues: values,
+				PermissionIds:    ids,
+			}); err != nil {
 				return err
 			}
 		}
@@ -344,7 +357,17 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				return err
 			}
 
-			if err = createResourcePermission(tx, uint(dto.InvitationId), uint(dto.InviteeId), nodeId, names, values, ids); err != nil {
+			if err = createResourcePermission(&createPermissonParams{
+				Tx:               tx,
+				ResourceType:     utils.Node,
+				OwnerId:          sharedNode.OwnerId,
+				InvitationId:     sharedNode.UserId,
+				InviteId:         inviteId,
+				ResourceId:       sharedNode.ID,
+				PermissionTexts:  names,
+				PermissionValues: values,
+				PermissionIds:    ids,
+			}); err != nil {
 				return err
 			}
 		}
@@ -372,7 +395,17 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				return err
 			}
 
-			if err = createResourcePermission(tx, uint(dto.InvitationId), uint(dto.InviteeId), labelId, names, values, ids); err != nil {
+			if err = createResourcePermission(&createPermissonParams{
+				Tx:               tx,
+				ResourceType:     utils.Label,
+				OwnerId:          sharedLabel.OwnerId,
+				InvitationId:     sharedLabel.UserId,
+				InviteId:         inviteId,
+				ResourceId:       sharedLabel.ID,
+				PermissionTexts:  names,
+				PermissionValues: values,
+				PermissionIds:    ids,
+			}); err != nil {
 				return err
 			}
 		}
@@ -406,7 +439,17 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				return err
 			}
 
-			if err = createResourcePermission(tx, uint(dto.InvitationId), uint(dto.InviteeId), group.ID, names, values, ids); err != nil {
+			if err = createResourcePermission(&createPermissonParams{
+				Tx:               tx,
+				ResourceType:     utils.Group,
+				OwnerId:          sharedGroup.OwnerId,
+				InvitationId:     sharedGroup.UserId,
+				InviteId:         inviteId,
+				ResourceId:       sharedGroup.ID,
+				PermissionTexts:  names,
+				PermissionValues: values,
+				PermissionIds:    ids,
+			}); err != nil {
 				return err
 			}
 		}
@@ -420,19 +463,31 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 	return nil
 }
 
-func createResourcePermission(tx *gorm.DB, ownerId, invitationId, resourceId uint, permissionTexts, permissionValues []string, permissionIds []uint) error {
-	for i, permissionText := range permissionTexts {
+type createPermissonParams struct {
+	Tx               *gorm.DB
+	ResourceType     utils.ResourceType
+	OwnerId          uint
+	InvitationId     uint
+	InviteId         uint
+	ResourceId       uint
+	PermissionTexts  []string
+	PermissionValues []string
+	PermissionIds    []uint
+}
+
+func createResourcePermission(params *createPermissonParams) error {
+	for i, permissionText := range params.PermissionTexts {
 		permit := &entity.UserResourceGrantedPermission{
-			OwnerId:         ownerId,
-			InvitationId:    invitationId,
-			ResourceType:    utils.Group,
-			ResourceId:      resourceId,
-			InviteId:        invitationId,
+			OwnerId:         params.OwnerId,
+			InvitationId:    params.InvitationId,
+			ResourceType:    params.ResourceType,
+			ResourceId:      params.ResourceId,
+			InviteId:        params.InviteId,
 			PermissionText:  permissionText,
-			PermissionValue: permissionValues[i],
-			PermissionId:    permissionIds[i],
+			PermissionValue: params.PermissionValues[i],
+			PermissionId:    params.PermissionIds[i],
 		}
-		if err := tx.Create(permit).Error; err != nil {
+		if err := params.Tx.Create(permit).Error; err != nil {
 			return err
 		}
 	}
