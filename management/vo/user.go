@@ -5,6 +5,15 @@ import (
 	"time"
 )
 
+type UserVo struct {
+	ID          uint   `json:"id,string"`
+	Username    string `json:"name,omitempty"`
+	Email       string `json:"email,omitempty"`
+	MobilePhone string `json:"mobilePhone,omitempty"`
+	Avatar      string `json:"avatar,omitempty"`
+	Address     string `json:"address,omitempty"`
+}
+
 type InviteVo struct {
 	*UserResourceVo
 	ID           uint64         `json:"id"`
