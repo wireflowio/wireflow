@@ -185,6 +185,18 @@ func (u *userServiceImpl) Invite(dto *dto.InviteDto) error {
 			return err
 		}
 
+		// first query, if the invitation exists
+		var exist entity.Invitation
+		if err = tx.Model(&entity.Invitation{}).Where("invitee_name = ?", dto.InviteeName).First(&exist).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+
+		if exist.ID != 0 {
+			return linkerrors.ErrInvitationExists
+		}
+
 		groupName := getGroupNames(tx, dto.GroupIdList)
 		invite := &entity.Invites{
 			InvitationId: int64(invitationUser.ID),
