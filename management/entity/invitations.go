@@ -14,7 +14,7 @@ type Invites struct {
 	MobilePhone  string
 	Email        string
 	//Avatar       string
-	GroupId      uint64
+	GroupIds     string
 	Group        string
 	Role         string
 	Permissions  string

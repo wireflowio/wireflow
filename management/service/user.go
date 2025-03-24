@@ -235,11 +235,17 @@ func (u *userServiceImpl) UpdateInvite(ctx context.Context, dto *dto.InviteDto) 
 		var err error
 		groupName := getGroupNames(tx, dto.GroupIdList)
 
-		if err = tx.Model(&entity.Invites{}).Find("invite_id = ?", dto.ID).Update("group", groupName).Update("group_ids", dto.GroupIds).Error; err != nil {
+		if err = tx.Model(&entity.Invites{}).Where("id = ?", dto.ID).Updates(entity.Invites{
+			Group:    groupName,
+			GroupIds: dto.GroupIds,
+		}).Error; err != nil {
 			return err
 		}
 
-		if err = tx.Model(&entity.Invitation{}).Find("invite_id = ?", dto.ID).Update("group", groupName).Update("group_ids", dto.GroupIds).Error; err != nil {
+		if err = tx.Model(&entity.Invitation{}).Where("invite_id = ?", dto.ID).Updates(entity.Invitation{
+			Group:    groupName,
+			GroupIds: dto.GroupIds,
+		}).Error; err != nil {
 			return err
 		}
 
@@ -394,7 +400,9 @@ func (u *userServiceImpl) genUserResourceVo(inviteId uint) (*vo.UserResourceVo, 
 
 func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error {
 
-	var allNames []string
+	var (
+		allNames []string
+	)
 
 	if dto.PolicyIdList != nil {
 		names, values, ids, err := getActualPermission(tx, utils.Policy, dto)
@@ -403,7 +411,12 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 		}
 		allNames = append(allNames, names...)
 
-		for _, policyId := range dto.PolicyIdList {
+		var policies []entity.Node
+		if err = tx.Model(&entity.Node{}).Where("id in ?", dto.GroupIdList).Find(&policies).Error; err != nil {
+			return err
+		}
+
+		for _, policy := range policies {
 
 			// insert into shared policy
 			sharedPolicy := &entity.SharedPolicy{
@@ -411,7 +424,8 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				UserId:       uint(dto.InvitationId),
 				InviteId:     inviteId,
 				AcceptStatus: entity.NewInvite,
-				PolicyId:     policyId,
+				PolicyId:     policy.ID,
+				PolicyName:   policy.Name,
 				GrantedAt:    utils.NewNullTime(time.Now()),
 			}
 
@@ -442,15 +456,20 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 		}
 		allNames = append(allNames, names...)
 
-		for _, nodeId := range dto.NodeIdList {
+		var nodes []entity.Node
+		if err = tx.Model(&entity.Node{}).Where("id in ?", dto.NodeIdList).Find(&nodes).Error; err != nil {
+			return err
+		}
 
+		for _, node := range nodes {
 			// insert into shared node
 			sharedNode := &entity.SharedNode{
 				OwnerId:      uint(dto.InviteeId),
 				UserId:       uint(dto.InvitationId),
 				InviteId:     inviteId,
 				AcceptStatus: entity.NewInvite,
-				NodeId:       nodeId,
+				NodeId:       node.ID,
+				NodeName:     node.Name,
 				GrantedAt:    utils.NewNullTime(time.Now()),
 			}
 
@@ -480,7 +499,13 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 			return err
 		}
 		allNames = append(allNames, names...)
-		for _, labelId := range dto.LabelIdList {
+
+		var labels []entity.Label
+		if err = tx.Model(&entity.Label{}).Where("id in ?", dto.NodeIdList).Find(&labels).Error; err != nil {
+			return err
+		}
+
+		for _, label := range labels {
 
 			// insert into shared label
 			sharedLabel := &entity.SharedLabel{
@@ -488,7 +513,8 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				UserId:       uint(dto.InvitationId),
 				InviteId:     inviteId,
 				AcceptStatus: entity.NewInvite,
-				LabelId:      labelId,
+				LabelId:      label.ID,
+				LabelName:    label.Label,
 				GrantedAt:    utils.NewNullTime(time.Now()),
 			}
 
