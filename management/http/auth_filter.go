@@ -5,7 +5,7 @@ import (
 	"linkany/management/utils"
 )
 
-func (s *Server) permissionCheck() gin.HandlerFunc {
+func (s *Server) authFilter() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Check the permission
 		// If the permission is invalid, return 403

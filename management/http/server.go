@@ -60,7 +60,7 @@ func NewServer(cfg *ServerConfig) *Server {
 	return s
 }
 
-// loginCheck checks if the user is authenticated
+// tokenFilter checks if the user is authenticated
 func (s *Server) initRoute() {
 
 	// register user router
@@ -76,12 +76,12 @@ func (s *Server) initRoute() {
 		})
 	})
 
-	s.GET("/api/v1/plans", s.loginCheck(), s.listPlans())
+	s.GET("/api/v1/plans", s.tokenFilter(), s.listPlans())
 
 	//support
-	s.GET("/api/v1/supports", s.loginCheck(), s.listSupports())
-	s.POST("/api/v1/support", s.loginCheck(), s.createSupport())
-	s.GET("/api/v1/support/:id", s.loginCheck(), s.getSupport())
+	s.GET("/api/v1/supports", s.tokenFilter(), s.listSupports())
+	s.POST("/api/v1/support", s.tokenFilter(), s.createSupport())
+	s.GET("/api/v1/support/:id", s.tokenFilter(), s.getSupport())
 }
 
 func (s *Server) Start() error {

@@ -67,7 +67,7 @@ relay server easily, also you can use coturn[] which is a great turn server.
 - [] Multi-network: You can create multiple networks, and manage them through the web ui.
 - [] Docker: Provide docker image to help you deploy the network easily, also have a web ui for docker client, need not
   install pc app.
-- [] DNS: Provide dns service for the network, you can use you own dns domain to access the network.`
+- [] DNS: Provide dns service for the network, you can use you own dns domain to access the network.
 
 ## License
 

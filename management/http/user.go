@@ -12,23 +12,23 @@ func (s *Server) RegisterUserRoutes() {
 	userGroup := s.RouterGroup.Group(PREFIX + "/user")
 	userGroup.POST("/register", s.register())
 	userGroup.POST("/login", s.login())
-	userGroup.GET("/list", s.loginCheck(), s.getUsers())
-	userGroup.GET("/info", s.loginCheck(), s.getUserInfo())
-	userGroup.GET("/queryUsers", s.loginCheck(), s.queryUsers())
+	userGroup.GET("/list", s.tokenFilter(), s.getUsers())
+	userGroup.GET("/info", s.tokenFilter(), s.getUserInfo())
+	userGroup.GET("/queryUsers", s.tokenFilter(), s.queryUsers())
 
 	// user invite
-	userGroup.POST("/invite/a", s.loginCheck(), s.invite())
-	userGroup.PUT("/invite/c/:id", s.loginCheck(), s.cancelInvite())
-	userGroup.DELETE("/invite/d/:id", s.loginCheck(), s.deleteInvite())
-	userGroup.PUT("/invite/u", s.loginCheck(), s.updateInvite())
-	userGroup.GET("/invite/g", s.loginCheck(), s.getInvitation())
-	userGroup.GET("/invite/list", s.loginCheck(), s.listInvites())
+	userGroup.POST("/invite/a", s.tokenFilter(), s.invite())
+	userGroup.PUT("/invite/c/:id", s.tokenFilter(), s.cancelInvite())
+	userGroup.DELETE("/invite/d/:id", s.tokenFilter(), s.deleteInvite())
+	userGroup.PUT("/invite/u", s.tokenFilter(), s.updateInvite())
+	userGroup.GET("/invite/g", s.tokenFilter(), s.getInvitation())
+	userGroup.GET("/invite/list", s.tokenFilter(), s.listInvites())
 
 	// user invitation
-	userGroup.GET("/invitation/list", s.loginCheck(), s.listInvitations())
-	userGroup.PUT("/invitation/u", s.loginCheck(), s.updateInvite())
-	userGroup.PUT("/invitation/r/:inviteId", s.loginCheck(), s.rejectInvitation())
-	userGroup.PUT("/invitation/a/:inviteId", s.loginCheck(), s.acceptInvitation())
+	userGroup.GET("/invitation/list", s.tokenFilter(), s.listInvitations())
+	userGroup.PUT("/invitation/u", s.tokenFilter(), s.updateInvite())
+	userGroup.PUT("/invitation/r/:inviteId", s.tokenFilter(), s.rejectInvitation())
+	userGroup.PUT("/invitation/a/:inviteId", s.tokenFilter(), s.acceptInvitation())
 }
 
 func (s *Server) getUserInfo() gin.HandlerFunc {

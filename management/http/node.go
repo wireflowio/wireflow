@@ -10,39 +10,39 @@ import (
 
 func (s *Server) RegisterNodeRoutes() {
 	nodeGroup := s.RouterGroup.Group(PREFIX + "/node")
-	nodeGroup.GET("/appId/:appId", s.loginCheck(), s.getNodeByAppId())
-	nodeGroup.POST("/a", s.loginCheck(), s.createAppId())
-	nodeGroup.POST("/", s.loginCheck(), s.createNode())
-	nodeGroup.PUT("/", s.loginCheck(), s.updateNode())
-	nodeGroup.DELETE("/:appId", s.loginCheck(), s.deleteNode())
-	nodeGroup.GET("/list", s.loginCheck(), s.listNodes())
-	nodeGroup.GET("/q", s.loginCheck(), s.queryNodes())
+	nodeGroup.GET("/appId/:appId", s.tokenFilter(), s.getNodeByAppId())
+	nodeGroup.POST("/a", s.tokenFilter(), s.createAppId())
+	nodeGroup.POST("/", s.tokenFilter(), s.createNode())
+	nodeGroup.PUT("/", s.tokenFilter(), s.authFilter(), s.updateNode())
+	nodeGroup.DELETE("/:appId", s.tokenFilter(), s.authFilter(), s.deleteNode())
+	nodeGroup.GET("/list", s.tokenFilter(), s.listNodes())
+	nodeGroup.GET("/q", s.tokenFilter(), s.queryNodes())
 
 	// group member
-	nodeGroup.POST("/group/member", s.loginCheck(), s.addGroupMember())
-	nodeGroup.DELETE("/group/member/:id", s.loginCheck(), s.removeGroupMember())
-	nodeGroup.PUT("/group/member/:id", s.loginCheck(), s.UpdateGroupMember())
-	nodeGroup.GET("/group/member/list", s.loginCheck(), s.listGroupMembers())
+	nodeGroup.POST("/group/member", s.tokenFilter(), s.addGroupMember())
+	nodeGroup.DELETE("/group/member/:id", s.tokenFilter(), s.removeGroupMember())
+	nodeGroup.PUT("/group/member/:id", s.tokenFilter(), s.UpdateGroupMember())
+	nodeGroup.GET("/group/member/list", s.tokenFilter(), s.listGroupMembers())
 
 	// Label
-	nodeGroup.POST("/label", s.loginCheck(), s.createLabel())
-	nodeGroup.PUT("/label", s.loginCheck(), s.updateLabel())
-	nodeGroup.DELETE("/label", s.loginCheck(), s.deleteLabel())
-	nodeGroup.GET("/label/list", s.loginCheck(), s.listLabel())
-	nodeGroup.GET("/label", s.loginCheck(), s.getLabel())
-	nodeGroup.GET("/label/q", s.loginCheck(), s.queryLabels())
+	nodeGroup.POST("/label", s.tokenFilter(), s.createLabel())
+	nodeGroup.PUT("/label", s.tokenFilter(), s.updateLabel())
+	nodeGroup.DELETE("/label", s.tokenFilter(), s.deleteLabel())
+	nodeGroup.GET("/label/list", s.tokenFilter(), s.listLabel())
+	nodeGroup.GET("/label", s.tokenFilter(), s.getLabel())
+	nodeGroup.GET("/label/q", s.tokenFilter(), s.queryLabels())
 
 	// group node
-	nodeGroup.POST("/group/node", s.loginCheck(), s.addGroupNode())
-	nodeGroup.DELETE("/group/node/:id", s.loginCheck(), s.removeGroupNode())
-	nodeGroup.GET("/group/node/:id", s.loginCheck(), s.getGroupNode())
-	nodeGroup.GET("/group/node/list", s.loginCheck(), s.listGroupNodes())
-	nodeGroup.GET("/group/node/q", s.loginCheck(), s.queryNodes())
+	nodeGroup.POST("/group/node", s.tokenFilter(), s.addGroupNode())
+	nodeGroup.DELETE("/group/node/:id", s.tokenFilter(), s.authFilter(), s.removeGroupNode())
+	nodeGroup.GET("/group/node/:id", s.tokenFilter(), s.getGroupNode())
+	nodeGroup.GET("/group/node/list", s.tokenFilter(), s.listGroupNodes())
+	nodeGroup.GET("/group/node/q", s.tokenFilter(), s.queryNodes())
 
 	// node label
-	nodeGroup.POST("/label/node", s.loginCheck(), s.addNodeLabel())
-	nodeGroup.DELETE("/label/node", s.loginCheck(), s.removeNodeLabel())
-	nodeGroup.GET("/label/node/list", s.loginCheck(), s.listNodeLabels())
+	nodeGroup.POST("/label/node", s.tokenFilter(), s.addNodeLabel())
+	nodeGroup.DELETE("/label/node", s.tokenFilter(), s.authFilter(), s.removeNodeLabel())
+	nodeGroup.GET("/label/node/list", s.tokenFilter(), s.listNodeLabels())
 
 }
 

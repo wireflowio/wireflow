@@ -9,24 +9,24 @@ import (
 
 func (s *Server) RegisterAccessRoutes() {
 	routes := s.RouterGroup.Group(PREFIX + "/access")
-	routes.POST("/policy", s.loginCheck(), s.createAccessPolicy())
-	routes.PUT("/policy", s.loginCheck(), s.updateAccessPolicy())
-	routes.DELETE("/policy/:policyID", s.loginCheck(), s.deleteAccessPolicy())
-	routes.GET("/policy/page", s.loginCheck(), s.listAccessPolicies())
+	routes.POST("/policy", s.tokenFilter(), s.createAccessPolicy())
+	routes.PUT("/policy", s.tokenFilter(), s.authFilter(), s.updateAccessPolicy())
+	routes.DELETE("/policy/:policyID", s.tokenFilter(), s.authFilter(), s.deleteAccessPolicy())
+	routes.GET("/policy/page", s.tokenFilter(), s.listAccessPolicies())
 
-	routes.GET("/policy/q", s.loginCheck(), s.queryPolicies())
+	routes.GET("/policy/q", s.tokenFilter(), s.queryPolicies())
 
 	// rule
-	routes.GET("/rule/:ruleID", s.loginCheck(), s.getRule())
-	routes.POST("/rule", s.loginCheck(), s.addAccessRule())
-	routes.PUT("/rule", s.loginCheck(), s.updateAccessRule())
-	routes.DELETE("/rule/:ruleID", s.loginCheck(), s.deleteAccessRule())
+	routes.GET("/rule/:ruleID", s.tokenFilter(), s.getRule())
+	routes.POST("/rule", s.tokenFilter(), s.authFilter(), s.addAccessRule())
+	routes.PUT("/rule", s.tokenFilter(), s.authFilter(), s.updateAccessRule())
+	routes.DELETE("/rule/:ruleID", s.tokenFilter(), s.authFilter(), s.deleteAccessRule())
 	// policy rule
-	routes.GET("/policy/rules", s.loginCheck(), s.listAccessRules())
+	routes.GET("/policy/rules", s.tokenFilter(), s.listAccessRules())
 
 	//permissions
-	routes.GET("/permissions/q", s.loginCheck(), s.queryPermissions())
-	routes.DELETE("/permissions/invite/:inviteId/permission/:permissionId", s.loginCheck(), s.deleteUserResourcePermission())
+	routes.GET("/permissions/q", s.tokenFilter(), s.queryPermissions())
+	routes.DELETE("/permissions/invite/:inviteId/permission/:permissionId", s.tokenFilter(), s.authFilter(), s.deleteUserResourcePermission())
 }
 
 func (s *Server) createAccessPolicy() gin.HandlerFunc {
@@ -184,16 +184,6 @@ func (s *Server) listAccessRules() gin.HandlerFunc {
 		WriteOK(c.JSON, rules)
 	}
 }
-//
-//func (s *Server) checkAccess() gin.HandlerFunc {
-//	return func(c *gin.Context) {
-//		action := c.GetHeader("action")
-//		resourceType := c.GetHeader("resourceType")
-//		resourceId := c.GetHeader("resourceId")
-//		if action != "" {
-//			s.accessController.CheckAccess(c, action, resourceType, resourceId
-//	}
-//}
 
 func (s *Server) getRule() gin.HandlerFunc {
 	return func(c *gin.Context) {
