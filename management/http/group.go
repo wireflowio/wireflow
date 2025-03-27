@@ -12,17 +12,17 @@ func (s *Server) RegisterGroupRoutes() {
 	nodeGroup := s.RouterGroup.Group(PREFIX + "/group")
 
 	// group policy
-	nodeGroup.GET("/policy/list", s.authCheck(), s.listGroupPolicies())
+	nodeGroup.GET("/policy/list", s.loginCheck(), s.listGroupPolicies())
 	nodeGroup.DELETE("/:id/policy/:policyId", s.deleteGroupPolicy())
 	nodeGroup.DELETE("/:id/node/:nodeId", s.deleteGroupNode())
 
 	// node group
-	nodeGroup.GET("/:id", s.authCheck(), s.GetNodeGroup())
-	nodeGroup.POST("/a", s.authCheck(), s.createGroup())
-	nodeGroup.PUT("/u", s.authCheck(), s.updateGroup())
-	nodeGroup.DELETE("/:id", s.authCheck(), s.deleteGroup())
-	nodeGroup.GET("/list", s.authCheck(), s.listGroups())
-	nodeGroup.GET("/q", s.authCheck(), s.queryGroups())
+	nodeGroup.GET("/:id", s.loginCheck(), s.GetNodeGroup())
+	nodeGroup.POST("/a", s.loginCheck(), s.createGroup())
+	nodeGroup.PUT("/u", s.loginCheck(), s.updateGroup())
+	nodeGroup.DELETE("/:id", s.loginCheck(), s.deleteGroup())
+	nodeGroup.GET("/list", s.loginCheck(), s.listGroups())
+	nodeGroup.GET("/q", s.loginCheck(), s.queryGroups())
 }
 
 func (s *Server) listGroupPolicies() gin.HandlerFunc {

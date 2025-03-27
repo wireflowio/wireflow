@@ -12,23 +12,23 @@ func (s *Server) RegisterUserRoutes() {
 	userGroup := s.RouterGroup.Group(PREFIX + "/user")
 	userGroup.POST("/register", s.register())
 	userGroup.POST("/login", s.login())
-	userGroup.GET("/list", s.authCheck(), s.getUsers())
-	userGroup.GET("/info", s.authCheck(), s.getUserInfo())
-	userGroup.GET("/queryUsers", s.authCheck(), s.queryUsers())
+	userGroup.GET("/list", s.loginCheck(), s.getUsers())
+	userGroup.GET("/info", s.loginCheck(), s.getUserInfo())
+	userGroup.GET("/queryUsers", s.loginCheck(), s.queryUsers())
 
 	// user invite
-	userGroup.POST("/invite/a", s.authCheck(), s.invite())
-	userGroup.PUT("/invite/c/:id", s.authCheck(), s.cancelInvite())
-	userGroup.DELETE("/invite/d/:id", s.authCheck(), s.deleteInvite())
-	userGroup.PUT("/invite/u", s.authCheck(), s.updateInvite())
-	userGroup.GET("/invite/g", s.authCheck(), s.getInvitation())
-	userGroup.GET("/invite/list", s.authCheck(), s.listInvites())
+	userGroup.POST("/invite/a", s.loginCheck(), s.invite())
+	userGroup.PUT("/invite/c/:id", s.loginCheck(), s.cancelInvite())
+	userGroup.DELETE("/invite/d/:id", s.loginCheck(), s.deleteInvite())
+	userGroup.PUT("/invite/u", s.loginCheck(), s.updateInvite())
+	userGroup.GET("/invite/g", s.loginCheck(), s.getInvitation())
+	userGroup.GET("/invite/list", s.loginCheck(), s.listInvites())
 
 	// user invitation
-	userGroup.GET("/invitation/list", s.authCheck(), s.listInvitations())
-	userGroup.PUT("/invitation/u", s.authCheck(), s.updateInvite())
-	userGroup.PUT("/invitation/r/:inviteId", s.authCheck(), s.rejectInvitation())
-	userGroup.PUT("/invitation/a/:inviteId", s.authCheck(), s.acceptInvitation())
+	userGroup.GET("/invitation/list", s.loginCheck(), s.listInvitations())
+	userGroup.PUT("/invitation/u", s.loginCheck(), s.updateInvite())
+	userGroup.PUT("/invitation/r/:inviteId", s.loginCheck(), s.rejectInvitation())
+	userGroup.PUT("/invitation/a/:inviteId", s.loginCheck(), s.acceptInvitation())
 }
 
 func (s *Server) getUserInfo() gin.HandlerFunc {

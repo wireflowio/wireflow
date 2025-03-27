@@ -9,24 +9,24 @@ import (
 
 func (s *Server) RegisterAccessRoutes() {
 	routes := s.RouterGroup.Group(PREFIX + "/access")
-	routes.POST("/policy", s.authCheck(), s.createAccessPolicy())
-	routes.PUT("/policy", s.authCheck(), s.updateAccessPolicy())
-	routes.DELETE("/policy/:policyID", s.authCheck(), s.deleteAccessPolicy())
-	routes.GET("/policy/page", s.authCheck(), s.listAccessPolicies())
+	routes.POST("/policy", s.loginCheck(), s.createAccessPolicy())
+	routes.PUT("/policy", s.loginCheck(), s.updateAccessPolicy())
+	routes.DELETE("/policy/:policyID", s.loginCheck(), s.deleteAccessPolicy())
+	routes.GET("/policy/page", s.loginCheck(), s.listAccessPolicies())
 
-	routes.GET("/policy/q", s.authCheck(), s.queryPolicies())
+	routes.GET("/policy/q", s.loginCheck(), s.queryPolicies())
 
 	// rule
-	routes.GET("/rule/:ruleID", s.authCheck(), s.getRule())
-	routes.POST("/rule", s.authCheck(), s.addAccessRule())
-	routes.PUT("/rule", s.authCheck(), s.updateAccessRule())
-	routes.DELETE("/rule/:ruleID", s.authCheck(), s.deleteAccessRule())
+	routes.GET("/rule/:ruleID", s.loginCheck(), s.getRule())
+	routes.POST("/rule", s.loginCheck(), s.addAccessRule())
+	routes.PUT("/rule", s.loginCheck(), s.updateAccessRule())
+	routes.DELETE("/rule/:ruleID", s.loginCheck(), s.deleteAccessRule())
 	// policy rule
-	routes.GET("/policy/rules", s.authCheck(), s.listAccessRules())
+	routes.GET("/policy/rules", s.loginCheck(), s.listAccessRules())
 
 	//permissions
-	routes.GET("/permissions/q", s.authCheck(), s.queryPermissions())
-	routes.DELETE("/permissions/invite/:inviteId/permission/:permissionId", s.authCheck(), s.deleteUserResourcePermission())
+	routes.GET("/permissions/q", s.loginCheck(), s.queryPermissions())
+	routes.DELETE("/permissions/invite/:inviteId/permission/:permissionId", s.loginCheck(), s.deleteUserResourcePermission())
 }
 
 func (s *Server) createAccessPolicy() gin.HandlerFunc {
@@ -184,21 +184,16 @@ func (s *Server) listAccessRules() gin.HandlerFunc {
 		WriteOK(c.JSON, rules)
 	}
 }
-
-func (s *Server) checkAccess() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		sourceNodeID := c.GetUint("sourceNodeID")
-		targetNodeID := c.GetUint("targetNodeID")
-		action := c.Query("action")
-		allowed, err := s.accessController.CheckAccess(sourceNodeID, targetNodeID, action)
-		if err != nil {
-			c.JSON(client.InternalServerError(err))
-			return
-		}
-
-		c.JSON(client.Success(allowed))
-	}
-}
+//
+//func (s *Server) checkAccess() gin.HandlerFunc {
+//	return func(c *gin.Context) {
+//		action := c.GetHeader("action")
+//		resourceType := c.GetHeader("resourceType")
+//		resourceId := c.GetHeader("resourceId")
+//		if action != "" {
+//			s.accessController.CheckAccess(c, action, resourceType, resourceId
+//	}
+//}
 
 func (s *Server) getRule() gin.HandlerFunc {
 	return func(c *gin.Context) {
