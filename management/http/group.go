@@ -18,11 +18,11 @@ func (s *Server) RegisterGroupRoutes() {
 
 	// node group
 	nodeGroup.GET("/:id", s.tokenFilter(), s.GetNodeGroup())
-	nodeGroup.POST("/a", s.tokenFilter(), s.tokenFilter(), s.authFilter(), s.createGroup())
-	nodeGroup.PUT("/u", s.tokenFilter(), s.tokenFilter(), s.authFilter(), s.updateGroup())
-	nodeGroup.DELETE("/:id", s.tokenFilter(), s.tokenFilter(), s.authFilter(), s.deleteGroup())
-	nodeGroup.GET("/list", s.tokenFilter(), s.tokenFilter(), s.listGroups())
-	nodeGroup.GET("/q", s.tokenFilter(), s.tokenFilter(), s.queryGroups())
+	nodeGroup.POST("/a", s.tokenFilter(), s.authFilter(), s.createGroup())
+	nodeGroup.PUT("/u", s.tokenFilter(), s.authFilter(), s.updateGroup())
+	nodeGroup.DELETE("/:id", s.tokenFilter(), s.authFilter(), s.deleteGroup())
+	nodeGroup.GET("/list", s.tokenFilter(), s.listGroups())
+	nodeGroup.GET("/q", s.tokenFilter(), s.queryGroups())
 }
 
 func (s *Server) listGroupPolicies() gin.HandlerFunc {
