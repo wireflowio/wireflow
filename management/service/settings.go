@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"gorm.io/gorm"
 	"linkany/management/dto"
 	"linkany/management/entity"
@@ -12,7 +11,7 @@ import (
 )
 
 type UserSettingsService interface {
-	// CreateApp create app
+	// NewAppKey create app
 	NewAppKey(ctx context.Context) error
 
 	// RemoveAppKey delete app
@@ -31,7 +30,7 @@ type userSettingsServiceImpl struct {
 }
 
 func NewUserSettingsService(db *DatabaseService) UserSettingsService {
-	logger := log.NewLogger(log.Loglevel, fmt.Sprintf("[%s ],", "user-settings-service"))
+	logger := log.NewLogger(log.Loglevel, "user-settings-service")
 	return &userSettingsServiceImpl{logger: logger, DatabaseService: db}
 }
 

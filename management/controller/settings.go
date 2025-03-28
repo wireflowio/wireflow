@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"linkany/management/dto"
 	"linkany/management/service"
 	"linkany/management/vo"
@@ -14,8 +13,8 @@ type SettingsController struct {
 	settingsService service.UserSettingsService
 }
 
-func NewSettingsController(settingsService service.UserSettingsService) *SettingsController {
-	return &SettingsController{settingsService: settingsService, logger: log.NewLogger(log.Loglevel, fmt.Sprintf("[%s] ", "settings-controller"))}
+func NewSettingsController(db *service.DatabaseService) *SettingsController {
+	return &SettingsController{settingsService: service.NewUserSettingsService(db), logger: log.NewLogger(log.Loglevel, "settings-controller")}
 }
 
 func (s *SettingsController) NewAppKey(ctx context.Context) error {
