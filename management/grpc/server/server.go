@@ -372,7 +372,7 @@ func (s *Server) recv(stream mgt.ManagementService_KeepaliveServer) (*mgt.Reques
 
 func (s *Server) pushWatchMessage(eventType mgt.EventType, pubKey, userId string, status entity.NodeStatus) error {
 	state := 1
-	peers, err := s.peerController.ListNodes(&dto.QueryParams{
+	nodeVos, err := s.peerController.QueryNodes(&dto.QueryParams{
 		UserId: userId,
 		Status: &state,
 	})
@@ -384,13 +384,13 @@ func (s *Server) pushWatchMessage(eventType mgt.EventType, pubKey, userId string
 
 	manager := utils.NewWatchManager()
 	current := &vo.NodeVo{PublicKey: pubKey}
-	for _, peer := range peers.Data.([]*vo.NodeVo) {
-		if peer.PublicKey == pubKey {
-			current = peer
+	for _, nodeVo := range nodeVos {
+		if nodeVo.PublicKey == pubKey {
+			current = nodeVo
 			continue
 		}
-		wc := manager.Get(peer.PublicKey)
-		s.logger.Verbosef("fetch actual channel %v for peer: %v, current peer pubKey: %v", wc, peer.PublicKey, current.PublicKey)
+		wc := manager.Get(nodeVo.PublicKey)
+		s.logger.Verbosef("fetch actual channel %v for nodeVo: %v, current nodeVo pubKey: %v", wc, nodeVo.PublicKey, current.PublicKey)
 		message := NewWatchMessage(eventType, []*vo.NodeVo{current})
 		// add to channel, will send to client
 		if wc != nil {
@@ -398,9 +398,9 @@ func (s *Server) pushWatchMessage(eventType mgt.EventType, pubKey, userId string
 		}
 	}
 
-	// update peer online status
+	// update nodeVo online status
 	dtoParam := &dto.NodeDto{PublicKey: pubKey, Status: status}
-	s.logger.Verbosef("update peer status ,publicKey: %v, status: %v", pubKey, status)
+	s.logger.Verbosef("update nodeVo status ,publicKey: %v, status: %v", pubKey, status)
 	_, err = s.peerController.Update(dtoParam)
 	return err
 }
