@@ -252,7 +252,7 @@ func (c *Client) HandleWatchMessage(msg *vo.Message) error {
 		}
 	case vo.EventTypeNodeAdd:
 		for _, node := range nodes {
-			c.logger.Infof("watching type: %v >>> add node: %v", mgt.EventType_ADD, node)
+			c.logger.Infof("watching type: %v >>> add node: %v", vo.EventTypeNodeAdd, node)
 			if err = c.AddPeer(node); err != nil {
 				c.logger.Errorf("add node failed: %v", err)
 			}

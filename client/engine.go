@@ -11,7 +11,7 @@ import (
 	"linkany/internal"
 	controlclient "linkany/management/client"
 	mgtclient "linkany/management/grpc/client"
-	"linkany/management/grpc/mgt"
+	"linkany/management/vo"
 	"linkany/pkg/config"
 	"linkany/pkg/drp"
 	"linkany/pkg/iface"
@@ -55,7 +55,7 @@ type Engine struct {
 	agentManager *internal.AgentManager
 	wgConfigure  iface.WGConfigureInterface
 
-	callback func(message *mgt.WatchMessage) error
+	callback func(message *vo.Message) error
 }
 
 type EngineConfig struct {
