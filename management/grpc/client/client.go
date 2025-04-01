@@ -69,7 +69,7 @@ func (c *Client) Watch(ctx context.Context, in *mgt.ManagementMessage, callback 
 	}
 
 	if err = stream.Send(in); err != nil {
-		logger.Errorf("client watch: stream.Send(%v) failed: %v", in, err)
+		logger.Errorf("client watch: stream.Push(%v) failed: %v", in, err)
 	}
 
 	ch := make(chan struct{})
@@ -120,7 +120,7 @@ func (c *Client) Keepalive(ctx context.Context, in *mgt.ManagementMessage) error
 	}
 
 	if err = stream.Send(in); err != nil {
-		c.logger.Errorf("client keepalive: stream.Send(%v) failed: %v", in, err)
+		c.logger.Errorf("client keepalive: stream.Push(%v) failed: %v", in, err)
 	}
 	defer func() {
 		if err = stream.CloseSend(); err != nil {

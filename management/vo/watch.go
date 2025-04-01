@@ -104,8 +104,8 @@ func (w *WatchManager) Remove(key string) {
 	delete(w.m, key)
 }
 
-// Send sends a message to all connected peer's channel
-func (w *WatchManager) Send(key string, msg *Message) {
+// Push sends a message to all connected peer's channel
+func (w *WatchManager) Push(key string, msg *Message) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
