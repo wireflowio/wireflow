@@ -49,6 +49,8 @@ type Engine struct {
 	GetNetworkMap   func() (*config.DeviceConf, error)
 	updated         atomic.Bool
 
+	group atomic.Value //belong to which group
+
 	peersManager *config.PeersManager
 	agentManager *internal.AgentManager
 	wgConfigure  iface.WGConfigureInterface
@@ -274,7 +276,7 @@ func (e *Engine) Start() error {
 
 	// watch
 	go func() {
-		if err := e.client.Watch(context.Background(), e.client.WatchMessage); err != nil {
+		if err := e.client.Watch(context.Background(), e.client.HandleWatchMessage); err != nil {
 			e.logger.Errorf("watch failed: %v", err)
 		}
 	}()
