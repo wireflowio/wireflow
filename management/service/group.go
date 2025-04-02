@@ -174,8 +174,10 @@ func (g *groupServiceImpl) handleGP(ctx context.Context, tx *gorm.DB, dto *dto.N
 					// add push message
 					g.manager.Push(node.PublicKey, &vo.Message{
 						EventType: vo.EventTypeGroupAdd,
-						GroupId:   group.ID,
-						GroupName: group.Name,
+						GroupMessage: &vo.GroupMessage{
+							GroupName: group.Name,
+							GroupId:   group.ID,
+						},
 					})
 				}
 			}
@@ -388,8 +390,10 @@ func (g *groupServiceImpl) DeleteGroupNode(ctx context.Context, groupId uint, no
 
 		g.manager.Push(node.PublicKey, &vo.Message{
 			EventType: vo.EventTypeGroupRemove,
-			GroupId:   groupId,
-			GroupName: groupNode.GroupName,
+			GroupMessage: &vo.GroupMessage{
+				GroupId:   groupId,
+				GroupName: groupNode.GroupName,
+			},
 		})
 
 		return nil

@@ -5,10 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"io"
 	"linkany/management/controller"
 	"linkany/management/dto"
@@ -23,6 +19,11 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/golang/protobuf/proto"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Server is used to implement helloworld.GreeterServer.
@@ -337,16 +338,28 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 			case <-newCtx.Done():
 				logger.Infof("timeout or cancel")
 				//timeout or cancel
-				if err = s.pushWatchMessage(vo.EventTypeNodeRemove, current[0], userId, 0); err != nil {
-					logger.Errorf("send watch message failed: %v, peer: %v", err, pubKey)
+				s.pushWatchMessage(&vo.MessageConfig{
+					EventType: vo.EventTypeNodeRemove,
+					GroupMessage: &vo.GroupMessage{
+						Nodes: current,
+					},
+				})
+				if err = s.UpdateStatus(current[0], 0); err != nil {
+					s.logger.Errorf("update node status: %v", err)
 				}
 				k.Online.Store(false)
 				return fmt.Errorf("exit stream: %v", stream)
 			case <-checkChannel:
 				s.logger.Verbosef("node %s is online", pubKey)
 				//if !k.Status.Load() {
-				if err = s.pushWatchMessage(vo.EventTypeNodeAdd, current[0], userId, 1); err != nil {
-					return err
+				s.pushWatchMessage(&vo.MessageConfig{
+					EventType: vo.EventTypeNodeAdd,
+					GroupMessage: &vo.GroupMessage{
+						Nodes: current,
+					},
+				})
+				if err = s.UpdateStatus(current[0], 1); err != nil {
+					s.logger.Errorf("update node status: %v", err)
 				}
 				k.Online.Store(true)
 
@@ -377,28 +390,21 @@ func (s *Server) recv(stream mgt.ManagementService_KeepaliveServer) (*mgt.Reques
 
 }
 
-func (s *Server) pushWatchMessage(eventType vo.EventType, current *vo.NodeVo, userId string, status entity.NodeStatus) error {
+func (s *Server) pushWatchMessage(msg *vo.MessageConfig) {
 	manager := vo.NewWatchManager()
 	s.mu.Lock()
-	var message *vo.Message
-	switch eventType {
-	case vo.EventTypeNodeRemove:
-		manager.Remove(current.PublicKey)
-		message = vo.NewMessage(vo.EventTypeNodeRemove, []*vo.NodeVo{current}, 0, "")
-	case vo.EventTypeNodeAdd:
-		message = vo.NewMessage(vo.EventTypeNodeAdd, []*vo.NodeVo{current}, 0, "")
-	}
-
+	defer s.mu.Unlock()
 	// send to user's all group clients
 	for _, wc := range manager.Clientsets() {
-		wc <- message
+		wc <- vo.NewMessage(msg)
 	}
+}
 
+func (s *Server) UpdateStatus(current *vo.NodeVo, status entity.NodeStatus) error {
 	// update nodeVo online status
 	dtoParam := &dto.NodeDto{PublicKey: current.PublicKey, Status: status}
 	s.logger.Verbosef("update node status, publicKey: %v, status: %v", current.PublicKey, status)
 	_, err := s.peerController.Update(dtoParam)
-	s.mu.Unlock()
 	return err
 }
 

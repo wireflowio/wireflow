@@ -7,18 +7,40 @@ import (
 
 // Message used to wrapper the message for watch
 type Message struct {
-	EventType EventType
-	Nodes     []*NodeVo
-	GroupId   uint
-	GroupName string
+	EventType    EventType
+	GroupMessage *GroupMessage
 }
 
-func NewMessage(eventType EventType, nodes []*NodeVo, groupId uint, groupName string) *Message {
+type GroupMessage struct {
+	GroupId       uint
+	GroupName     string
+	Nodes         []*NodeVo
+	PolicyMessaes []*PolicyMessage
+}
+
+type PolicyMessage struct {
+	PolicyId     uint
+	PolicyName   string
+	RuleMessages []*RuleMessage
+}
+
+type RuleMessage struct {
+	RuleId     uint
+	RuleName   string
+	RuleType   string
+	RuleValue  string
+	RuleAction string
+}
+
+type MessageConfig struct {
+	EventType    EventType
+	GroupMessage *GroupMessage
+}
+
+func NewMessage(cfg *MessageConfig) *Message {
 	return &Message{
-		EventType: eventType,
-		Nodes:     nodes,
-		GroupId:   groupId,
-		GroupName: groupName,
+		EventType:    cfg.EventType,
+		GroupMessage: cfg.GroupMessage,
 	}
 }
 
@@ -31,6 +53,12 @@ const (
 	EventTypeGroupAdd
 	EventTypeGroupRemove
 	EventTypeGroupChanged
+	EventTypePolicyAdd
+	EventTypePolicyChanged
+	EventTypePolicyRemove
+	EventTypeRuleAdd
+	EventTypeRuleChanged
+	EventTypeRuleRemove
 )
 
 func (e EventType) String() string {
@@ -47,6 +75,19 @@ func (e EventType) String() string {
 		return "groupRemove"
 	case EventTypeGroupChanged:
 		return "groupChanged"
+	case EventTypePolicyAdd:
+		return "policyAdd"
+	case EventTypePolicyChanged:
+		return "policyChanged"
+	case EventTypePolicyRemove:
+		return "policyRemove"
+	case EventTypeRuleAdd:
+		return "ruleAdd"
+	case EventTypeRuleChanged:
+		return "ruleChanged"
+	case EventTypeRuleRemove:
+		return "ruleRemove"
+
 	}
 	return "unknown"
 }

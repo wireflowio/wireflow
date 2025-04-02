@@ -239,11 +239,10 @@ func (c *Client) ToConfigPeer(peer *vo.NodeVo) *config.Peer {
 
 func (c *Client) HandleWatchMessage(msg *vo.Message) error {
 	var err error
-	nodes := msg.Nodes
 
 	switch msg.EventType {
 	case vo.EventTypeNodeRemove:
-		for _, node := range nodes {
+		for _, node := range msg.GroupMessage.Nodes {
 			c.logger.Infof("watching type: %v >>> delete node: %v", vo.EventTypeNodeRemove, node)
 			err := c.RemovePeer(node)
 			if err != nil {
@@ -251,14 +250,14 @@ func (c *Client) HandleWatchMessage(msg *vo.Message) error {
 			}
 		}
 	case vo.EventTypeNodeAdd:
-		for _, node := range nodes {
+		for _, node := range msg.GroupMessage.Nodes {
 			c.logger.Infof("watching type: %v >>> add node: %v", vo.EventTypeNodeAdd, node)
 			if err = c.AddPeer(node); err != nil {
 				c.logger.Errorf("add node failed: %v", err)
 			}
 		}
 	case vo.EventTypeGroupAdd:
-		c.logger.Verbosef("watching type: %v >>> add group: %v", vo.EventTypeGroupAdd, msg.GroupName)
+		c.logger.Verbosef("watching type: %v >>> add group: %v", vo.EventTypeGroupAdd, msg.GroupMessage.GroupName)
 	}
 
 	return nil
