@@ -1,9 +1,10 @@
 package vo
 
 import (
-	"gorm.io/gorm"
 	"linkany/management/entity"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type NodeGroupVo struct {
@@ -13,6 +14,7 @@ type NodeGroupVo struct {
 	NodeCount int    `json:"nodeCount"`
 	//NodeIdList   []uint         `json:"nodeIdList"` // for tom-select update/add
 	//PolicyIdList []uint         `json:"policyIdList"`
+	Status      string         `json:"status"`
 	Description string         `json:"description"`
 	CreatedAt   time.Time      `json:"createdAt"`
 	DeletedAt   gorm.DeletedAt `json:"deletedAt"`

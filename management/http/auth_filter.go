@@ -1,8 +1,9 @@
 package http
 
 import (
-	"github.com/gin-gonic/gin"
 	"linkany/management/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (s *Server) authFilter() gin.HandlerFunc {
@@ -22,7 +23,7 @@ func (s *Server) authFilter() gin.HandlerFunc {
 		if action != "" {
 			b, err := s.accessController.CheckAccess(c, resType, uint(resourceId), action)
 			if !b || err != nil {
-				WriteError(c.JSON, err.Error())
+				WriteForbidden(c.JSON, err.Error())
 				c.Abort()
 				return
 			}

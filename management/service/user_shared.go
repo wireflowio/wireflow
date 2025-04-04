@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/vo"
 	"linkany/pkg/log"
+
+	"gorm.io/gorm"
 )
 
 type SharedService interface {
@@ -15,8 +16,10 @@ type SharedService interface {
 	GetSharedGroup(ctx context.Context, id string) (*vo.SharedGroupVo, error)
 	ListSharedGroup(ctx context.Context, userId string) ([]*vo.SharedGroupVo, error)
 	CreateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error
-	UpdateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error
 	DeleteSharedGroup(ctx context.Context, inviteId, groupId uint) error
+
+	AddNodeToGroup(ctx context.Context, dto *dto.NodeGroupDto) error
+	AddPolicyToGroup(ctx context.Context, dto *dto.NodeGroupDto) error
 
 	// Shared Policy
 	GetSharedPolicy(ctx context.Context, id string) (*vo.SharedPolicyVo, error)
@@ -42,10 +45,18 @@ var _ SharedService = (*shareServiceImpl)(nil)
 type shareServiceImpl struct {
 	*DatabaseService
 	logger *log.Logger
+
+	groupService  GroupService
+	policyService AccessPolicyService
 }
 
 func NewSharedService(db *DatabaseService) SharedService {
-	return &shareServiceImpl{db, log.NewLogger(log.Loglevel, "SharedService")}
+	return &shareServiceImpl{
+		DatabaseService: db,
+		logger:          log.NewLogger(log.Loglevel, "SharedService"),
+		groupService:    NewGroupService(db),
+		policyService:   NewAccessPolicyService(db),
+	}
 }
 
 func (s *shareServiceImpl) GetSharedGroup(ctx context.Context, id string) (*vo.SharedGroupVo, error) {
@@ -73,34 +84,9 @@ func (s *shareServiceImpl) ListSharedGroup(ctx context.Context, userId string) (
 }
 
 func (s *shareServiceImpl) CreateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error {
-	sharedGroup := &vo.SharedGroupVo{
-		ID:          dto.ID,
-		UserId:      dto.UserId,
-		GroupId:     dto.GroupId,
-		OwnerID:     dto.OwnerID,
-		Description: dto.Description,
-		GrantedAt:   dto.GrantedAt,
-		RevokedAt:   dto.RevokedAt,
-	}
+	sharedGroup := &entity.SharedGroup{}
 
 	if err := s.Create(sharedGroup).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *shareServiceImpl) UpdateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error {
-	sharedGroup := &vo.SharedGroupVo{
-		ID:          dto.ID,
-		UserId:      dto.UserId,
-		GroupId:     dto.GroupId,
-		OwnerID:     dto.OwnerID,
-		Description: dto.Description,
-		GrantedAt:   dto.GrantedAt,
-		RevokedAt:   dto.RevokedAt,
-	}
-
-	if err := s.Save(sharedGroup).Error; err != nil {
 		return err
 	}
 	return nil
@@ -313,4 +299,12 @@ func (s *shareServiceImpl) DeleteSharedLabel(ctx context.Context, inviteId, labe
 
 		return nil
 	})
+}
+
+func (s *shareServiceImpl) AddNodeToGroup(ctx context.Context, dto *dto.NodeGroupDto) error {
+	return s.groupService.UpdateGroup(ctx, dto)
+}
+
+func (s *shareServiceImpl) AddPolicyToGroup(ctx context.Context, dto *dto.NodeGroupDto) error {
+	return s.groupService.UpdateGroup(ctx, dto)
 }
