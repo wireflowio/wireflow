@@ -19,6 +19,9 @@ func (s *Server) RegisterSharedRoutes() {
 	// add node to group
 	userGroup.POST("/invite/:inviteId/group/:groupId/node/:nodeId", s.addNodeToGroup())
 	userGroup.POST("/invite/:inviteId/group/:groupId/policy/:policyId", s.addPolicyToGroup())
+
+	// list
+	userGroup.GET("/group/list", s.listSharedGroups())
 	// userGroup.POST("/invite/:inviteId/group/:groupId/label/:labelId", s.addLabelToGroup())
 	// userGroup.POST("/invite/:inviteId/group/:groupId", s.addGroup())
 	// userGroup.POST("/invite/:inviteId/label/:labelId", s.addLabel())
@@ -202,5 +205,23 @@ func (s *Server) addPolicyToGroup() gin.HandlerFunc {
 			return
 		}
 		c.JSON(client.Success(nil))
+	}
+}
+
+// list
+func (s *Server) listSharedGroups() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var params dto.SharedGroupParams
+		if err := c.ShouldBindQuery(&params); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+
+		pageVo, err := s.sharedController.ListGroups(c, &params)
+		if err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+		WriteOK(c.JSON, pageVo)
 	}
 }
