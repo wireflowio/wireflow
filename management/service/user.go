@@ -259,7 +259,7 @@ func (u *userServiceImpl) UpdateInvite(ctx context.Context, dto *dto.InviteDto) 
 
 func updateResources(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error {
 	var err error
-	if err = tx.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedGroup{}).Error; err != nil {
+	if err = tx.Model(&entity.SharedNodeGroup{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedNodeGroup{}).Error; err != nil {
 		return err
 	}
 
@@ -310,8 +310,8 @@ func (u *userServiceImpl) GetInvite(ctx context.Context, id string) (*vo.InviteV
 func (u *userServiceImpl) genUserResourceVo(inviteId uint) (*vo.UserResourceVo, error) {
 	uvo := new(vo.UserResourceVo)
 	// get invite resource info
-	var sharedGroup []entity.SharedGroup
-	if err := u.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Find(&sharedGroup).Error; err != nil {
+	var sharedGroup []entity.SharedNodeGroup
+	if err := u.Model(&entity.SharedNodeGroup{}).Where("invite_id = ?", inviteId).Find(&sharedGroup).Error; err != nil {
 		return nil, err
 	}
 
@@ -555,7 +555,7 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 
 		for _, group := range groups {
 			// insert into shared group
-			sharedGroup := &entity.SharedGroup{
+			sharedGroup := &entity.SharedNodeGroup{
 				OwnerId:      uint(dto.InviteeId),
 				UserId:       uint(dto.InvitationId),
 				GroupName:    group.Name,
@@ -565,7 +565,7 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				GrantedAt:    utils.NewNullTime(time.Now()),
 			}
 
-			if err = tx.Model(&entity.SharedGroup{}).Create(sharedGroup).Error; err != nil {
+			if err = tx.Model(&entity.SharedNodeGroup{}).Create(sharedGroup).Error; err != nil {
 				return err
 			}
 
@@ -719,14 +719,14 @@ func (u *userServiceImpl) UpdateInvitation(dto *dto.InvitationDto) error {
 			if err != nil {
 				return errors.New("invalid groupId")
 			}
-			shareGroup := &entity.UserGroupShared{
+			shareGroup := &entity.SharedNodeGroup{
 				OwnerId:     inv.InviteeId,
 				UserId:      inv.InvitationId,
 				GroupId:     uint(gid),
 				Description: "",
 			}
 
-			if err = tx.Model(&entity.UserGroupShared{}).Create(shareGroup).Error; err != nil {
+			if err = tx.Model(&entity.SharedNodeGroup{}).Create(shareGroup).Error; err != nil {
 				return err
 			}
 		}
@@ -764,7 +764,7 @@ func updateResourcePermission(tx *gorm.DB, inviteId uint, status entity.AcceptSt
 	var (
 		err error
 	)
-	if err = tx.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Update("accept_status", status).Error; err != nil {
+	if err = tx.Model(&entity.SharedNodeGroup{}).Where("invite_id = ?", inviteId).Update("accept_status", status).Error; err != nil {
 		return err
 	}
 
@@ -808,7 +808,7 @@ func deleteResourcePermission(tx *gorm.DB, inviteId uint) error {
 	var (
 		err error
 	)
-	if err = tx.Model(&entity.SharedGroup{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedGroup{}).Error; err != nil {
+	if err = tx.Model(&entity.SharedNodeGroup{}).Where("invite_id = ?", inviteId).Delete(&entity.SharedNodeGroup{}).Error; err != nil {
 		return err
 	}
 

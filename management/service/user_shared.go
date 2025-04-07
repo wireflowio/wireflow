@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"linkany/management/dto"
 	"linkany/management/entity"
+	"linkany/management/utils"
 	"linkany/management/vo"
 	"linkany/pkg/log"
 
@@ -13,13 +15,14 @@ import (
 type SharedService interface {
 
 	// Shared Group
-	GetSharedGroup(ctx context.Context, id string) (*vo.SharedGroupVo, error)
-	ListSharedGroup(ctx context.Context, userId string) ([]*vo.SharedGroupVo, error)
+	GetSharedGroup(ctx context.Context, id string) (*vo.SharedNodeGroupVo, error)
+	ListSharedGroup(ctx context.Context, userId string) ([]*vo.SharedNodeGroupVo, error)
 	CreateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error
 	DeleteSharedGroup(ctx context.Context, inviteId, groupId uint) error
 
 	AddNodeToGroup(ctx context.Context, dto *dto.NodeGroupDto) error
 	AddPolicyToGroup(ctx context.Context, dto *dto.NodeGroupDto) error
+	ListGroups(ctx context.Context, params *dto.SharedGroupParams) (*vo.PageVo, error)
 
 	// Shared Policy
 	GetSharedPolicy(ctx context.Context, id string) (*vo.SharedPolicyVo, error)
@@ -59,9 +62,9 @@ func NewSharedService(db *DatabaseService) SharedService {
 	}
 }
 
-func (s *shareServiceImpl) GetSharedGroup(ctx context.Context, id string) (*vo.SharedGroupVo, error) {
+func (s *shareServiceImpl) GetSharedGroup(ctx context.Context, id string) (*vo.SharedNodeGroupVo, error) {
 	var (
-		sharedGroup vo.SharedGroupVo
+		sharedGroup vo.SharedNodeGroupVo
 		err         error
 	)
 	if err = s.Model(&sharedGroup).Where("id = ?", id).First(&sharedGroup).Error; err != nil {
@@ -71,9 +74,9 @@ func (s *shareServiceImpl) GetSharedGroup(ctx context.Context, id string) (*vo.S
 	return &sharedGroup, nil
 }
 
-func (s *shareServiceImpl) ListSharedGroup(ctx context.Context, userId string) ([]*vo.SharedGroupVo, error) {
+func (s *shareServiceImpl) ListSharedGroup(ctx context.Context, userId string) ([]*vo.SharedNodeGroupVo, error) {
 	var (
-		sharedGroups []*vo.SharedGroupVo
+		sharedGroups []*vo.SharedNodeGroupVo
 		err          error
 	)
 	if err = s.Model(&sharedGroups).Where("user_id = ?", userId).Find(&sharedGroups).Error; err != nil {
@@ -84,7 +87,7 @@ func (s *shareServiceImpl) ListSharedGroup(ctx context.Context, userId string) (
 }
 
 func (s *shareServiceImpl) CreateSharedGroup(ctx context.Context, dto *dto.SharedGroupDto) error {
-	sharedGroup := &entity.SharedGroup{}
+	sharedGroup := &entity.SharedNodeGroup{}
 
 	if err := s.Create(sharedGroup).Error; err != nil {
 		return err
@@ -97,7 +100,7 @@ func (s *shareServiceImpl) DeleteSharedGroup(ctx context.Context, inviteId, grou
 		err error
 	)
 	return s.DB.Transaction(func(tx *gorm.DB) error {
-		if err = s.Model(&entity.SharedGroup{}).Where("invite_id = ? and group_id = ?", inviteId, groupId).Delete(&entity.SharedGroup{}).Error; err != nil {
+		if err = s.Model(&entity.SharedNodeGroup{}).Where("invite_id = ? and group_id = ?", inviteId, groupId).Delete(&entity.SharedNodeGroup{}).Error; err != nil {
 			return err
 		}
 
@@ -307,4 +310,78 @@ func (s *shareServiceImpl) AddNodeToGroup(ctx context.Context, dto *dto.NodeGrou
 
 func (s *shareServiceImpl) AddPolicyToGroup(ctx context.Context, dto *dto.NodeGroupDto) error {
 	return s.groupService.UpdateGroup(ctx, dto)
+}
+
+func (s *shareServiceImpl) ListGroups(ctx context.Context, params *dto.SharedGroupParams) (*vo.PageVo, error) {
+	var (
+		err      error
+		groups   []entity.SharedNodeGroup
+		db       *gorm.DB
+		groupVos []*vo.SharedNodeGroupVo
+	)
+
+	result := new(vo.PageVo)
+	db = s.DB
+
+	sql, wrappers := utils.GenerateSql(params)
+	if sql != "" {
+		db = s.DB.Where(sql, wrappers...)
+	}
+
+	if err = db.Model(&entity.SharedNodeGroup{}).Preload("GroupNodes").Preload("GroupPolicies").Count(&result.Total).Offset(params.Size * (params.Page - 1)).Limit(params.Size).Find(&groups).Error; err != nil {
+		return nil, err
+	}
+
+	for _, group := range groups {
+		sharedGroupVo := &vo.SharedNodeGroupVo{
+			GroupRelationVo: nil,
+			ModelVo: vo.ModelVo{
+				ID: group.ID,
+			},
+			Name:        group.GroupName,
+			NodeCount:   0,
+			Status:      group.AcceptStatus.String(),
+			Description: group.Description,
+		}
+
+		groupRelationVo := vo.NewGroupRelationVo()
+		sharedGroupVo.GroupRelationVo = groupRelationVo
+
+		// fill group nodes
+		if len(group.GroupNodes) > 0 {
+			sharedGroupVo.GroupNodes = make([]vo.GroupNodeVo, 0)
+			for _, node := range group.GroupNodes {
+				sharedGroupVo.GroupNodes = append(sharedGroupVo.GroupNodes, vo.GroupNodeVo{
+					NodeId:   node.NodeId,
+					NodeName: node.NodeName,
+				})
+				sharedGroupVo.NodeCount++
+				groupRelationVo.NodeValues[fmt.Sprintf("%d", node.NodeId)] = node.NodeName // for tom-select show, use nodeId as key
+			}
+
+		}
+
+		// fill group policies
+		if len(group.GroupPolicies) > 0 {
+			sharedGroupVo.GroupPolicies = make([]vo.GroupPolicyVo, 0)
+			for _, policy := range group.GroupPolicies {
+				sharedGroupVo.GroupPolicies = append(sharedGroupVo.GroupPolicies, vo.GroupPolicyVo{
+					PolicyId:   policy.PolicyId,
+					PolicyName: policy.PolicyName,
+				})
+				sharedGroupVo.NodeCount++
+
+				groupRelationVo.PolicyValues[fmt.Sprintf("%d", policy.PolicyId)] = policy.PolicyName // for tom-select show, use policyId as key
+			}
+		}
+
+		groupVos = append(groupVos, sharedGroupVo)
+
+	}
+
+	result.Data = groupVos
+	result.Page = params.Page
+	result.Size = params.Size
+
+	return result, nil
 }
