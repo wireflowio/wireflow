@@ -409,7 +409,7 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 		allNames = append(allNames, names...)
 
 		var labels []entity.Label
-		if err = tx.Model(&entity.Label{}).Where("id in ?", dto.NodeIdList).Find(&labels).Error; err != nil {
+		if err = tx.Model(&entity.Label{}).Where("id in ?", dto.LabelIdList).Find(&labels).Error; err != nil {
 			return err
 		}
 

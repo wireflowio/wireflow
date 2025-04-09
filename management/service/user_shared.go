@@ -3,12 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"gorm.io/gorm"
 	"linkany/management/dto"
 	"linkany/management/entity"
 	"linkany/management/utils"
 	"linkany/management/vo"
 	"linkany/pkg/log"
+
+	"gorm.io/gorm"
 )
 
 type SharedService interface {
@@ -23,6 +24,7 @@ type SharedService interface {
 	AddPolicyToGroup(ctx context.Context, dto *dto.NodeGroupDto) error
 	ListGroups(ctx context.Context, params *dto.SharedGroupParams) (*vo.PageVo, error)
 	ListNodes(ctx context.Context, params *dto.SharedNodeParams) (*vo.PageVo, error)
+	ListLabels(ctx context.Context, params *dto.SharedLabelParams) (*vo.PageVo, error)
 
 	// Shared Policy
 	GetSharedPolicy(ctx context.Context, id string) (*vo.SharedPolicyVo, error)
@@ -439,6 +441,47 @@ func (s *shareServiceImpl) ListNodes(ctx context.Context, params *dto.SharedNode
 	}
 
 	result.Data = nodeVos
+	result.Page = params.Page
+	result.Size = params.Size
+
+	return result, nil
+}
+
+func (s *shareServiceImpl) ListLabels(ctx context.Context, params *dto.SharedLabelParams) (*vo.PageVo, error) {
+	var (
+		err      error
+		labels   []entity.SharedLabel
+		db       *gorm.DB
+		labelVos []*vo.SharedLabelVo
+	)
+
+	result := new(vo.PageVo)
+	db = s.DB
+
+	sql, wrappers := utils.GenerateSql(params)
+	if sql != "" {
+		db = s.DB.Where(sql, wrappers...)
+	}
+
+	if err = db.Model(&entity.SharedLabel{}).Count(&result.Total).Offset(params.Size * (params.Page - 1)).Limit(params.Size).Find(&labels).Error; err != nil {
+		return nil, err
+	}
+
+	for _, label := range labels {
+		labelVos = append(labelVos, &vo.SharedLabelVo{
+			ID:          label.ID,
+			UserId:      label.UserId,
+			LabelId:     label.LabelId,
+			LabelName:   label.LabelName,
+			OwnerId:     label.OwnerId,
+			Description: label.Description,
+			GrantedAt:   label.GrantedAt.Time,
+			RevokedAt:   label.RevokedAt.Time,
+		})
+
+	}
+
+	result.Data = labelVos
 	result.Page = params.Page
 	result.Size = params.Size
 
