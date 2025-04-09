@@ -37,6 +37,8 @@ type InvitationEntity struct {
 	gorm.Model
 	InvitationId uint // invitation user id
 	InviteeId    uint // inviter user id
+	//belongs to User
+	User         User `gorm:"foreignKey:InviteeId"`
 	inviterName  string
 	inviteeName  string
 	AcceptStatus AcceptStatus //
