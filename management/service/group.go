@@ -255,9 +255,14 @@ func (g *groupServiceImpl) ListGroups(ctx context.Context, params *dto.GroupPara
 		groupVo := &vo.NodeGroupVo{
 			GroupRelationVo: nil,
 			ModelVo: vo.ModelVo{
-				ID: group.ID,
+				ID:        group.ID,
+				CreatedAt: group.CreatedAt,
+				UpdatedAt: group.UpdatedAt,
+				DeletedAt: group.DeletedAt.Time,
 			},
+			Name:        group.Name,
 			NodeCount:   0,
+			Status:      group.Status.String(),
 			Description: group.Description,
 		}
 
