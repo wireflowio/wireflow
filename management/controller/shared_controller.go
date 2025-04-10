@@ -58,3 +58,7 @@ func (s *SharedController) ListNodes(ctx context.Context, params *dto.SharedNode
 func (s *SharedController) ListLabels(ctx context.Context, params *dto.SharedLabelParams) (*vo.PageVo, error) {
 	return s.sharedService.ListLabels(ctx, params)
 }
+
+func (s *SharedController) ListPolicies(ctx context.Context, params *dto.SharedPolicyParams) (*vo.PageVo, error) {
+	return s.sharedService.ListPolicies(ctx, params)
+}
