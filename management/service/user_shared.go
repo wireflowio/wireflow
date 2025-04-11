@@ -342,6 +342,7 @@ func (s *shareServiceImpl) ListGroups(ctx context.Context, params *dto.SharedGro
 				ID: group.ID,
 			},
 			Name:        group.GroupName,
+			InviteId:    group.InviteId,
 			NodeCount:   0,
 			Status:      group.AcceptStatus.String(),
 			Description: group.Description,

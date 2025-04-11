@@ -11,14 +11,14 @@ import (
 
 func (s *Server) RegisterSharedRoutes() {
 	userGroup := s.RouterGroup.Group(PREFIX + "/shared")
-	userGroup.DELETE("/invite/:inviteId/label/:labelId", s.deleteSharedLabel())
-	userGroup.DELETE("/invite/:inviteId/group/:groupId", s.deleteSharedGroup())
-	userGroup.DELETE("/invite/:inviteId/node/:nodeId", s.deleteSharedNode())
-	userGroup.DELETE("/invite/:inviteId/policy/:policyId", s.deleteSharedPolicy())
+	userGroup.DELETE("/invite/:inviteId/label/:labelId", s.tokenFilter(), s.authFilter(), s.deleteSharedLabel())
+	userGroup.DELETE("/invite/:inviteId/group/:groupId", s.tokenFilter(), s.authFilter(), s.deleteSharedGroup())
+	userGroup.DELETE("/invite/:inviteId/node/:nodeId", s.tokenFilter(), s.authFilter(), s.deleteSharedNode())
+	userGroup.DELETE("/invite/:inviteId/policy/:policyId", s.tokenFilter(), s.authFilter(), s.deleteSharedPolicy())
 
 	// add node to group
-	userGroup.POST("/invite/:inviteId/group/:groupId/node/:nodeId", s.addNodeToGroup())
-	userGroup.POST("/invite/:inviteId/group/:groupId/policy/:policyId", s.addPolicyToGroup())
+	userGroup.POST("/invite/:inviteId/group/:groupId/node/:nodeId", s.tokenFilter(), s.authFilter(), s.addNodeToGroup())
+	userGroup.POST("/invite/:inviteId/group/:groupId/policy/:policyId", s.tokenFilter(), s.authFilter(), s.addPolicyToGroup())
 
 	// list
 	userGroup.GET("/group/list", s.tokenFilter(), s.listSharedGroups())

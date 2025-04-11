@@ -53,7 +53,7 @@ type InviteDto struct {
 	ID               uint
 	InviteeName      string
 	InviterName      string
-	InvitationId     int64
+	InvitationId     uint
 	InviteeId        int64
 	MobilePhone      string
 	Email            string

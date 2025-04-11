@@ -10,6 +10,7 @@ import (
 	"linkany/management/entity"
 	"linkany/management/utils"
 	"linkany/management/vo"
+	"linkany/pkg/linkerrors"
 	"linkany/pkg/log"
 )
 
@@ -33,7 +34,7 @@ type AccessPolicyService interface {
 	ListPolicyRules(ctx context.Context, params *dto.AccessPolicyRuleParams) (*vo.PageVo, error)
 
 	// Access control
-	CheckAccess(ctx context.Context, resourceType utils.ResourceType, resourceId uint, action string) (bool, error)
+	CheckAccess(ctx context.Context, resourceType utils.ResourceType, resourceId string, action string) (bool, error)
 	BatchCheckAccess(ctx context.Context, requests []AccessRequest) ([]AccessResult, error)
 
 	// Audit log
@@ -233,7 +234,7 @@ func (a accessPolicyServiceImpl) ListPolicyRules(ctx context.Context, params *dt
 	return result, nil
 }
 
-func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType utils.ResourceType, resourceId uint, action string) (bool, error) {
+func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType utils.ResourceType, resourceId string, action string) (bool, error) {
 	var (
 		err   error
 		count int64
@@ -304,7 +305,7 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 
 	//check whether user has permission
 	if count == 0 {
-		return false, errors.New("no permission")
+		return false, linkerrors.ErrNoAccessPermissions
 	}
 
 	return true, nil
