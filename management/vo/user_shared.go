@@ -8,6 +8,7 @@ type SharedNodeGroupVo struct {
 	*GroupRelationVo
 	ModelVo
 	Name        string `json:"name"`
+	GroupId     uint   `json:"groupId"`
 	InviteId    uint   `json:"inviteId"`
 	NodeCount   int    `json:"nodeCount"`
 	Status      string `json:"status"`
