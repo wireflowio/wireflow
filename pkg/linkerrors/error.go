@@ -19,4 +19,7 @@ var (
 	ErrorNotSameGroup      = errors.New("not in the same group")
 	ErrInvitationExists    = errors.New("invitation already exists")
 	ErrNoAccessPermissions = errors.New("no permissions to access this resource,please contact to resource owner")
+
+	ErrDeleteSharedGroup = errors.New("cannot delete shared group, please contact the owner")
+	ErrDeleteSharedNode  = errors.New("cannot delete shared node, please contact the owner")
 )

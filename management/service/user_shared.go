@@ -416,6 +416,7 @@ func (s *shareServiceImpl) ListNodes(ctx context.Context, params *dto.SharedNode
 			ID:          node.ID,
 			UserId:      node.UserId,
 			NodeId:      node.NodeId,
+			InviteId:    node.InviteId,
 			AppId:       node.Node.AppID,
 			Address:     node.Node.Address,
 			Name:        node.Node.Name,

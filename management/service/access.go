@@ -244,8 +244,8 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 	//check whether resource is own
 	switch resourceType {
 	case utils.Group:
-		var group entity.NodeGroup
-		if err = a.Model(&entity.NodeGroup{}).Where("id = ?", resourceId).Find(&group).Error; err != nil {
+		var group entity.SharedNodeGroup
+		if err = a.Model(&entity.SharedNodeGroup{}).Where("group_id = ?", resourceId).Find(&group).Error; err != nil {
 			return false, err
 		}
 
@@ -253,8 +253,8 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 			return true, nil
 		}
 	case utils.Policy:
-		var policy entity.NodeGroup
-		if err = a.Model(&entity.AccessPolicy{}).Where("id = ?", resourceId).Find(&policy).Error; err != nil {
+		var policy entity.SharedPolicy
+		if err = a.Model(&entity.SharedPolicy{}).Where("policy_id = ?", resourceId).Find(&policy).Error; err != nil {
 			return false, err
 		}
 
@@ -263,8 +263,8 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 		}
 
 	case utils.Node:
-		var node entity.NodeGroup
-		if err = a.Model(&entity.Node{}).Where("id = ?", resourceId).Find(&node).Error; err != nil {
+		var node entity.SharedNode
+		if err = a.Model(&entity.SharedNode{}).Where("node_id = ?", resourceId).Find(&node).Error; err != nil {
 			return false, err
 		}
 
@@ -273,8 +273,8 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 		}
 
 	case utils.Label:
-		var label entity.Label
-		if err = a.Model(&entity.Label{}).Where("id = ?", resourceId).Find(&label).Error; err != nil {
+		var label entity.SharedLabel
+		if err = a.Model(&entity.SharedLabel{}).Where("label_id = ?", resourceId).Find(&label).Error; err != nil {
 			return false, err
 		}
 
@@ -284,7 +284,7 @@ func (a accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType u
 
 	case utils.Rule:
 		var rule entity.AccessRule
-		if err = a.Model(&entity.AccessRule{}).Where("id = ?", resourceId).Find(&rule).Error; err != nil {
+		if err = a.Model(&entity.AccessRule{}).Where("rule_id = ?", resourceId).Find(&rule).Error; err != nil {
 			return false, err
 		}
 

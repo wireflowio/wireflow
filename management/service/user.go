@@ -488,7 +488,7 @@ func addResourcePermission(tx *gorm.DB, inviteId uint, dto *dto.InviteDto) error
 				OwnerId:          sharedGroup.OwnerId,
 				InvitationId:     sharedGroup.UserId,
 				InviteId:         inviteId,
-				ResourceId:       sharedGroup.ID,
+				ResourceId:       sharedGroup.GroupId,
 				PermissionTexts:  names,
 				PermissionValues: values,
 				PermissionIds:    ids,
@@ -542,7 +542,7 @@ func createResourcePermission(params *createPermissonParams) error {
 // getActualPermission return names, values, ids, err
 func getActualPermission(tx *gorm.DB, resType utils.ResourceType, dto *dto.InviteDto) ([]string, []string, []uint, error) {
 	var permissions []entity.Permissions
-	if err := tx.Model(&entity.Permissions{}).Where("id in ? and permission_type = ?", dto.PermissionIdList, resType).Find(&permissions).Error; err != nil {
+	if err := tx.Model(&entity.Permissions{}).Where("id in ? and permission_type = ?", dto.PermissionIdList, resType.String()).Find(&permissions).Error; err != nil {
 		return nil, nil, nil, err
 	}
 
