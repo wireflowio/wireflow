@@ -2,6 +2,7 @@ package entity
 
 import (
 	"gorm.io/gorm"
+	"linkany/management/utils"
 	"linkany/management/vo"
 )
 
@@ -41,9 +42,9 @@ type Node struct {
 	TieBreaker          int64  `gorm:"column:tie_breaker" json:"tie_breaker"`
 	Ufrag               string `gorm:"column:ufrag;size:30" json:"ufrag"`
 	Owner               string
-	Pwd                 string     `gorm:"column:pwd;size:50" json:"pwd"`
-	Port                int        `gorm:"column:port" json:"port"`
-	Status              NodeStatus `gorm:"column:status" json:"status"`
+	Pwd                 string           `gorm:"column:pwd;size:50" json:"pwd"`
+	Port                int              `gorm:"column:port" json:"port"`
+	Status              utils.NodeStatus `gorm:"column:status" json:"status"`
 
 	Group      GroupNode   `gorm:"foreignKey:GroupId;"`
 	NodeLabels []NodeLabel `gorm:"foreignKey:NodeId;"`
