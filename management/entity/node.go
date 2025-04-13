@@ -2,6 +2,7 @@ package entity
 
 import (
 	"gorm.io/gorm"
+	"linkany/management/vo"
 )
 
 type GroupRoleType string
@@ -27,7 +28,7 @@ type Node struct {
 	Name                string `gorm:"column:name;size:20" json:"name"`
 	Description         string `gorm:"column:description;size:255" json:"description"`
 	CreatedBy           string `gorm:"column:created_by;size:64" json:"createdBy"` // ownerID
-	UserID              uint   `gorm:"column:user_id" json:"user_id"`
+	UserId              uint   `gorm:"column:user_id" json:"user_id"`
 	Hostname            string `gorm:"column:hostname;size:50" json:"hostname"`
 	AppID               string `gorm:"column:app_id;size:20" json:"app_id"`
 	Address             string `gorm:"column:address;size:50" json:"address"`
@@ -52,33 +53,6 @@ type ListNode struct {
 	Node
 	GroupName string `gorm:"column:group_name;size:50" json:"groupName"`
 	LabelName string `gorm:"column:labels;size:256" json:"labels"`
-}
-
-type NodeStatus int
-
-const (
-	Unregisterd NodeStatus = iota
-	Registered
-	Online
-	Offline
-	Disabled
-)
-
-func (n NodeStatus) String() string {
-	switch n {
-	case Unregisterd:
-		return "unregistered"
-	case Registered:
-		return "registered"
-	case Online:
-		return "online"
-	case Offline:
-		return "offline"
-	case Disabled:
-		return "disabled"
-	default:
-		return "unknown"
-	}
 }
 
 func (Node) TableName() string {
@@ -106,7 +80,7 @@ func (NodeGroup) TableName() string {
 	return "la_group"
 }
 
-// GroupMember relationship between Group and Member
+// GroupMember relationship between GroupVo and Member
 type GroupMember struct {
 	gorm.Model
 	GroupID   uint   `gorm:"column:group_id;size:20" json:"groupId"`
@@ -123,7 +97,7 @@ func (GroupMember) TableName() string {
 	return "la_group_member"
 }
 
-// GroupNode relationship between Group and Node
+// GroupNode relationship between GroupVo and Node
 type GroupNode struct {
 	gorm.Model
 	GroupId   uint   `gorm:"column:group_id;size:20" json:"groupId"`
@@ -137,7 +111,7 @@ func (GroupNode) TableName() string {
 	return "la_group_node"
 }
 
-// GroupPolicy relationship between Group and Policy
+// GroupPolicy relationship between GroupVo and Policy
 type GroupPolicy struct {
 	gorm.Model
 	GroupId     uint
@@ -149,4 +123,27 @@ type GroupPolicy struct {
 
 func (GroupPolicy) TableName() string {
 	return "la_group_policy"
+}
+
+func (node Node) TransferToNodeVo() *vo.NodeVo {
+	return &vo.NodeVo{
+		ID:                  node.ID,
+		Name:                node.Name,
+		Description:         node.Description,
+		CreatedBy:           node.CreatedBy,
+		UserId:              node.UserId,
+		Hostname:            node.Hostname,
+		AppID:               node.AppID,
+		Address:             node.Address,
+		Endpoint:            node.Endpoint,
+		PersistentKeepalive: node.PersistentKeepalive,
+		PublicKey:           node.PublicKey,
+		AllowedIPs:          node.AllowedIPs,
+		RelayIP:             node.RelayIP,
+		TieBreaker:          node.TieBreaker,
+		Ufrag:               node.Ufrag,
+		Pwd:                 node.Pwd,
+		Port:                node.Port,
+		Status:              node.Status,
+	}
 }
