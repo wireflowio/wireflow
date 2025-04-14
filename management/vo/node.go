@@ -3,13 +3,11 @@ package vo
 import (
 	"linkany/management/utils"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type GroupVo struct {
 	*GroupRelationVo
-	ID        uint   `json:"id"`
+	ID        uint64 `json:"id"`
 	Name      string `json:"name"`
 	NodeCount int    `json:"nodeCount"`
 
@@ -18,7 +16,7 @@ type GroupVo struct {
 	Status        string          `json:"status"`
 	Description   string          `json:"description"`
 	CreatedAt     time.Time       `json:"createdAt"`
-	DeletedAt     gorm.DeletedAt  `json:"deletedAt"`
+	DeletedAt     utils.NullTime  `json:"deletedAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 	CreatedBy     string          `json:"createdBy"`
 	UpdatedBy     string          `json:"updatedBy"`
@@ -56,12 +54,12 @@ func NewLabelResourceVo() *LabelResourceVo {
 }
 
 type NodeVo struct {
-	ID                  uint             `json:"id,string"`
+	ID                  uint64           `json:"id,string"`
 	Name                string           `json:"name,omitempty"`
 	Description         string           `json:"description,omitempty"`
-	GroupID             uint             `json:"groupID,omitempty"`   // belong to which group
+	GroupID             uint64           `json:"groupID,omitempty"`   // belong to which group
 	CreatedBy           string           `json:"createdBy,omitempty"` // ownerID
-	UserId              uint             `json:"userId,omitempty"`
+	UserId              uint64           `json:"userId,omitempty"`
 	Hostname            string           `json:"hostname,omitempty"`
 	AppID               string           `json:"appId,omitempty"`
 	Address             string           `json:"address,omitempty"`

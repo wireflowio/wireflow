@@ -48,14 +48,14 @@ type Message struct {
 }
 
 type GroupMessage struct {
-	GroupId   uint
+	GroupId   uint64
 	GroupName string
 	Nodes     []*NodeVo
 	Policies  []*PolicyMessage
 }
 
 type PolicyMessage struct {
-	PolicyId   uint
+	PolicyId   uint64
 	PolicyName string
 	Rules      []*AccessRuleVo
 }

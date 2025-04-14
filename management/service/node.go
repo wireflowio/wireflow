@@ -122,7 +122,7 @@ func (p *nodeServiceImpl) CreateAppId(ctx context.Context) (*entity.Node, error)
 
 	peer := &entity.Node{
 		AppID:     utils.GenerateUUID(),
-		UserId:    userId.(uint),
+		UserId:    userId.(uint64),
 		CreatedBy: username.(string),
 	}
 
@@ -613,18 +613,18 @@ func (p *nodeServiceImpl) AddNodeLabel(ctx context.Context, dto *dto.NodeLabelUp
 		if label == nil {
 			return errors.New("invalid label")
 		}
-		labelId, err := strconv.Atoi(value)
+		labelId, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return err
 		}
-		nodeId, err := strconv.Atoi(dto.Id)
+		nodeId, err := strconv.ParseUint(dto.Id, 10, 64)
 		if err != nil {
 			return err
 		}
 		nodeLabel := &entity.NodeLabel{
-			LabelId:   uint(labelId),
+			LabelId:   labelId,
 			LabelName: label.Label,
-			NodeId:    uint(nodeId),
+			NodeId:    nodeId,
 			CreatedBy: dto.CreatedBy,
 		}
 		if err := p.Create(nodeLabel).Error; err != nil {

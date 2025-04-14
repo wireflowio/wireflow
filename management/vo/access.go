@@ -6,9 +6,9 @@ import (
 )
 
 type AccessPolicyVo struct {
-	ID          uint         `json:"id"`
+	ID          uint64       `json:"id"`
 	Name        string       `json:"name"`                  // 策略名称
-	GroupID     uint         `json:"group_id"`              // 所属分组
+	GroupID     uint64       `json:"group_id"`              // 所属分组
 	Priority    int          `json:"priority"`              // 策略优先级（数字越大优先级越高）
 	Effect      string       `json:"effect"`                // 效果：allow/deny
 	Description string       `json:"description,omitempty"` // 策略描述
@@ -23,9 +23,9 @@ type AccessPolicyVo struct {
 }
 
 type AccessRuleVo struct {
-	ID         uint           `json:"id"`
+	ID         uint64         `json:"id"`
 	RuleType   utils.RuleType `json:"ruleType"`             // 规则类型
-	PolicyID   uint           `json:"policyId"`             // 所属策略ID
+	PolicyID   uint64         `json:"policyId"`             // 所属策略ID
 	SourceType string         `json:"sourceType"`           // 源类型：node/tag/all
 	SourceID   string         `json:"sourceId"`             // 源标识（节点ID或标签）
 	TargetType string         `json:"targetType"`           // 目标类型：node/tag/all

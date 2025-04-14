@@ -336,7 +336,7 @@ func (g *groupServiceImpl) QueryGroups(ctx context.Context, params *dto.GroupPar
 	return nodeVos, nil
 }
 
-func (g *groupServiceImpl) fetchNodeAndGroup(groupId uint) (*vo.GroupRelationVo, error) {
+func (g *groupServiceImpl) fetchNodeAndGroup(groupId uint64) (*vo.GroupRelationVo, error) {
 	// query group node
 	var groupNodes []entity.GroupNode
 	var err error
