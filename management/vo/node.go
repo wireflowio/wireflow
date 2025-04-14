@@ -1,6 +1,7 @@
 package vo
 
 import (
+	"gorm.io/gorm"
 	"linkany/management/utils"
 	"time"
 )
@@ -16,7 +17,7 @@ type GroupVo struct {
 	Status        string          `json:"status"`
 	Description   string          `json:"description"`
 	CreatedAt     time.Time       `json:"createdAt"`
-	DeletedAt     utils.NullTime  `json:"deletedAt"`
+	DeletedAt     gorm.DeletedAt  `json:"deletedAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 	CreatedBy     string          `json:"createdBy"`
 	UpdatedBy     string          `json:"updatedBy"`
