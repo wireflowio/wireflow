@@ -1,9 +1,10 @@
 package vo
 
 import (
-	"gorm.io/gorm"
 	"linkany/management/utils"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type GroupVo struct {
@@ -75,5 +76,7 @@ type NodeVo struct {
 	Port                int              `json:"port"`
 	Status              utils.NodeStatus `json:"status"`
 	GroupName           string           `json:"groupName"`
+	Version             uint64           `json:"version"`
+	LastUpdatedAt       time.Time        `json:"lastUpdatedAt"`
 	*LabelResourceVo
 }
