@@ -218,6 +218,7 @@ func (p *nodeServiceImpl) ListNodes(params *dto.QueryParams) (*vo.PageVo, error)
 			Pwd:                 node.Pwd,
 			Port:                node.Port,
 			Status:              node.Status,
+			ActiveStatus:        node.ActiveStatus,
 			//GroupName:           node.GroupName,
 			//LabelValues:         labelValue,
 		}
