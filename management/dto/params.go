@@ -11,8 +11,8 @@ type QueryParams struct {
 	Name    *string `json:"name" form:"name"`
 	PubKey  *string `json:"pubKey" form:"pubKey"`
 	UserId  string  `json:"userId" form:"userId"`
-	Page    int     `json:"page" form:"page"`
-	Size    int     `json:"size" form:"size"`
+	Page    *int    `json:"page" form:"page"`
+	Size    *int    `json:"size" form:"size"`
 	Status  *int
 }
 
@@ -35,12 +35,9 @@ func (p *QueryParams) Generate() []*utils.KeyValue {
 		result = append(result, utils.NewKeyValue("status", *p.Status))
 	}
 
-	if p.Page == 0 {
-		p.Page = utils.PageNo
-	}
-
-	if p.Size == 0 {
-		p.Size = utils.PageSize
+	// if over 50, set to default
+	if *p.Size > 50 {
+		*p.Size = utils.PageSize
 	}
 
 	return result
