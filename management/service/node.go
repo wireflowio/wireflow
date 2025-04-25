@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"linkany/management/dto"
 	"linkany/management/entity"
-	"linkany/management/grpc/mgt"
 	"linkany/management/repository"
 	"linkany/management/utils"
 	"linkany/management/vo"
@@ -21,11 +20,11 @@ import (
 type NodeService interface {
 	Register(ctx context.Context, e *dto.NodeDto) (*entity.Node, error)
 	CreateAppId(ctx context.Context) (*entity.Node, error)
-	Update(ctx context.Context, e *dto.NodeDto) (*entity.Node, error)
+	Update(ctx context.Context, e *dto.NodeDto) error
 	DeleteNode(ctx context.Context, appId string) error
 
 	// GetByAppId returns a peer by appId, every client has its own appId
-	GetByAppId(appId, userid string) (*entity.Node, int64, error)
+	GetByAppId(ctx context.Context, appId string) (*entity.Node, error)
 
 	GetById(ctx context.Context, nodeId uint64) (*entity.Node, error)
 
@@ -33,36 +32,36 @@ type NodeService interface {
 
 	// List returns a list of peers by userId，when client start up, it will call this method to get all the peers once
 	// after that, it will call Watch method to get the latest peers
-	ListNodes(params *dto.QueryParams) (*vo.PageVo, error)
+	ListNodes(ctx context.Context, params *dto.QueryParams) (*vo.PageVo, error)
 
-	QueryNodes(params *dto.QueryParams) ([]*vo.NodeVo, error)
+	QueryNodes(ctx context.Context, params *dto.QueryParams) ([]*vo.NodeVo, error)
 
 	// Watch returns a channel that will be used to send the latest peers to the client
 	//Watch() (<-chan *entity.Node, error)
 
 	//GroupVo memeber
 	AddGroupMember(ctx context.Context, dto *dto.GroupMemberDto) error
-	RemoveGroupMember(ctx context.Context, ID string) error
+	RemoveGroupMember(ctx context.Context, id uint64) error
 	UpdateGroupMember(ctx context.Context, dto *dto.GroupMemberDto) error
 	ListGroupMembers(ctx context.Context, params *dto.GroupMemberParams) (*vo.PageVo, error)
 
 	//Node Label
 	AddLabel(ctx context.Context, dto *dto.TagDto) error
 	UpdateLabel(ctx context.Context, dto *dto.TagDto) error
-	DeleteLabel(ctx context.Context, id string) error
+	DeleteLabel(ctx context.Context, id uint64) error
 	ListLabel(ctx context.Context, params *dto.LabelParams) (*vo.PageVo, error)
-	QueryLabels(ctx context.Context, params *dto.NodeLabelParams) ([]*vo.LabelVo, error)
-	GetLabel(ctx context.Context, id string) (*entity.Label, error)
+	QueryLabels(ctx context.Context, params *dto.LabelParams) ([]*vo.LabelVo, error)
+	GetLabel(ctx context.Context, id uint64) (*entity.Label, error)
 
 	//GroupVo Node
 	AddGroupNode(ctx context.Context, dto *dto.GroupNodeDto) error
-	RemoveGroupNode(ctx context.Context, id string) error
+	RemoveGroupNode(ctx context.Context, id uint64) error
 	ListGroupNodes(ctx context.Context, params *dto.GroupNodeParams) (*vo.PageVo, error)
-	GetGroupNode(ctx context.Context, id string) (*entity.GroupNode, error)
+	GetGroupNode(ctx context.Context, id uint64) (*entity.GroupNode, error)
 
 	//Node Label
 	AddNodeLabel(ctx context.Context, dto *dto.NodeLabelUpdateReq) error
-	RemoveNodeLabel(ctx context.Context, nodeId, labelId string) error
+	RemoveNodeLabel(ctx context.Context, nodeId, labelId uint64) error
 	ListNodeLabels(ctx context.Context, params *dto.NodeLabelParams) (*vo.PageVo, error)
 }
 
@@ -74,12 +73,18 @@ type nodeServiceImpl struct {
 	logger          *log.Logger
 	nodeRepo        repository.NodeRepository
 	groupMemberRepo repository.GroupMemberRepository
+	groupNodeRepo   repository.GroupNodeRepository
+	labelRepo       repository.LabelRepository
+	nodeLabelRepo   repository.NodeLabelRepository
 }
 
 func NewNodeService(db *gorm.DB) NodeService {
 	return &nodeServiceImpl{
 		nodeRepo:        repository.NewNodeRepository(db),
 		groupMemberRepo: repository.NewGroupMemberRepository(db),
+		labelRepo:       repository.NewLabelRepository(db),
+		groupNodeRepo:   repository.NewGroupNodeRepository(db),
+		nodeLabelRepo:   repository.NewNodeLabelRepository(db),
 		logger:          log.NewLogger(log.Loglevel, "peermapper")}
 }
 
@@ -140,17 +145,20 @@ func (n *nodeServiceImpl) CreateAppId(ctx context.Context) (*entity.Node, error)
 	return peer, nil
 }
 
-func (n *nodeServiceImpl) Update(e *dto.NodeDto) (*entity.Node, error) {
-	var node entity.Node
+func (n *nodeServiceImpl) Update(ctx context.Context, dto *dto.NodeDto) error {
+	return n.nodeRepo.Update(ctx, &entity.Node{
+		Description: dto.Description,
+		UserId:      dto.UserID,
+		Name:        dto.Name,
+	})
 
-	return &node, nil
 }
 
 func (n *nodeServiceImpl) DeleteNode(ctx context.Context, appId string) error {
 	return n.nodeRepo.DeleteByAppId(ctx, appId)
 }
 
-func (n *nodeServiceImpl) GetByAppId(ctx context.Context, appId, userId string) (*entity.Node, error) {
+func (n *nodeServiceImpl) GetByAppId(ctx context.Context, appId string) (*entity.Node, error) {
 	return n.nodeRepo.FindByAppId(ctx, appId)
 }
 
@@ -170,9 +178,9 @@ func (n *nodeServiceImpl) ListNodes(ctx context.Context, params *dto.QueryParams
 
 	vos := transferToVos(nodes)
 	result.Data = vos
-	result.Page = *params.Page
-	result.Size = *params.Size
-	result.Current = *params.Page
+	result.Page = params.Page
+	result.Size = params.Size
+	result.Current = params.Page
 
 	return result, nil
 }
@@ -305,38 +313,28 @@ func (n *nodeServiceImpl) RemoveGroupMember(ctx context.Context, groupMemberId u
 }
 
 func (n *nodeServiceImpl) ListGroupMembers(ctx context.Context, params *dto.GroupMemberParams) (*vo.PageVo, error) {
-	var groupMember []*entity.GroupMember
+	var (
+		groupMember []*entity.GroupMember
+		count       int64
+		err         error
+	)
 
 	result := new(vo.PageVo)
-	sql, wrappers := utils.Generate(params)
-	db := n.DB
-	if sql != "" {
-		db = db.Where(sql, wrappers)
-	}
-
-	if err := db.Model(&entity.GroupMember{}).Count(&result.Total).Error; err != nil {
-		return nil, err
-	}
-
-	n.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
-	if err := db.Model(&entity.GroupMember{}).Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&groupMember).Error; err != nil {
+	groupMember, count, err = n.groupMemberRepo.List(ctx, params)
+	if err != nil {
 		return nil, err
 	}
 	result.Data = groupMember
+	result.Page = params.Page
+	result.Size = params.Size
+	result.Current = params.Page
+	result.Total = count
 
 	return result, nil
 }
 
 func (n *nodeServiceImpl) UpdateGroupMember(ctx context.Context, dto *dto.GroupMemberDto) error {
-	member := entity.GroupMember{
-		Role:      dto.Role,
-		Status:    dto.Status,
-		UpdatedBy: dto.UpdatedBy,
-	}
-	if err := n.Model(&entity.GroupMember{}).Where("id = ?", dto.ID).Updates(&member).Error; err != nil {
-		return err
-	}
-	return nil
+	return n.groupMemberRepo.Update(ctx, dto)
 }
 
 // Node Tags
@@ -345,54 +343,33 @@ func (n *nodeServiceImpl) AddLabel(ctx context.Context, dto *dto.TagDto) error {
 	if len(label) != 2 || len(label[0]) == 0 || len(label[1]) == 0 {
 		return errors.New("invalid label")
 	}
-	var (
-		count int64
-		err   error
-	)
-	if err = n.Model(&entity.Label{}).Where("label = ? and created_by = ?", dto.Label, dto.CreatedBy).Count(&count).Error; err != nil {
-		return err
-	}
-	if count != 0 {
-		return errors.New("label is exist")
-	}
 
-	return n.Create(&entity.Label{
+	// TODO add label exists check
+
+	return n.labelRepo.Create(ctx, &entity.Label{
 		Label:     dto.Label,
 		CreatedBy: dto.CreatedBy,
-	}).Error
+	})
 }
 
 func (n *nodeServiceImpl) UpdateLabel(ctx context.Context, dto *dto.TagDto) error {
-	var tag entity.Label
-	if err := n.Where("id = ?", dto.ID).Find(&tag).Error; err != nil {
-		return err
-	}
-
-	tag.Label = dto.Label
-	tag.UpdatedBy = dto.UpdatedBy
-	n.Save(tag)
-	return nil
+	return n.labelRepo.Update(ctx, dto)
 }
 
-func (n *nodeServiceImpl) DeleteLabel(ctx context.Context, id string) error {
-	return n.Where("id = ?", id).Delete(&entity.Label{}).Error
+func (n *nodeServiceImpl) DeleteLabel(ctx context.Context, id uint64) error {
+	return n.labelRepo.Delete(ctx, id)
 }
 
 func (n *nodeServiceImpl) ListLabel(ctx context.Context, params *dto.LabelParams) (*vo.PageVo, error) {
-	var labels []entity.Label
+	var (
+		labels []*entity.Label
+		count  int64
+		err    error
+	)
 
 	result := new(vo.PageVo)
-	sql, wrappers := utils.Generate(params)
-	db := n.DB
-	if sql != "" {
-		db = db.Where(sql, wrappers)
-	}
-
-	if err := db.Model(&entity.Label{}).Count(&result.Total).Error; err != nil {
-		return nil, err
-	}
-
-	if err := db.Model(&entity.Label{}).Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&labels).Error; err != nil {
+	labels, count, err = n.labelRepo.List(ctx, params)
+	if err != nil {
 		return nil, err
 	}
 
@@ -411,21 +388,25 @@ func (n *nodeServiceImpl) ListLabel(ctx context.Context, params *dto.LabelParams
 	result.Current = params.Page
 	result.Page = params.Page
 	result.Size = params.Size
+	result.Total = count
 
 	return result, nil
 }
 
-func (n *nodeServiceImpl) QueryLabels(ctx context.Context, params *dto.NodeLabelParams) ([]*vo.LabelVo, error) {
-	var labels []entity.Label
+func (n *nodeServiceImpl) QueryLabels(ctx context.Context, params *dto.LabelParams) ([]*vo.LabelVo, error) {
+	var (
+		labels []*entity.Label
+		err    error
+	)
 
-	sql, wrappers := utils.Generate(params)
-	db := n.DB
-	if sql != "" {
-		db = db.Where(sql, wrappers)
+	labels, err = n.labelRepo.Query(ctx, params)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := db.Model(&entity.Label{}).Find(&labels).Error; err != nil {
-		return nil, err
+	// TODO add label exists check
+	if len(labels) == 0 {
+		return nil, errors.New("no label found")
 	}
 
 	var labelVos []*vo.LabelVo
@@ -443,12 +424,8 @@ func (n *nodeServiceImpl) QueryLabels(ctx context.Context, params *dto.NodeLabel
 	return labelVos, nil
 }
 
-func (n *nodeServiceImpl) GetLabel(ctx context.Context, id string) (*entity.Label, error) {
-	var label entity.Label
-	if err := n.Where("id = ?", id).First(&label).Error; err != nil {
-		return nil, err
-	}
-	return &label, nil
+func (n *nodeServiceImpl) GetLabel(ctx context.Context, id uint64) (*entity.Label, error) {
+	return n.labelRepo.Find(ctx, id)
 }
 
 // GroupVo Node
@@ -459,76 +436,59 @@ func (n *nodeServiceImpl) AddGroupNode(ctx context.Context, dto *dto.GroupNodeDt
 		GroupName: dto.GroupName,
 		CreatedBy: dto.CreatedBy,
 	}
-	if err := n.Create(groupNode).Error; err != nil {
-		return err
-	}
-	return nil
+	return n.groupNodeRepo.Create(ctx, groupNode)
 }
 
-func (n *nodeServiceImpl) RemoveGroupNode(ctx context.Context, ID string) error {
-	if err := n.Where("id = ?", ID).Delete(&entity.GroupNode{}).Error; err != nil {
-		return err
-	}
-	return nil
+func (n *nodeServiceImpl) RemoveGroupNode(ctx context.Context, groupNodeId uint64) error {
+	return n.groupNodeRepo.Delete(ctx, groupNodeId)
 }
 
 func (n *nodeServiceImpl) ListGroupNodes(ctx context.Context, params *dto.GroupNodeParams) (*vo.PageVo, error) {
-	var groupNodes []*entity.GroupNode
+	var (
+		groupNodes []*entity.GroupNode
+		count      int64
+		err        error
+	)
 
 	result := new(vo.PageVo)
-	sql, wrappers := utils.Generate(params)
-	db := n.DB
-	if sql != "" {
-		db = db.Where(sql, wrappers)
-	}
-
-	if err := db.Model(&entity.GroupNode{}).Count(&result.Total).Error; err != nil {
-		return nil, err
-	}
-
-	n.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
-	if err := db.Model(&entity.GroupNode{}).Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&groupNodes).Error; err != nil {
+	groupNodes, count, err = n.groupNodeRepo.List(ctx, params)
+	if err != nil {
 		return nil, err
 	}
 	result.Data = groupNodes
+	result.Page = params.Page
+	result.Size = params.Size
+	result.Current = params.Page
+	result.Total = count
 
 	return result, nil
 }
 
-func (n *nodeServiceImpl) GetGroupNode(ctx context.Context, ID string) (*entity.GroupNode, error) {
-	var groupNode entity.GroupNode
-	if err := n.Where("id = ?", ID).First(&groupNode).Error; err != nil {
-		return nil, err
-	}
-	return &groupNode, nil
+func (n *nodeServiceImpl) GetGroupNode(ctx context.Context, groupNodeId uint64) (*entity.GroupNode, error) {
+	return n.groupNodeRepo.Find(ctx, groupNodeId)
 }
 
 // Node Label
 func (n *nodeServiceImpl) AddNodeLabel(ctx context.Context, dto *dto.NodeLabelUpdateReq) error {
-	//if len(dto.LabelEditData.Value) > 0 {
-	//	for i := 0; i < len(dto.LabelEditData.Value); i++ {
-	//		dto.LabelIds = strings.ReplaceAll(dto.LabelIds, dto.LabelEditData.Value[i], "")
-	//	}
-	//}
+
 	needAddLabelId := strings.Split(dto.LabelIds, ",")
 	if len(needAddLabelId) == 0 {
 		return nil
 	}
 	for index, value := range needAddLabelId {
 		fmt.Println("Index:", index, "Value:", value)
-		var (
-			label *entity.Label
-		)
-		if err := n.Model(&entity.Label{}).Where("id = ?", value).Find(&label).Error; err != nil {
-			return err
-		}
-		if label == nil {
-			return errors.New("invalid label")
-		}
 		labelId, err := strconv.ParseUint(value, 10, 64)
 		if err != nil {
 			return err
 		}
+		var (
+			label *entity.Label
+		)
+		label, err = n.labelRepo.Find(ctx, labelId)
+		if label == nil {
+			return errors.New("invalid label")
+		}
+
 		nodeId, err := strconv.ParseUint(dto.Id, 10, 64)
 		if err != nil {
 			return err
@@ -539,7 +499,8 @@ func (n *nodeServiceImpl) AddNodeLabel(ctx context.Context, dto *dto.NodeLabelUp
 			NodeId:    nodeId,
 			CreatedBy: dto.CreatedBy,
 		}
-		if err := n.Create(nodeLabel).Error; err != nil {
+
+		if err = n.nodeLabelRepo.Create(ctx, nodeLabel); err != nil {
 			return err
 		}
 	}
@@ -547,31 +508,26 @@ func (n *nodeServiceImpl) AddNodeLabel(ctx context.Context, dto *dto.NodeLabelUp
 
 }
 
-func (n *nodeServiceImpl) RemoveNodeLabel(ctx context.Context, nodeId, labelId string) error {
-	if err := n.Where("node_id = ? and label_id = ?", nodeId, labelId).Delete(&entity.NodeLabel{}).Error; err != nil {
-		return err
-	}
-	return nil
+func (n *nodeServiceImpl) RemoveNodeLabel(ctx context.Context, nodeId, labelId uint64) error {
+	return n.nodeLabelRepo.DeleteByLabelId(ctx, nodeId, labelId)
 }
 
 func (n *nodeServiceImpl) ListNodeLabels(ctx context.Context, params *dto.NodeLabelParams) (*vo.PageVo, error) {
-	var nodeLabels []*entity.NodeLabel
+	var (
+		nodeLabels []*entity.NodeLabel
+		count      int64
+		err        error
+	)
 
 	result := new(vo.PageVo)
-	sql, wrappers := utils.Generate(params)
-	db := n.DB
-	if sql != "" {
-		db = db.Where(sql, wrappers)
-	}
-
-	if err := db.Model(&entity.NodeLabel{}).Count(&result.Total).Error; err != nil {
+	nodeLabels, count, err = n.nodeLabelRepo.List(ctx, params)
+	if err != nil {
 		return nil, err
 	}
-
-	n.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
-	if err := db.Model(&entity.NodeLabel{}).Order("created_at DESC").Offset((params.Page - 1) * params.Size).Limit(params.Size).Find(&nodeLabels).Error; err != nil {
-		return nil, err
-	}
+	result.Total = count
+	result.Page = params.Page
+	result.Size = params.Size
+	result.Current = params.Page
 	result.Data = nodeLabels
 
 	return result, nil

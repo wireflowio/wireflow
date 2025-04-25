@@ -14,10 +14,10 @@ type GroupMemberRepository interface {
 	WithTx(tx *gorm.DB) GroupMemberRepository
 	Create(ctx context.Context, groupMember *entity.GroupMember) error
 	Delete(ctx context.Context, groupMemberId uint64) error
-	Update(ctx context.Context, groupMember *entity.GroupMember) error
+	Update(ctx context.Context, dto *dto.GroupMemberDto) error
 	Find(ctx context.Context, groupMemberId uint64) (*entity.Node, error)
 
-	ListNodes(ctx context.Context, params *dto.QueryParams) ([]*entity.Node, int64, error)
+	List(ctx context.Context, params *dto.GroupMemberParams) ([]*entity.GroupMember, int64, error)
 	QueryNodes(ctx context.Context, params *dto.QueryParams) ([]*entity.Node, error)
 }
 
@@ -49,8 +49,13 @@ func (r *groupMemberRepository) Delete(ctx context.Context, groupMemberId uint64
 	return r.db.WithContext(ctx).Delete(&entity.Node{}, groupMemberId).Error
 }
 
-func (r *groupMemberRepository) Update(ctx context.Context, e *entity.GroupMember) error {
-	return r.db.WithContext(ctx).Save(e).Error
+func (r *groupMemberRepository) Update(ctx context.Context, dto *dto.GroupMemberDto) error {
+	member := entity.GroupMember{
+		Role:      dto.Role,
+		Status:    dto.Status,
+		UpdatedBy: dto.UpdatedBy,
+	}
+	return r.db.WithContext(ctx).Model(&entity.GroupMember{}).Where("id = ?", dto.ID).Updates(&member).Error
 }
 
 func (r *groupMemberRepository) Find(ctx context.Context, nodeId uint64) (*entity.Node, error) {
@@ -62,32 +67,19 @@ func (r *groupMemberRepository) Find(ctx context.Context, nodeId uint64) (*entit
 	return &node, nil
 }
 
-func (r *groupMemberRepository) FindByAppId(ctx context.Context, appId string) (*entity.Node, error) {
-	var node *entity.Node
-	err := r.db.WithContext(ctx).Where("app_id = ?", appId).Find(&node).Error
-	if err != nil {
-		return nil, err
-	}
-	return node, nil
-}
-
-func (r *groupMemberRepository) ListNodes(ctx context.Context, params *dto.QueryParams) ([]*entity.Node, int64, error) {
+func (r *groupMemberRepository) List(ctx context.Context, params *dto.GroupMemberParams) ([]*entity.GroupMember, int64, error) {
 	var (
-		nodes    []*entity.Node
-		count    int64
-		sql      string
-		wrappers []interface{}
-		err      error
+		groupMembers []*entity.GroupMember
+		count        int64
+		sql          string
+		wrappers     []interface{}
+		err          error
 	)
 
 	//1.base query
-	query := r.db.WithContext(ctx).Model(&entity.Node{}).Preload("NodeLabels").Preload("Group")
+	query := r.db.WithContext(ctx).Model(&entity.GroupMember{})
 
-	if params.Keyword != nil {
-		sql, wrappers = utils.GenerateSql(params)
-	} else {
-		sql, wrappers = utils.Generate(params)
-	}
+	sql, wrappers = utils.Generate(params)
 	r.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
 
 	//2. add filter params
@@ -105,11 +97,11 @@ func (r *groupMemberRepository) ListNodes(ctx context.Context, params *dto.Query
 	}
 
 	//5. query
-	if err := query.Find(&nodes).Error; err != nil {
+	if err := query.Find(&groupMembers).Error; err != nil {
 		return nil, 0, err
 	}
 
-	return nodes, count, nil
+	return groupMembers, count, nil
 }
 
 func (r *groupMemberRepository) QueryNodes(ctx context.Context, params *dto.QueryParams) ([]*entity.Node, error) {
