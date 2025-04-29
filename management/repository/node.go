@@ -36,7 +36,8 @@ type nodeRepository struct {
 
 func NewNodeRepository(db *gorm.DB) NodeRepository {
 	return &nodeRepository{
-		db: db,
+		db:     db,
+		logger: log.NewLogger(log.Loglevel, "node-repository"),
 	}
 }
 
@@ -99,7 +100,7 @@ func (r *nodeRepository) ListNodes(ctx context.Context, params *dto.QueryParams)
 	query := r.db.WithContext(ctx).Model(&entity.Node{}).Preload("NodeLabels").Preload("Group")
 
 	if params.Keyword != nil {
-		sql, wrappers = utils.GenerateSql(params)
+		sql, wrappers = utils.GenerateLikeSql(params)
 	} else {
 		sql, wrappers = utils.Generate(params)
 	}
@@ -115,7 +116,7 @@ func (r *nodeRepository) ListNodes(ctx context.Context, params *dto.QueryParams)
 
 	//4. add pagination
 	if params.Page != nil {
-		offset := (*params.Size - 1) * *params.Size
+		offset := (*params.Page - 1) * *params.Size
 		query = query.Offset(offset).Limit(*params.Size)
 	}
 
@@ -133,7 +134,7 @@ func (r *nodeRepository) QueryNodes(ctx context.Context, params *dto.QueryParams
 	var wrappers []interface{}
 
 	if params.Keyword != nil {
-		sql, wrappers = utils.GenerateSql(params)
+		sql, wrappers = utils.GenerateLikeSql(params)
 	} else {
 		sql, wrappers = utils.Generate(params)
 	}

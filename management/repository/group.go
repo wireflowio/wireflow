@@ -83,13 +83,15 @@ func (r *groupRepository) List(ctx context.Context, params *dto.GroupParams) ([]
 	)
 
 	//1.base query
-	query := r.db.WithContext(ctx).Model(&entity.GroupNode{})
+	query := r.db.WithContext(ctx).Model(&entity.NodeGroup{})
 
 	sql, wrappers = utils.Generate(params)
 	r.logger.Verbosef("sql: %s, wrappers: %v", sql, wrappers)
 
 	//2. add filter params
-	query = query.Where(sql, wrappers)
+	if wrappers != nil {
+		query = query.Where(sql, wrappers)
+	}
 
 	//3.got total
 	if err = query.Count(&count).Error; err != nil {
