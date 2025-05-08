@@ -26,6 +26,8 @@ func (s *Server) authFilter() gin.HandlerFunc {
 			resType = utils.Policy
 		case "node":
 			resType = utils.Node
+		case "rule":
+			resType = utils.Rule
 		case "label":
 			resType = utils.Label
 		default:

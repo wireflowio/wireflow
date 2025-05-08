@@ -202,7 +202,7 @@ func (r *sharedRepository) ListNode(ctx context.Context, params *dto.SharedNodeP
 		count int64
 	)
 	sql, wrappers := utils.Generate(params)
-	query := r.db.WithContext(ctx).Model(&entity.SharedNode{}).Preload("NodeLabels")
+	query := r.db.WithContext(ctx).Model(&entity.SharedNode{}).Preload("NodeLabels").Preload("Node")
 
 	if sql != "" {
 		query = query.Where(sql, wrappers)
