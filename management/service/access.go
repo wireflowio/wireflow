@@ -259,7 +259,8 @@ func (a *accessPolicyServiceImpl) ListPolicyRules(ctx context.Context, params *d
 
 	var vos []*vo.AccessRuleVo
 	for _, rule := range rules {
-		vos = append(vos, &vo.AccessRuleVo{
+
+		ruleVo := &vo.AccessRuleVo{
 			ID:         rule.ID,
 			Name:       "",
 			RuleType:   rule.RuleType,
@@ -273,7 +274,54 @@ func (a *accessPolicyServiceImpl) ListPolicyRules(ctx context.Context, params *d
 			Conditions: rule.Conditions,
 			CreatedAt:  rule.CreatedAt,
 			UpdatedAt:  rule.UpdatedAt,
-		})
+		}
+
+		if rule.SourceNode != nil {
+			// node resource vo
+			nodeResourceVo := new(vo.NodeResourceVo)
+
+			nodeValues := make(map[string]string, 1)
+			nodeValues[fmt.Sprintf("%d", rule.SourceNode.ID)] = rule.SourceNode.Name
+			nodeResourceVo.NodeValues = nodeValues
+
+			ruleVo.SourceNodeValues = nodeResourceVo
+
+		}
+
+		if rule.TargetNode != nil {
+			// node resource vo
+			nodeResourceVo := new(vo.NodeResourceVo)
+
+			nodeValues := make(map[string]string, 1)
+			nodeValues[fmt.Sprintf("%d", rule.TargetNode.ID)] = rule.TargetNode.Name
+			nodeResourceVo.NodeValues = nodeValues
+
+			ruleVo.TargetNodeValues = nodeResourceVo
+		}
+
+		if rule.SourceLabel != nil {
+			// node resource vo
+			labelResourceVo := new(vo.LabelResourceVo)
+
+			nodeValues := make(map[string]string, 1)
+			nodeValues[fmt.Sprintf("%d", rule.SourceLabel.ID)] = rule.SourceLabel.Label
+			labelResourceVo.LabelValues = nodeValues
+
+			ruleVo.SourceLabelValues = labelResourceVo
+		}
+
+		if rule.TargetLabel != nil {
+			// node resource vo
+			labelResourceVo := new(vo.LabelResourceVo)
+
+			nodeValues := make(map[string]string, 1)
+			nodeValues[fmt.Sprintf("%d", rule.TargetLabel.ID)] = rule.TargetLabel.Label
+			labelResourceVo.LabelValues = nodeValues
+
+			ruleVo.TargetLabelValues = labelResourceVo
+		}
+
+		vos = append(vos, ruleVo)
 	}
 
 	result.Data = vos

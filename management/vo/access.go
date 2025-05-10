@@ -40,8 +40,8 @@ type AccessRuleVo struct {
 	UpdatedBy  string         `json:"updatedBy"`
 	DeletedAt  time.Time      `json:"deletedAt"`
 
-	SourceNodeValues  *NodeResourceVo
-	TargetNodeValues  *NodeResourceVo
-	SourceLabelValues *LabelResourceVo
-	TargetLabelValues *LabelResourceVo
+	SourceNodeValues  *NodeResourceVo  `json:"sourceNodeValues"`
+	TargetNodeValues  *NodeResourceVo  `json:"targetNodeValues"`
+	SourceLabelValues *LabelResourceVo `json:"sourceLabelValues"`
+	TargetLabelValues *LabelResourceVo `json:"targetLabelValues"`
 }
