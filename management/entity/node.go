@@ -69,7 +69,7 @@ type NodeGroup struct {
 	OwnerId   uint64       `gorm:"column:owner_id;size:20" json:"ownerId"`
 	Owner     string       `gorm:"column:owner;size:64" json:"owner"`
 	IsPublic  bool         `gorm:"column:is_public" json:"isPublic"`
-	Status    ActiveStatus `gorm:"column:status" json:"status"` // 0: unapproved, 1: approved, 2: rejected
+	Status    utils.Status `gorm:"column:status" json:"status"` // 0: unapproved, 1: approved, 2: rejected
 	CreatedBy string       `gorm:"column:created_by;size:64" json:"createdBy"`
 	UpdatedBy string       `gorm:"column:updated_by;size:64" json:"updatedBy"`
 

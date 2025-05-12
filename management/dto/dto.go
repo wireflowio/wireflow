@@ -81,13 +81,14 @@ type InvitationDto struct {
 }
 
 type NodeGroupDto struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Owner       uint64 `json:"ownerId"`
-	IsPublic    bool   `json:"isPublic"`
-	CreatedBy   string `json:"createdBy"`
-	UpdatedBy   string `json:"updatedBy"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	Owner       uint64       `json:"ownerId"`
+	IsPublic    bool         `json:"isPublic"`
+	CreatedBy   string       `json:"createdBy"`
+	UpdatedBy   string       `json:"updatedBy"`
+	Status      utils.Status `json:"status"`
 
 	GroupRelationDto
 }
@@ -137,13 +138,14 @@ type AccessPolicyDto struct {
 
 type AccessRuleDto struct {
 	ID         uint64
-	PolicyID   uint64    `json:"policyId"`             // 所属策略ID
-	SourceType string    `json:"sourceType"`           // 源类型：node/label/all
-	SourceID   string    `json:"sourceId"`             // 源标识（节点ID或标签）
-	TargetType string    `json:"targetType"`           // 目标类型：node/label/all
-	TargetID   string    `json:"targetId"`             // 目标标识（节点ID或标签）
-	Actions    string    `json:"actions"`              // 允许的操作列表
-	Conditions Condition `json:"conditions,omitempty"` // 额外条件（如时间限制、带宽限制等）
+	PolicyID   uint64       `json:"policyId"`   // 所属策略ID
+	SourceType string       `json:"sourceType"` // 源类型：node/label/all
+	SourceID   string       `json:"sourceId"`   // 源标识（节点ID或标签）
+	TargetType string       `json:"targetType"` // 目标类型：node/label/all
+	TargetID   string       `json:"targetId"`   // 目标标识（节点ID或标签）
+	Actions    string       `json:"actions"`    // 允许的操作列表
+	Status     utils.Status `json:"status"`
+	Conditions Condition    `json:"conditions,omitempty"` // 额外条件（如时间限制、带宽限制等）
 }
 
 type Condition struct {
