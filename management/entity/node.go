@@ -41,9 +41,9 @@ type Node struct {
 	TieBreaker          int64  `gorm:"column:tie_breaker" json:"tie_breaker"`
 	Ufrag               string `gorm:"column:ufrag;size:30" json:"ufrag"`
 	Owner               string
-	Pwd                 string           `gorm:"column:pwd;size:50" json:"pwd"`
-	Port                int              `gorm:"column:port" json:"port"`
-	Status              utils.NodeStatus `gorm:"column:status" json:"status"`
+	Pwd                 string       `gorm:"column:pwd;size:50" json:"pwd"`
+	Port                int          `gorm:"column:port" json:"port"`
+	Status              utils.Status `gorm:"column:status" json:"status"`
 	ActiveStatus        utils.ActiveStatus
 
 	Group      GroupNode   `gorm:"foreignKey:GroupId;"`
@@ -66,7 +66,7 @@ type NodeGroup struct {
 	Name        string `gorm:"column:name;size:64" json:"name"`
 	Description string `gorm:"column:description;size:255" json:"description"`
 
-	OwnerId   uint64       `gorm:"column:owner_id;size:20" json:"ownerId"`
+	OwnId     uint64       `gorm:"column:own_id;size:20" json:"ownerId"`
 	Owner     string       `gorm:"column:owner;size:64" json:"owner"`
 	IsPublic  bool         `gorm:"column:is_public" json:"isPublic"`
 	Status    utils.Status `gorm:"column:status" json:"status"` // 0: unapproved, 1: approved, 2: rejected

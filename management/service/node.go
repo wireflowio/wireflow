@@ -146,11 +146,7 @@ func (n *nodeServiceImpl) CreateAppId(ctx context.Context) (*entity.Node, error)
 }
 
 func (n *nodeServiceImpl) Update(ctx context.Context, dto *dto.NodeDto) error {
-	return n.nodeRepo.Update(ctx, &entity.Node{
-		Description: dto.Description,
-		UserId:      dto.UserID,
-		Name:        dto.Name,
-	})
+	return n.nodeRepo.Update(ctx, dto)
 
 }
 

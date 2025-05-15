@@ -15,7 +15,7 @@ type NodeRepository interface {
 	Create(ctx context.Context, node *entity.Node) error
 	Delete(ctx context.Context, nodeId uint64) error
 	DeleteByAppId(ctx context.Context, appId string) error
-	Update(ctx context.Context, node *entity.Node) error
+	Update(ctx context.Context, node *dto.NodeDto) error
 	Find(ctx context.Context, nodeId uint64) (*entity.Node, error)
 	FindIn(ctx context.Context, nodeIds []uint64) ([]*entity.Node, error)
 	FindByAppId(ctx context.Context, appId string) (*entity.Node, error)
@@ -60,14 +60,11 @@ func (r *nodeRepository) DeleteByAppId(ctx context.Context, appId string) error 
 	return r.db.WithContext(ctx).Where("app_id = ?", appId).Delete(&entity.Node{}).Error
 }
 
-func (r *nodeRepository) Update(ctx context.Context, e *entity.Node) error {
-	var node entity.Node
-	if err := r.db.WithContext(ctx).Where("public_key = ?", node.PublicKey).First(&node).Error; err != nil {
-		return err
-	}
-	node.Status = e.Status
-
-	return r.db.WithContext(ctx).Save(node).Error
+func (r *nodeRepository) Update(ctx context.Context, dto *dto.NodeDto) error {
+	return r.db.WithContext(ctx).Model(&entity.Node{}).Where("id = ?", dto.ID).Updates(map[string]interface{}{
+		"status": dto.Status,
+		"name":   dto.Name,
+	}).Error
 }
 
 func (r *nodeRepository) Find(ctx context.Context, nodeId uint64) (*entity.Node, error) {

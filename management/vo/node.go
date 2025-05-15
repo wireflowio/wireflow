@@ -74,7 +74,7 @@ type NodeVo struct {
 	Ufrag               string             `json:"ufrag"`
 	Pwd                 string             `json:"pwd"`
 	Port                int                `json:"port"`
-	Status              utils.NodeStatus   `json:"status"`
+	Status              utils.Status       `json:"status"`
 	ActiveStatus        utils.ActiveStatus `json:"activeStatus"`
 	GroupName           string             `json:"groupName"`
 	Version             uint64             `json:"version"`

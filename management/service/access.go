@@ -74,6 +74,7 @@ var (
 type accessPolicyServiceImpl struct {
 	logger             *log.Logger
 	db                 *gorm.DB
+	groupRepo          repository.GroupRepository
 	policyRepo         repository.PolicyRepository
 	ruleRepo           repository.RuleRepository
 	policyRuleRepo     repository.PolicyRuleRepository
@@ -88,6 +89,7 @@ func NewAccessPolicyService(db *gorm.DB) AccessPolicyService {
 	return &accessPolicyServiceImpl{
 		logger:             log.NewLogger(log.Loglevel, "access_policy_service"),
 		db:                 db,
+		groupRepo:          repository.NewGroupRepository(db),
 		policyRepo:         repository.NewPolicyRepository(db),
 		ruleRepo:           repository.NewRuleRepository(db),
 		permissionRepo:     repository.NewPermissionRepository(db),
@@ -399,6 +401,17 @@ func (a *accessPolicyServiceImpl) CheckAccess(ctx context.Context, resourceType 
 	//check shared
 	switch resourceType {
 	case utils.Group:
+		// first check own
+		_, count, err = a.groupRepo.List(ctx, &dto.GroupParams{
+			OwnId: &userId,
+		})
+
+		if err != nil || count == 0 {
+			return false, err
+		} else {
+			return true, nil
+		}
+
 		groups, count, err := a.sharedRepo.ListGroup(ctx, &dto.SharedGroupParams{
 			GroupParams: dto.GroupParams{
 				GroupId: resourceId,
