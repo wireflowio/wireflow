@@ -37,6 +37,7 @@ type NodeDto struct {
 	Pwd                 string       `gorm:"column:pwd;size:50" json:"pwd"`
 	Port                int          `gorm:"column:port" json:"port"`
 	Status              utils.Status `gorm:"column:status" json:"status"`
+	LabelIds            string       `gorm:"column:label_ids;size:50" json:"labelIds"`
 }
 
 // PlanDto is a data transfer object for Plan entity
