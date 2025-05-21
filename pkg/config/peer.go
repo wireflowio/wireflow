@@ -46,7 +46,7 @@ type Peer struct {
 	HostIP              string      `json:"hostIP,omitempty"`
 	SrflxIP             string      `json:"srflxIP,omitempty"`
 	RelayIP             string      `json:"relay_ip,omitempty"`
-	Status              int         `json:"status,omitempty"` // 1: online 0: offline
+	Status              string      `json:"status,omitempty"` // enabled, disabled
 }
 
 // DeviceConfig config for this device
