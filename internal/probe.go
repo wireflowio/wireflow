@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	drpgrpc "linkany/drp/grpc"
-	"linkany/pkg/config"
 	"linkany/pkg/log"
 	"linkany/turn/client"
 	"time"
@@ -48,6 +47,8 @@ type Probe interface {
 	GetLastCheck() time.Time
 
 	UpdateLastCheck()
+
+	SetConnectType(connType ConnectionType)
 }
 
 type ProbeManager interface {
@@ -63,14 +64,14 @@ type ProberConfig struct {
 	StunUri                 string
 	IsControlling           bool
 	IsForceRelay            bool
-	ConnType                ConnType
+	ConnType                ConnectionType
 	DirectChecker           Checker
 	RelayChecker            Checker
 	LocalKey                uint32
 	OfferManager            OfferHandler
 	WGConfiger              ConfigureManager
 	ProberManager           ProbeManager
-	NodeManager             *config.NodeManager
+	NodeManager             *NodeManager
 	From                    string
 	To                      string
 	TurnClient              *client.Client

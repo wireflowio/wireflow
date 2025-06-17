@@ -11,7 +11,6 @@ import (
 	"linkany/internal/direct"
 	"linkany/internal/drp"
 	"linkany/internal/relay"
-	"linkany/pkg/config"
 	"linkany/pkg/log"
 	"linkany/turn/client"
 	"net"
@@ -36,7 +35,7 @@ type offerHandler struct {
 	fn              func(key string, addr *net.UDPAddr) error
 	agentManager    internal.AgentManagerFactory
 	probeManager    internal.ProbeManager
-	nodeManager     *config.NodeManager
+	nodeManager     *internal.NodeManager
 
 	stunClient *client.Client
 	proxy      *drpclient.Proxy
@@ -56,7 +55,7 @@ type OfferHandlerConfig struct {
 	OfferManager    internal.OfferHandler
 	ProbeManager    internal.ProbeManager
 	Proxy           *drpclient.Proxy
-	NodeManager     *config.NodeManager
+	NodeManager     *internal.NodeManager
 }
 
 // NewOfferHandler create a new client

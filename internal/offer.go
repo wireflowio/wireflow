@@ -3,14 +3,13 @@ package internal
 import (
 	"encoding/json"
 	drpgrpc "linkany/drp/grpc"
-	"linkany/management/utils"
 )
 
 type Offer interface {
 	Marshal() (int, []byte, error)
 	OfferType() OfferType
 	TieBreaker() uint64
-	GetNode() *utils.NodeMessage
+	GetNode() *NodeMessage
 }
 
 type OfferHandler interface {
@@ -29,10 +28,10 @@ const (
 	OfferTypeRelayAnswer
 )
 
-type ConnType int
+type ConnectionType int
 
 const (
-	DirectType ConnType = iota
+	DirectType ConnectionType = iota
 	RelayType
 	DrpType
 )

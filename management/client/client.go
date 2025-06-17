@@ -10,7 +10,6 @@ import (
 	mgtclient "linkany/management/grpc/client"
 	"linkany/management/grpc/mgt"
 	grpcserver "linkany/management/grpc/server"
-	"linkany/management/utils"
 	"linkany/management/vo"
 	"linkany/pkg/config"
 	"linkany/pkg/linkerrors"
@@ -37,7 +36,7 @@ type Client struct {
 	logger          *log.Logger
 	keyManager      internal.KeyManager
 	signalChannel   chan *drpgrpc.DrpMessage
-	peersManager    *config.NodeManager
+	peersManager    *internal.NodeManager
 	stunUri         string
 	ifaceName       string
 	conf            *config.LocalConfig
@@ -59,7 +58,7 @@ type Client struct {
 
 type ClientConfig struct {
 	Logger          *log.Logger
-	PeersManager    *config.NodeManager
+	PeersManager    *internal.NodeManager
 	Conf            *config.LocalConfig
 	Agent           *ice.Agent
 	UdpMux          *ice.UDPMuxDefault
@@ -95,7 +94,7 @@ func NewClient(cfg *ClientConfig) *Client {
 }
 
 // RegisterToManagement will register device to linkany center
-func (c *Client) RegisterToManagement() (*config.DeviceConf, error) {
+func (c *Client) RegisterToManagement() (*internal.DeviceConf, error) {
 	// TODO implement this function
 	return nil, nil
 }
@@ -208,9 +207,9 @@ func (c *Client) GetNetMap() (*vo.NetworkMap, error) {
 	return &networkMap, nil
 }
 
-func (c *Client) ToConfigPeer(peer *utils.NodeMessage) *utils.NodeMessage {
+func (c *Client) ToConfigPeer(peer *internal.NodeMessage) *internal.NodeMessage {
 
-	return &utils.NodeMessage{
+	return &internal.NodeMessage{
 		PublicKey:           peer.PublicKey,
 		Endpoint:            peer.Endpoint,
 		Address:             peer.Address,
@@ -219,34 +218,34 @@ func (c *Client) ToConfigPeer(peer *utils.NodeMessage) *utils.NodeMessage {
 	}
 }
 
-func (c *Client) HandleWatchMessage(msg *utils.Message) error {
+func (c *Client) HandleWatchMessage(msg *internal.Message) error {
 	var err error
 
 	switch msg.EventType {
-	case utils.EventTypeGroupNodeRemove:
+	case internal.EventTypeGroupNodeRemove:
 		for _, node := range msg.GroupMessage.Nodes {
-			c.logger.Infof("watch received event type: %v, node: %v", utils.EventTypeGroupNodeRemove, node.String())
+			c.logger.Infof("watch received event type: %v, node: %v", internal.EventTypeGroupNodeRemove, node.String())
 			err := c.RemovePeer(node)
 			if err != nil {
 				c.logger.Errorf("remove node failed: %v", err)
 			}
 		}
-	case utils.EventTypeGroupNodeAdd:
+	case internal.EventTypeGroupNodeAdd:
 		for _, node := range msg.GroupMessage.Nodes {
-			c.logger.Infof("watch received event type: %v, node: %v", utils.EventTypeGroupNodeAdd, node.String())
+			c.logger.Infof("watch received event type: %v, node: %v", internal.EventTypeGroupNodeAdd, node.String())
 			if err = c.AddPeer(node); err != nil {
 				c.logger.Errorf("add node failed: %v", err)
 			}
 		}
-	case utils.EventTypeGroupAdd:
-		c.logger.Verbosef("watching received event type: %v >>> add group: %v", utils.EventTypeGroupAdd, msg.GroupMessage.GroupName)
+	case internal.EventTypeGroupAdd:
+		c.logger.Verbosef("watching received event type: %v >>> add group: %v", internal.EventTypeGroupAdd, msg.GroupMessage.GroupName)
 	}
 
 	return nil
 
 }
 
-func (c *Client) AddPeer(p *utils.NodeMessage) error {
+func (c *Client) AddPeer(p *internal.NodeMessage) error {
 	var (
 		err   error
 		probe internal.Probe
@@ -281,60 +280,79 @@ func (c *Client) AddPeer(p *utils.NodeMessage) error {
 		}
 	}
 
-	peer := c.ToConfigPeer(p)
-	mappedPeer := c.peersManager.GetPeer(peer.PublicKey)
+	node := c.ToConfigPeer(p)
+	mappedPeer := c.peersManager.GetPeer(node.PublicKey)
 	if mappedPeer == nil {
-		mappedPeer = peer
-		c.peersManager.AddPeer(peer.PublicKey, peer)
-		c.logger.Verbosef("add peer to local cache, key: %s, peer: %v", peer.PublicKey, peer)
+		mappedPeer = node
+		c.peersManager.AddPeer(node.PublicKey, node)
+		c.logger.Verbosef("add node to local cache, key: %s, node: %v", node.PublicKey, node)
 	}
 	// start probe when gather candidates finished
-	go c.doProbe(probe, peer)
+	go c.doProbe(probe, node, node.ConnectType)
 	return nil
 }
 
-func (c *Client) doProbe(prober internal.Probe, peer *utils.NodeMessage) {
-	errChan := make(chan error, 1)
+// doProbe will start a direct check to the node, if the peer is not connected, it will send drp offer to remote
+func (c *Client) doProbe(probe internal.Probe, peer *internal.NodeMessage, connectType internal.ConnectionType) {
+	errChan := make(chan error, 10)
 	limitRetries := 7
 	retries := 0
 	timer := time.NewTimer(1 * time.Second)
-	for {
-		if retries > limitRetries {
-			c.logger.Errorf("direct check until limit times")
-			errChan <- linkerrors.ErrProbeFailed
-			return
-		}
+	probe.SetConnectType(connectType)
 
-		select {
-		case <-timer.C:
-			switch prober.GetConnState() {
-			case internal.ConnectionStateConnected, internal.ConnectionStateFailed:
+	check := func() {
+		for {
+			if retries > limitRetries {
+				c.logger.Errorf("direct check until limit times")
+				errChan <- linkerrors.ErrProbeFailed
 				return
-			default:
-				switch prober.GetConnState() {
-				case internal.ConnectionStateChecking:
-					c.logger.Verbosef("peer %s is checking, skip direct check", peer.PublicKey)
-				case internal.ConnectionStateFailed, internal.ConnectionStateDisconnected, internal.ConnectionStateNew:
-					if err := prober.Start(c.keyManager.GetPublicKey(), peer.PublicKey); err != nil {
-						c.logger.Errorf("send directOffer failed: %v", err)
-						err = linkerrors.ErrProbeFailed
-						return
-					} else if prober.GetConnState() != internal.ConnectionStateConnected {
+			}
+
+			select {
+			case <-timer.C:
+				switch probe.GetConnState() {
+				case internal.ConnectionStateConnected, internal.ConnectionStateFailed:
+					return
+				default:
+					switch probe.GetConnState() {
+					case internal.ConnectionStateChecking:
+						c.logger.Verbosef("node %s is checking, skip direct check", peer.PublicKey)
+					case internal.ConnectionStateNew:
+						if err := probe.Start(c.keyManager.GetPublicKey(), peer.PublicKey); err != nil {
+							c.logger.Errorf("send directOffer failed: %v", err)
+							err = linkerrors.ErrProbeFailed
+							return
+						} else if probe.GetConnState() != internal.ConnectionStateConnected {
+							retries++
+							timer.Reset(30 * time.Second)
+						}
+
+					case internal.ConnectionStateDisconnected:
+						c.logger.Verbosef("node %s is disconnected, retry direct check", peer.PublicKey)
 						retries++
 						timer.Reset(30 * time.Second)
+					case internal.ConnectionStateConnected:
+						c.logger.Verbosef("node %s is already connected, skip direct check", peer.PublicKey)
 					}
-				case internal.ConnectionStateConnected:
-					c.logger.Verbosef("peer %s is already connected, skip direct check", peer.PublicKey)
 				}
+			case <-probe.ProbeDone():
+				errChan <- linkerrors.ErrProbeFailed
+				return
 			}
-		case <-prober.ProbeDone():
-			errChan <- linkerrors.ErrProbeFailed
-			return
 		}
 	}
 
+	// do check
+	check()
+
 	if err := <-errChan; err != nil {
-		c.logger.Errorf("probe failed: %v", err)
+		c.logger.Errorf("probe direct failed: %v", err)
+		probe.SetConnectType(internal.DrpType)
+		check()
+
+		if err := <-errChan; err != nil {
+			c.logger.Errorf("probe drp failed: %v", err)
+		}
 		return
 	}
 }
@@ -346,7 +364,7 @@ func (c *Client) GetUsers() []*config.User {
 	return users
 }
 
-func (c *Client) Get(ctx context.Context) (*utils.NodeMessage, int64, error) {
+func (c *Client) Get(ctx context.Context) (*internal.NodeMessage, int64, error) {
 	req := &mgt.Request{
 		AppId: c.conf.AppId,
 		Token: c.conf.Token,
@@ -363,7 +381,7 @@ func (c *Client) Get(ctx context.Context) (*utils.NodeMessage, int64, error) {
 	}
 
 	type Result struct {
-		Peer  utils.NodeMessage
+		Peer  internal.NodeMessage
 		Count int64
 	}
 	var result Result
@@ -373,7 +391,7 @@ func (c *Client) Get(ctx context.Context) (*utils.NodeMessage, int64, error) {
 	return &result.Peer, result.Count, nil
 }
 
-func (c *Client) Watch(ctx context.Context, callback func(msg *utils.Message) error) error {
+func (c *Client) Watch(ctx context.Context, callback func(msg *internal.Message) error) error {
 	req := &mgt.Request{
 		PubKey: c.keyManager.GetPublicKey(),
 	}
@@ -401,7 +419,7 @@ func (c *Client) Keepalive(ctx context.Context) error {
 }
 
 // Register will register device to linkany center
-func (c *Client) Register(privateKey, publicKey, token string) (*config.DeviceConf, error) {
+func (c *Client) Register(privateKey, publicKey, token string) (*internal.DeviceConf, error) {
 	var err error
 	ctx := context.Background()
 
@@ -436,10 +454,10 @@ func (c *Client) Register(privateKey, publicKey, token string) (*config.DeviceCo
 	if err != nil {
 		return nil, err
 	}
-	return &config.DeviceConf{}, nil
+	return &internal.DeviceConf{}, nil
 }
 
-func (c *Client) RemovePeer(node *utils.NodeMessage) error {
+func (c *Client) RemovePeer(node *internal.NodeMessage) error {
 	wgConfigure := c.engine.GetWgConfiger()
 	if err := wgConfigure.RemovePeer(&internal.SetPeer{
 		PublicKey: node.PublicKey,

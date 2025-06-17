@@ -1,10 +1,11 @@
-package utils
+package internal
 
 import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"linkany/management/utils"
 	"linkany/pkg/log"
 	"slices"
 	"strconv"
@@ -305,28 +306,31 @@ func (m *Message) RemovePolicyRule(ruleMessage *AccessRuleMessage) *Message {
 }
 
 type NodeMessage struct {
-	ID                  uint64     `json:"id,string"`
-	Name                string     `json:"name,omitempty"`
-	Description         string     `json:"description,omitempty"`
-	GroupID             uint64     `json:"groupID,omitempty"`   // belong to which group
-	CreatedBy           string     `json:"createdBy,omitempty"` // ownerID
-	UserId              uint64     `json:"userId,omitempty"`
-	Hostname            string     `json:"hostname,omitempty"`
-	AppID               string     `json:"appId,omitempty"`
-	Address             string     `json:"address,omitempty"`
-	Endpoint            string     `json:"endpoint,omitempty"`
-	Remove              bool       `json:"remove,omitempty"` // whether to remove node
-	PresharedKey        string     `json:"presharedKey,omitempty"`
-	PersistentKeepalive int        `json:"persistentKeepalive,omitempty"`
-	PrivateKey          string     `json:"privateKey,omitempty"`
-	PublicKey           string     `json:"publicKey,omitempty"`
-	AllowedIPs          string     `json:"allowedIps,omitempty"`
-	ReplacePeers        bool       `json:"replacePeers,omitempty"` // whether to replace peers when updating node
-	Port                int        `json:"port"`
-	Status              NodeStatus `json:"status"`
-	GroupName           string     `json:"groupName"`
-	Version             uint64     `json:"version"`
-	LastUpdatedAt       string     `json:"lastUpdatedAt"`
+	ID                  uint64           `json:"id,string"`
+	Name                string           `json:"name,omitempty"`
+	Description         string           `json:"description,omitempty"`
+	GroupID             uint64           `json:"groupID,omitempty"`   // belong to which group
+	CreatedBy           string           `json:"createdBy,omitempty"` // ownerID
+	UserId              uint64           `json:"userId,omitempty"`
+	Hostname            string           `json:"hostname,omitempty"`
+	AppID               string           `json:"appId,omitempty"`
+	Address             string           `json:"address,omitempty"`
+	Endpoint            string           `json:"endpoint,omitempty"`
+	Remove              bool             `json:"remove,omitempty"` // whether to remove node
+	PresharedKey        string           `json:"presharedKey,omitempty"`
+	PersistentKeepalive int              `json:"persistentKeepalive,omitempty"`
+	PrivateKey          string           `json:"privateKey,omitempty"`
+	PublicKey           string           `json:"publicKey,omitempty"`
+	AllowedIPs          string           `json:"allowedIps,omitempty"`
+	ReplacePeers        bool             `json:"replacePeers,omitempty"` // whether to replace peers when updating node
+	Port                int              `json:"port"`
+	Status              utils.NodeStatus `json:"status"`
+	GroupName           string           `json:"groupName"`
+	Version             uint64           `json:"version"`
+	LastUpdatedAt       string           `json:"lastUpdatedAt"`
+
+	//conn type
+	ConnectType ConnectionType `json:"connectType,omitempty"` // DirectType, RelayType, DrpType
 }
 
 func (n *NodeMessage) String() string {

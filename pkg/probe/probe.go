@@ -9,7 +9,6 @@ import (
 	"linkany/internal/direct"
 	"linkany/internal/drp"
 	"linkany/internal/relay"
-	"linkany/pkg/config"
 	"linkany/pkg/linkerrors"
 	"linkany/pkg/log"
 	"linkany/turn/client"
@@ -35,7 +34,7 @@ type prober struct {
 	isStarted       atomic.Bool
 	isForceRelay    bool
 	proberManager   internal.ProbeManager
-	nodeManager     *config.NodeManager
+	nodeManager     *internal.NodeManager
 	agentManager    internal.AgentManagerFactory
 
 	lastCheck time.Time
@@ -45,7 +44,7 @@ type prober struct {
 
 	drpAddr string
 
-	connectType internal.ConnType // connectType indicates the type of connection, direct or relay
+	connectType internal.ConnectionType // connectType indicates the type of connection, direct or relay
 
 	// directChecker is used to check the direct connection
 	directChecker internal.Checker
@@ -138,7 +137,6 @@ func (p *prober) OnConnectionStateChange(state internal.ConnectionState) error {
 		if err := p.Restart(); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
@@ -245,15 +243,16 @@ func (p *prober) IsForceRelay() bool {
 
 func (p *prober) Start(srcKey, dstKey string) error {
 	p.lastCheck = time.Now()
-	p.logger.Infof("prober start, srcKey: %v, dstKey: %v, isForceRelay: %v,  connection state: %v", srcKey, dstKey, p.isForceRelay, p.connectionState)
+	p.logger.Infof("probe start, srcKey: %v, dstKey: %v, connection type: %v,  connection state: %v", srcKey, dstKey, p.connectType, p.connectionState)
 	switch p.connectionState {
 	case internal.ConnectionStateConnected:
 		return nil
 	case internal.ConnectionStateNew:
 		p.UpdateConnectionState(internal.ConnectionStateChecking)
-		if p.isForceRelay {
-			return p.SendOffer(drpgrpc.MessageType_MessageRelayOfferType, srcKey, dstKey)
-		} else {
+		switch p.connectType {
+		case internal.DrpType:
+			return p.SendOffer(drpgrpc.MessageType_MessageDrpOfferType, srcKey, dstKey)
+		case internal.DirectType:
 			return p.SendOffer(drpgrpc.MessageType_MessageDirectOfferType, srcKey, dstKey)
 		}
 
@@ -261,6 +260,11 @@ func (p *prober) Start(srcKey, dstKey string) error {
 	}
 
 	return nil
+}
+
+func (p *prober) SetConnectType(connType internal.ConnectionType) {
+	p.connectType = connType
+	p.logger.Infof("set connect type: %v", connType)
 }
 
 func (p *prober) SendOffer(msgType drpgrpc.MessageType, srcKey, dstKey string) error {

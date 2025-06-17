@@ -7,7 +7,6 @@ import (
 	"linkany/internal"
 	controlclient "linkany/management/client"
 	grpcclient "linkany/management/grpc/client"
-	"linkany/management/utils"
 	"linkany/management/vo"
 	"linkany/pkg/config"
 	"linkany/pkg/drp"
@@ -52,12 +51,12 @@ type Engine struct {
 
 	group atomic.Value //belong to which group
 
-	nodeManager  *config.NodeManager
+	nodeManager  *internal.NodeManager
 	agentManager internal.AgentManagerFactory
 	wgConfigure  internal.ConfigureManager
-	current      *utils.NodeMessage
+	current      *internal.NodeMessage
 
-	callback func(message *utils.Message) error
+	callback func(message *internal.Message) error
 }
 
 type EngineConfig struct {
@@ -132,13 +131,13 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 
 	agentManager := drp.NewAgentManager()
 	engine.agentManager = agentManager
-	engine.nodeManager = config.NewPeersManager()
+	engine.nodeManager = internal.NewPeersManager()
 
 	universalUdpMuxDefault := agentManager.NewUdpMux(v4conn)
 
 	// init key manager
 	engine.keyManager = internal.NewKeyManager("")
-	
+
 	proxy = drpclient.NewProxy(&drpclient.ProxyConfig{
 		DrpClient: engine.drpClient,
 	})
@@ -260,7 +259,7 @@ func (e *Engine) Start() error {
 	// config device
 	internal.SetDeviceIP()("add", e.current.Address, e.Name)
 
-	if err = e.DeviceConfigure(&config.DeviceConfig{
+	if err = e.DeviceConfigure(&internal.DeviceConfig{
 		PrivateKey: e.keyManager.GetKey(),
 	}); err != nil {
 		return err
@@ -324,7 +323,7 @@ func (e *Engine) Stop() error {
 }
 
 // SetConfig updates the configuration of the given interface.
-func (e *Engine) SetConfig(conf *config.DeviceConf) error {
+func (e *Engine) SetConfig(conf *internal.DeviceConf) error {
 	nowConf, err := e.device.IpcGet()
 	if err != nil {
 		return err
@@ -340,16 +339,16 @@ func (e *Engine) SetConfig(conf *config.DeviceConf) error {
 	return e.device.IpcSetOperation(reader)
 }
 
-func (e *Engine) DeviceConfigure(conf *config.DeviceConfig) error {
+func (e *Engine) DeviceConfigure(conf *internal.DeviceConfig) error {
 	return e.device.IpcSet(conf.String())
 }
 
-func (e *Engine) AddPeer(peer utils.NodeMessage) error {
+func (e *Engine) AddPeer(peer internal.NodeMessage) error {
 	return e.device.IpcSet(peer.NodeString())
 }
 
 // RemovePeer add remove=true
-func (e *Engine) RemovePeer(peer utils.NodeMessage) error {
+func (e *Engine) RemovePeer(peer internal.NodeMessage) error {
 	peer.Remove = true
 	return e.device.IpcSet(peer.NodeString())
 }
