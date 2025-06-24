@@ -28,7 +28,7 @@ type DeviceConf struct {
 //	PrivateKey          string           `json:"private_key,omitempty"`
 //	PublicKey           string           `json:"public_key,omitempty"`
 //	Address             string           `json:"address,omitempty"`
-//	Remove              bool             `json:"remove,omitempty"`
+//	RemoveProbe              bool             `json:"remove,omitempty"`
 //	Endpoint            string           `json:"endpoint,omitempty"`
 //	TieBreaker          uint32           `json:"tie_breaker,omitempty"`
 //	PersistentKeepalive int              `json:"persistent_keepalive,omitempty"`

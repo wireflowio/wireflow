@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	drpgrpc "linkany/drp/grpc"
 	"linkany/internal"
 	mgtclient "linkany/management/grpc/client"
 	"linkany/management/grpc/mgt"
@@ -25,72 +24,66 @@ import (
 	"github.com/linkanyio/ice"
 )
 
-type PeerMap struct {
+type NodeMap struct {
 	lock sync.Mutex
 	m    map[string]ice.Candidate
 }
 
 // Client is control client of linkany, will fetch config from origin server interval
 type Client struct {
-	as              internal.AgentManagerFactory
-	logger          *log.Logger
-	keyManager      internal.KeyManager
-	signalChannel   chan *drpgrpc.DrpMessage
-	peersManager    *internal.NodeManager
-	stunUri         string
-	ifaceName       string
-	conf            *config.LocalConfig
-	grpcClient      *mgtclient.Client
-	agent           *ice.Agent
-	conn4           net.PacketConn
-	udpMux          *ice.UDPMuxDefault
-	universalUdpMux *ice.UniversalUDPMuxDefault
-	update          func() error
-	agentManager    internal.AgentManagerFactory
-	offerHandler    internal.OfferHandler
-	probeManager    internal.ProbeManager
-	proberMux       sync.Mutex
-	turnClient      *turnclient.Client
-	ufrag           string
-	pwd             string
-	engine          internal.EngineManager
+	as           internal.AgentManagerFactory
+	logger       *log.Logger
+	keyManager   internal.KeyManager
+	nodeManager  *internal.NodeManager
+	conf         *config.LocalConfig
+	grpcClient   *mgtclient.Client
+	conn4        net.PacketConn
+	agentManager internal.AgentManagerFactory
+	offerHandler internal.OfferHandler
+	probeManager internal.ProbeManager
+	turnClient   *turnclient.Client
+	engine       internal.EngineManager
 }
 
 type ClientConfig struct {
-	Logger          *log.Logger
-	PeersManager    *internal.NodeManager
-	Conf            *config.LocalConfig
-	Agent           *ice.Agent
-	UdpMux          *ice.UDPMuxDefault
-	UniversalUdpMux *ice.UniversalUDPMuxDefault
-	KeyManager      internal.KeyManager
-	AgentManager    internal.AgentManagerFactory
-	GrpcClient      *mgtclient.Client
-	ProberManager   internal.ProbeManager
-	TurnClient      *turnclient.Client
-	SignalChannel   chan *drpgrpc.DrpMessage
-	OfferHandler    internal.OfferHandler
-	Engine          internal.EngineManager
+	Logger     *log.Logger
+	Conf       *config.LocalConfig
+	GrpcClient *mgtclient.Client
 }
 
 func NewClient(cfg *ClientConfig) *Client {
 	client := &Client{
-		logger:          cfg.Logger,
-		offerHandler:    cfg.OfferHandler,
-		keyManager:      cfg.KeyManager,
-		conf:            cfg.Conf,
-		peersManager:    cfg.PeersManager,
-		udpMux:          cfg.UdpMux,
-		universalUdpMux: cfg.UniversalUdpMux,
-		agentManager:    cfg.AgentManager,
-		probeManager:    cfg.ProberManager,
-		turnClient:      cfg.TurnClient,
-		grpcClient:      cfg.GrpcClient,
-		signalChannel:   cfg.SignalChannel,
-		engine:          cfg.Engine,
+		logger:     cfg.Logger,
+		conf:       cfg.Conf,
+		grpcClient: cfg.GrpcClient,
 	}
 
 	return client
+}
+
+func (c *Client) SetKeyManager(manager internal.KeyManager) *Client {
+	c.keyManager = manager
+	return c
+}
+
+func (c *Client) SetNodeManager(manager *internal.NodeManager) *Client {
+	c.nodeManager = manager
+	return c
+}
+
+func (c *Client) SetProbeManager(manager internal.ProbeManager) *Client {
+	c.probeManager = manager
+	return c
+}
+
+func (c *Client) SetEngine(engine internal.EngineManager) *Client {
+	c.engine = engine
+	return c
+}
+
+func (c *Client) SetOfferHandler(handler internal.OfferHandler) *Client {
+	c.offerHandler = handler
+	return c
 }
 
 // RegisterToManagement will register device to linkany center
@@ -215,6 +208,7 @@ func (c *Client) ToConfigPeer(peer *internal.NodeMessage) *internal.NodeMessage 
 		Address:             peer.Address,
 		AllowedIPs:          peer.AllowedIPs,
 		PersistentKeepalive: peer.PersistentKeepalive,
+		ConnectType:         peer.ConnectType,
 	}
 }
 
@@ -255,7 +249,17 @@ func (c *Client) AddPeer(p *internal.NodeMessage) error {
 		return nil
 	}
 
-	probe = c.GetProber(p.PublicKey)
+	node := c.ToConfigPeer(p)
+	// start probe when gather candidates finished
+	var connectType internal.ConnectType
+	current := c.nodeManager.GetPeer(c.keyManager.GetPublicKey())
+	if current.ConnectType == internal.DrpType || node.ConnectType == internal.DrpType {
+		connectType = internal.DrpType
+	} else {
+		connectType = internal.DirectType
+	}
+
+	probe = c.probeManager.GetProbe(p.PublicKey)
 	if probe != nil {
 		switch probe.GetConnState() {
 		case internal.ConnectionStateConnected:
@@ -264,41 +268,37 @@ func (c *Client) AddPeer(p *internal.NodeMessage) error {
 			return nil
 		}
 	} else {
-		if probe, err = c.probeManager.NewProbe(&internal.ProberConfig{
+		if probe, err = c.probeManager.NewProbe(&internal.ProbeConfig{
 			Logger:        c.logger,
-			StunUri:       c.stunUri,
 			ProberManager: c.probeManager,
 			GatherChan:    make(chan interface{}),
-			OfferManager:  c.offerHandler,
 			WGConfiger:    c.engine.GetWgConfiger(),
-			NodeManager:   c.peersManager,
-			Ufrag:         c.ufrag,
-			Pwd:           c.pwd,
+			NodeManager:   c.nodeManager,
 			To:            p.PublicKey,
+			OfferHandler:  c.offerHandler,
+			ConnectType:   connectType,
 		}); err != nil {
 			return err
 		}
 	}
 
-	node := c.ToConfigPeer(p)
-	mappedPeer := c.peersManager.GetPeer(node.PublicKey)
+	mappedPeer := c.nodeManager.GetPeer(node.PublicKey)
 	if mappedPeer == nil {
 		mappedPeer = node
-		c.peersManager.AddPeer(node.PublicKey, node)
+		c.nodeManager.AddPeer(node.PublicKey, node)
 		c.logger.Verbosef("add node to local cache, key: %s, node: %v", node.PublicKey, node)
 	}
-	// start probe when gather candidates finished
-	go c.doProbe(probe, node, node.ConnectType)
+
+	go c.doProbe(probe, node)
 	return nil
 }
 
 // doProbe will start a direct check to the node, if the peer is not connected, it will send drp offer to remote
-func (c *Client) doProbe(probe internal.Probe, peer *internal.NodeMessage, connectType internal.ConnectionType) {
+func (c *Client) doProbe(probe internal.Probe, node *internal.NodeMessage) {
 	errChan := make(chan error, 10)
 	limitRetries := 7
 	retries := 0
 	timer := time.NewTimer(1 * time.Second)
-	probe.SetConnectType(connectType)
 
 	check := func() {
 		for {
@@ -316,9 +316,9 @@ func (c *Client) doProbe(probe internal.Probe, peer *internal.NodeMessage, conne
 				default:
 					switch probe.GetConnState() {
 					case internal.ConnectionStateChecking:
-						c.logger.Verbosef("node %s is checking, skip direct check", peer.PublicKey)
+						c.logger.Verbosef("node %s is checking, skip direct check", node.PublicKey)
 					case internal.ConnectionStateNew:
-						if err := probe.Start(c.keyManager.GetPublicKey(), peer.PublicKey); err != nil {
+						if err := probe.Start(context.Background(), c.keyManager.GetPublicKey(), node.PublicKey); err != nil {
 							c.logger.Errorf("send directOffer failed: %v", err)
 							err = linkerrors.ErrProbeFailed
 							return
@@ -328,11 +328,11 @@ func (c *Client) doProbe(probe internal.Probe, peer *internal.NodeMessage, conne
 						}
 
 					case internal.ConnectionStateDisconnected:
-						c.logger.Verbosef("node %s is disconnected, retry direct check", peer.PublicKey)
+						c.logger.Verbosef("node %s is disconnected, retry direct check", node.PublicKey)
 						retries++
 						timer.Reset(30 * time.Second)
 					case internal.ConnectionStateConnected:
-						c.logger.Verbosef("node %s is already connected, skip direct check", peer.PublicKey)
+						c.logger.Verbosef("node %s is already connected, skip direct check", node.PublicKey)
 					}
 				}
 			case <-probe.ProbeDone():
@@ -469,8 +469,4 @@ func (c *Client) RemovePeer(node *internal.NodeMessage) error {
 	//TODO add check when no same network peers exists, then delete the route.
 	internal.SetRoute(c.logger)("delete", wgConfigure.GetAddress(), wgConfigure.GetIfaceName())
 	return nil
-}
-
-func (c *Client) GetProber(pubKey string) internal.Probe {
-	return c.probeManager.GetProbe(pubKey)
 }

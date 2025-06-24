@@ -330,7 +330,8 @@ type NodeMessage struct {
 	LastUpdatedAt       string           `json:"lastUpdatedAt"`
 
 	//conn type
-	ConnectType ConnectionType `json:"connectType,omitempty"` // DirectType, RelayType, DrpType
+	DrpAddr     string      `json:"drpAddr,omitempty"`     // drp server address, if is drp node
+	ConnectType ConnectType `json:"connectType,omitempty"` // DirectType, RelayType, DrpType
 }
 
 func (n *NodeMessage) String() string {

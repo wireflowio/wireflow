@@ -170,7 +170,7 @@ func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Manag
 		return nil, err
 	}
 
-	peer, err := s.peerController.GetByAppId(ctx, req.AppId)
+	node, err := s.peerController.GetByAppId(ctx, req.AppId)
 	if err != nil {
 		return nil, err
 	}
@@ -181,26 +181,31 @@ func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Manag
 	}
 	body := &result{
 		Peer: &internal.NodeMessage{
-			ID:                  peer.ID,
-			UserId:              peer.UserId,
-			Name:                peer.Name,
-			Description:         peer.Description,
-			Hostname:            peer.Hostname,
-			AppID:               peer.AppID,
-			Address:             peer.Address,
-			Endpoint:            peer.Endpoint,
-			PersistentKeepalive: peer.PersistentKeepalive,
-			PublicKey:           peer.PublicKey,
-			PrivateKey:          peer.PrivateKey,
-			AllowedIPs:          peer.AllowedIPs,
-			GroupName:           peer.Group.GroupName,
-			GroupID:             peer.Group.ID,
+			ID:                  node.ID,
+			UserId:              node.UserId,
+			Name:                node.Name,
+			Description:         node.Description,
+			Hostname:            node.Hostname,
+			AppID:               node.AppID,
+			Address:             node.Address,
+			Endpoint:            node.Endpoint,
+			PersistentKeepalive: node.PersistentKeepalive,
+			PublicKey:           node.PublicKey,
+			PrivateKey:          node.PrivateKey,
+			AllowedIPs:          node.AllowedIPs,
+			GroupName:           node.Group.GroupName,
+			GroupID:             node.Group.ID,
+			DrpAddr:             node.DrpAddr,
+			ConnectType:         node.ConnectType,
 		},
 	}
+
 	b, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
+
+	s.logger.Verbosef("get node info: %v", string(b))
 
 	return &mgt.ManagementMessage{Body: b}, nil
 }

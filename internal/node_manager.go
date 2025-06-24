@@ -9,7 +9,7 @@ type NodeManager struct {
 	peers map[string]*NodeMessage
 }
 
-func NewPeersManager() *NodeManager {
+func NewNodeManager() *NodeManager {
 	return &NodeManager{
 		peers: make(map[string]*NodeMessage),
 	}
