@@ -275,7 +275,7 @@ func (b *NetBind) makeReceiveRelay() conn.ReceiveFunc {
 		if err != nil {
 			return 0, err
 		}
-		//MessageInitiationType  = 1
+		//	MessageInitiationType  = 1
 		//	MessageResponseType    = 2
 		//	MessageCookieReplyType = 3
 		//	MessageTransportType   = 4
