@@ -6,7 +6,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	drpclient "linkany/drp/client"
 	"linkany/internal"
-	controlclient "linkany/management/client"
+	mgtclient "linkany/management/client"
 	grpcclient "linkany/management/grpc/client"
 	"linkany/management/vo"
 	"linkany/pkg/config"
@@ -16,9 +16,11 @@ import (
 	"linkany/pkg/wrapper"
 	turnclient "linkany/turn/client"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	wg "golang.zx2c4.com/wireguard/device"
@@ -34,15 +36,15 @@ const (
 	DefaultMTU = 1420
 )
 
-// Engine is the daemon that manages the WireGuard device
+// Engine is the daemon that manages the wireGuard device
 type Engine struct {
 	logger        *log.Logger
 	keyManager    internal.KeyManager
 	Name          string
 	device        *wg.Device
-	mgtClient     *controlclient.Client
+	mgtClient     *mgtclient.Client
 	drpClient     *drpclient.Client
-	bind          *wrapper.NetBind
+	bind          *wrapper.LinkBind
 	GetNetworkMap func() (*vo.NetworkMap, error)
 	updated       atomic.Bool
 
@@ -63,7 +65,7 @@ type EngineConfig struct {
 	Port          int
 	UdpConn       *net.UDPConn
 	InterfaceName string
-	client        *controlclient.Client
+	client        *mgtclient.Client
 	drpClient     *drpclient.Client
 	WgLogger      *wg.Logger
 	TurnServerUrl string
@@ -74,10 +76,30 @@ type EngineConfig struct {
 }
 
 func (e *Engine) IpcHandle(conn net.Conn) {
-	e.device.IpcHandle(conn)
+	defer conn.Close()
+
+	buf := make([]byte, 4096)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return
+	}
+
+	cmd := string(buf[:n])
+	if cmd == "stop\n\n" {
+		// 响应停止命令
+		conn.Write([]byte("OK\n\n"))
+		// 触发程序退出
+		e.close()
+		// 向主程序发送退出信号
+		syscall.Kill(os.Getpid(), syscall.SIGTERM)
+		return
+	} else {
+		e.device.IpcHandle(conn)
+	}
+
 }
 
-// NewEngine create a tun auto
+// NewEngine create a new Engine instance
 func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	var (
 		device       tun.Device
@@ -109,7 +131,7 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	if grpcClient, err = grpcclient.NewClient(&grpcclient.GrpcConfig{Addr: cfg.ManagementUrl, Logger: log.NewLogger(log.Loglevel, "grpc-mgtClient")}); err != nil {
 		return nil, err
 	}
-	engine.mgtClient = controlclient.NewClient(&controlclient.ClientConfig{
+	engine.mgtClient = mgtclient.NewClient(&mgtclient.ClientConfig{
 		Logger:     log.NewLogger(log.Loglevel, "control-mgtClient"),
 		GrpcClient: grpcClient,
 		Conf:       cfg.Conf,
