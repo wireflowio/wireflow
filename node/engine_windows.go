@@ -1,30 +1,36 @@
-//go:build !windows
+//go:build windows
+// +build windows
 
 package node
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
+	wg "golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/tun"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"io"
 	drpclient "linkany/drp/client"
 	"linkany/internal"
-	controlclient "linkany/management/client"
+	mgtclient "linkany/management/client"
 	grpcclient "linkany/management/grpc/client"
 	"linkany/management/vo"
 	"linkany/pkg/config"
 	"linkany/pkg/drp"
+	lipc "linkany/pkg/ipc"
 	"linkany/pkg/log"
 	"linkany/pkg/probe"
 	"linkany/pkg/wrapper"
 	turnclient "linkany/turn/client"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	wg "golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun"
 )
 
 var (
@@ -36,15 +42,15 @@ const (
 	DefaultMTU = 1420
 )
 
-// Engine is the daemon that manages the WireGuard device
+// Engine is the daemon that manages the wireGuard device
 type Engine struct {
 	logger        *log.Logger
 	keyManager    internal.KeyManager
 	Name          string
 	device        *wg.Device
-	mgtClient     *controlclient.Client
+	mgtClient     *mgtclient.Client
 	drpClient     *drpclient.Client
-	bind          *wrapper.NetBind
+	bind          *wrapper.LinkBind
 	GetNetworkMap func() (*vo.NetworkMap, error)
 	updated       atomic.Bool
 
@@ -57,6 +63,9 @@ type Engine struct {
 	turnManager  *turnclient.TurnManager
 
 	callback func(message *internal.Message) error
+
+	keepaliveChan chan struct{} // channel for keepalive
+	watchChan     chan struct{} // channel for watch
 }
 
 type EngineConfig struct {
@@ -65,7 +74,7 @@ type EngineConfig struct {
 	Port          int
 	UdpConn       *net.UDPConn
 	InterfaceName string
-	client        *controlclient.Client
+	client        *mgtclient.Client
 	drpClient     *drpclient.Client
 	WgLogger      *wg.Logger
 	TurnServerUrl string
@@ -75,11 +84,62 @@ type EngineConfig struct {
 	ShowWgLog     bool
 }
 
-func (e *Engine) IpcHandle(conn net.Conn) {
-	e.device.IpcHandle(conn)
+func (e *Engine) IpcHandle(socket net.Conn) {
+	defer socket.Close()
+
+	buffered := func(s io.ReadWriter) *bufio.ReadWriter {
+		reader := bufio.NewReader(s)
+		writer := bufio.NewWriter(s)
+		return bufio.NewReadWriter(reader, writer)
+	}(socket)
+	for {
+		op, err := buffered.ReadString('\n')
+		if err != nil {
+			return
+		}
+
+		// handle operation
+		switch op {
+		case "stop\n":
+			buffered.Write([]byte("OK\n\n"))
+			// send kill signal
+			os.Exit(0)
+		case "set=1\n":
+			err = e.device.IpcSetOperation(buffered.Reader)
+		case "get=1\n":
+			var nextByte byte
+			nextByte, err = buffered.ReadByte()
+			if err != nil {
+				return
+			}
+			if nextByte != '\n' {
+				err = lipc.IpcErrorf(ipc.IpcErrorInvalid, "trailing character in UAPI get: %q", nextByte)
+				break
+			}
+			err = e.device.IpcGetOperation(buffered.Writer)
+		default:
+			e.logger.Errorf("invalid UAPI operation: %v", op)
+			return
+		}
+
+		// write status
+		var status *lipc.IPCError
+		if err != nil && !errors.As(err, &status) {
+			// shouldn't happen
+			status = lipc.IpcErrorf(ipc.IpcErrorUnknown, "other UAPI error: %w", err)
+		}
+		if status != nil {
+			e.logger.Errorf("%v", status)
+			fmt.Fprintf(buffered, "errno=%d\n\n", status.ErrorCode())
+		} else {
+			fmt.Fprintf(buffered, "errno=0\n\n")
+		}
+		buffered.Flush()
+	}
+
 }
 
-// NewEngine create a tun auto
+// NewEngine create a new Engine instance
 func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	var (
 		device       tun.Device
@@ -97,6 +157,8 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	engine.turnManager = new(turnclient.TurnManager)
 	once.Do(func() {
 		engine.Name, device, err = internal.CreateTUN(DefaultMTU, cfg.Logger)
+		engine.keepaliveChan = make(chan struct{}, 1)
+		engine.watchChan = make(chan struct{}, 1)
 	})
 
 	if err != nil {
@@ -108,10 +170,14 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	engine.agentManager = drp.NewAgentManager()
 
 	// control-mgtClient
-	if grpcClient, err = grpcclient.NewClient(&grpcclient.GrpcConfig{Addr: cfg.ManagementUrl, Logger: log.NewLogger(log.Loglevel, "grpc-mgtClient")}); err != nil {
+	if grpcClient, err = grpcclient.NewClient(&grpcclient.GrpcConfig{
+		Addr:          cfg.ManagementUrl,
+		Logger:        log.NewLogger(log.Loglevel, "grpc-mgtClient"),
+		KeepaliveChan: engine.keepaliveChan,
+		WatchChan:     engine.watchChan}); err != nil {
 		return nil, err
 	}
-	engine.mgtClient = controlclient.NewClient(&controlclient.ClientConfig{
+	engine.mgtClient = mgtclient.NewClient(&mgtclient.ClientConfig{
 		Logger:     log.NewLogger(log.Loglevel, "control-mgtClient"),
 		GrpcClient: grpcClient,
 		Conf:       cfg.Conf,
@@ -260,12 +326,9 @@ func (e *Engine) Start() error {
 	}
 	// watch
 	go func() {
-		for {
-			if err := e.mgtClient.Watch(context.Background(), e.mgtClient.HandleWatchMessage); err != nil {
-				e.logger.Errorf("watch failed: %v", err)
-				time.Sleep(10 * time.Second) // retry after 10 seconds
-				continue
-			}
+		if err := e.mgtClient.Watch(context.Background(), e.mgtClient.HandleWatchMessage); err != nil {
+			e.logger.Errorf("watch failed: %v", err)
+			time.Sleep(10 * time.Second) // retry after 10 seconds
 		}
 	}()
 
@@ -317,8 +380,10 @@ func (e *Engine) RemovePeer(peer internal.NodeMessage) error {
 }
 
 func (e *Engine) close() {
+	close(e.keepaliveChan)
 	e.drpClient.Close()
-	e.device.Close()
+	//e.device.Close()
+	e.logger.Verbosef("engine closed")
 }
 
 func (e *Engine) GetWgConfiger() internal.ConfigureManager {
