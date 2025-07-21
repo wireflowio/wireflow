@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"errors"
+	wg "golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/tun"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	drpclient "linkany/drp/client"
 	"linkany/internal"
@@ -22,9 +24,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-
-	wg "golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun"
 )
 
 var (
@@ -57,6 +56,9 @@ type Engine struct {
 	turnManager  *turnclient.TurnManager
 
 	callback func(message *internal.Message) error
+
+	keepaliveChan chan struct{} // channel for keepalive
+	watchChan     chan struct{} // channel for watch
 }
 
 type EngineConfig struct {
@@ -117,6 +119,8 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	engine.turnManager = new(turnclient.TurnManager)
 	once.Do(func() {
 		engine.Name, device, err = internal.CreateTUN(DefaultMTU, cfg.Logger)
+		engine.keepaliveChan = make(chan struct{}, 1)
+		engine.watchChan = make(chan struct{}, 1)
 	})
 
 	if err != nil {
@@ -128,7 +132,11 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	engine.agentManager = drp.NewAgentManager()
 
 	// control-mgtClient
-	if grpcClient, err = grpcclient.NewClient(&grpcclient.GrpcConfig{Addr: cfg.ManagementUrl, Logger: log.NewLogger(log.Loglevel, "grpc-mgtClient")}); err != nil {
+	if grpcClient, err = grpcclient.NewClient(&grpcclient.GrpcConfig{
+		Addr:          cfg.ManagementUrl,
+		Logger:        log.NewLogger(log.Loglevel, "grpc-mgtClient"),
+		KeepaliveChan: engine.keepaliveChan,
+		WatchChan:     engine.watchChan}); err != nil {
 		return nil, err
 	}
 	engine.mgtClient = mgtclient.NewClient(&mgtclient.ClientConfig{
@@ -280,12 +288,9 @@ func (e *Engine) Start() error {
 	}
 	// watch
 	go func() {
-		for {
-			if err := e.mgtClient.Watch(context.Background(), e.mgtClient.HandleWatchMessage); err != nil {
-				e.logger.Errorf("watch failed: %v", err)
-				time.Sleep(10 * time.Second) // retry after 10 seconds
-				continue
-			}
+		if err := e.mgtClient.Watch(context.Background(), e.mgtClient.HandleWatchMessage); err != nil {
+			e.logger.Errorf("watch failed: %v", err)
+			time.Sleep(10 * time.Second) // retry after 10 seconds
 		}
 	}()
 
@@ -337,8 +342,10 @@ func (e *Engine) RemovePeer(peer internal.NodeMessage) error {
 }
 
 func (e *Engine) close() {
+	close(e.keepaliveChan)
 	e.drpClient.Close()
-	e.device.Close()
+	//e.device.Close()
+	e.logger.Verbosef("engine closed")
 }
 
 func (e *Engine) GetWgConfiger() internal.ConfigureManager {
