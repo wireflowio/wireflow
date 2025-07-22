@@ -11,6 +11,7 @@ import (
 	"linkany/pkg/log"
 	"net"
 	"os"
+	"path/filepath"
 )
 
 // Start start linkany daemon
@@ -50,45 +51,77 @@ func Start(flags *LinkFlags) error {
 	}
 
 	if flags.DaemonGround {
+		fmt.Println("Run linkany in daemon mode")
 		env := os.Environ()
-		files := [3]*os.File{}
-		//if os.Getenv("LOG_LEVEL") != "" && logLevel != device.LogLevelSilent {
-		//	files[0], _ = os.Open(os.DevNull)
-		//	files[1] = os.Stdout
-		//	files[2] = os.Stderr
-		//} else {
-		files[0], _ = os.Open(os.DevNull)
-		files[1], _ = os.Open(os.DevNull)
-		files[2], _ = os.Open(os.DevNull)
-		//}
-		attr := &os.ProcAttr{
-			Files: []*os.File{
-				files[0], // stdin
-				files[1], // stdout
-				files[2], // stderr
-				//tdev.File(),
-				//fileUAPI,
-			},
-			Dir: ".",
-			Env: env,
+		env = append(env, "LINKANY_DAEMON=true")
+		if os.Getenv("LINKANY_DAEMON") == "" {
+
+			// 确保日志目录存在
+			logDir := "/Library/Logs/linkany"
+			if err := os.MkdirAll(logDir, 0755); err != nil {
+				fmt.Printf("Failed to create log directory: %v\n", err)
+				os.Exit(1)
+			}
+
+			// 打开日志文件
+			logFile, err := os.OpenFile(
+				filepath.Join(logDir, "linkany.log"),
+				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+				0644,
+			)
+			if err != nil {
+				fmt.Printf("Failed to open log file: %v\n", err)
+				os.Exit(1)
+			}
+
+			files := [3]*os.File{}
+			if flags.LogLevel != "" && flags.LogLevel != "slient" {
+				files[0], _ = os.Open(os.DevNull)
+				files[1] = logFile
+				files[2] = logFile
+			} else {
+				files[0], _ = os.Open(os.DevNull)
+				files[1], _ = os.Open(os.DevNull)
+				files[2], _ = os.Open(os.DevNull)
+			}
+			attr := &os.ProcAttr{
+				Files: []*os.File{
+					files[0], // stdin
+					files[1], // stdout
+					files[2], // stderr
+					//tdev.File(),
+					//fileUAPI,
+				},
+				Dir: ".",
+				Env: env,
+			}
+
+			path, err := os.Executable()
+			if err != nil {
+				logger.Errorf("Failed to determine executable: %v", err)
+				os.Exit(1)
+			}
+
+			filteredArgs := make([]string, 0)
+			for _, arg := range os.Args {
+				if arg != "--daemon" && arg != "-d" && arg != "--foreground" && arg != "-f" {
+					filteredArgs = append(filteredArgs, arg)
+				}
+			}
+
+			process, err := os.StartProcess(
+				path,
+				filteredArgs,
+				attr,
+			)
+			if err != nil {
+				logger.Errorf("Failed to daemonize: %v", err)
+				os.Exit(1)
+			}
+			process.Release()
+			os.Exit(0) // exit parent
 		}
 
-		path, err := os.Executable()
-		if err != nil {
-			logger.Errorf("Failed to determine executable: %v", err)
-			os.Exit(1)
-		}
-
-		process, err := os.StartProcess(
-			path,
-			os.Args,
-			attr,
-		)
-		if err != nil {
-			logger.Errorf("Failed to daemonize: %v", err)
-			os.Exit(1)
-		}
-		process.Release()
 	}
 
 	engine, err := NewEngine(engineCfg)
@@ -167,35 +200,34 @@ func Stop(flags *LinkFlags) error {
 
 }
 
-// 通过 PID 文件停止进程
+// stop linkany daemon via sock file
 func stopViaPIDFile(interfaceName string) error {
-	// 获取 socket 文件路径
+	// get sock
 	socketPath := fmt.Sprintf("/var/run/wireguard/%s.sock", interfaceName)
-	// 检查 sock 文件是否存在
+	// check sock
 	if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-		return fmt.Errorf("套接字文件:%s不存在", socketPath)
+		return fmt.Errorf("file %s not exists", socketPath)
 	}
 
-	// 连接到 Unix 域套接字
+	// connect to the socket
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		return fmt.Errorf("连接套接字失败: %v", err)
+		return fmt.Errorf("linkany sock connect failed: %v", err)
 	}
 	defer conn.Close()
 	// 发送消息到服务器
 	_, err = conn.Write([]byte("stop\n"))
 	if err != nil {
-		return fmt.Errorf("发送消息失败: %v", err)
+		return fmt.Errorf("send stop failed: %v", err)
 	}
 
-	// 接收响应
+	// receive
 	buffer := make([]byte, 4096)
-	n, err := conn.Read(buffer)
+	_, err = conn.Read(buffer)
 	if err != nil {
-		return fmt.Errorf("接收响应失败: %v", err)
+		return fmt.Errorf("receive error: %v", err)
 	}
 
-	fmt.Printf("linkany stopped: %s\n", string(buffer[:n]))
-
+	fmt.Printf("linkany stopped: %s\n", interfaceName)
 	return nil
 }
