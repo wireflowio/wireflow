@@ -79,7 +79,9 @@ func (r *groupNodeRepository) FindByGroupNodeId(ctx context.Context, groupId, no
 		conditions.AddWhere("node_id", nodeId)
 	}
 	query := conditions.BuildQuery(r.db.WithContext(ctx))
-	if err := query.Find(&groupNode).Error; err != nil {
+
+	err := query.Find(&groupNode).Error
+	if err != nil {
 		return nil, err
 	}
 	return &groupNode, nil

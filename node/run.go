@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 )
 
-// Start start linkany daemon
+// Start start linkany
 func Start(flags *LinkFlags) error {
 	var err error
 	ctx := SetupSignalHandler()
