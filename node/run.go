@@ -4,15 +4,13 @@ import (
 	"fmt"
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"linkany/internal"
 	"linkany/management/vo"
 	"linkany/pkg/config"
 	"linkany/pkg/log"
+	"net"
 	"os"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 )
 
 // Start start linkany daemon
@@ -148,99 +146,56 @@ func Start(flags *LinkFlags) error {
 func Stop(flags *LinkFlags) error {
 	interfaceName := flags.InterfaceName
 	if flags.InterfaceName == "" {
+		ctr, err := wgctrl.New()
+		if err != nil {
+			return nil
+		}
 
+		devices, err := ctr.Devices()
+		if err != nil {
+			return err
+		}
+
+		if len(devices) == 0 {
+			return fmt.Errorf("没有找到任何 Linkany 设备")
+		}
+
+		interfaceName = devices[0].Name
 	}
-
-	// 尝试通过 UAPI 发送停止命令
-	err := stopViaUAPI(interfaceName)
-	if err == nil {
-
-		return nil
-	}
-
 	// 如果 UAPI 失败，尝试通过 PID 文件停止进程
 	return stopViaPIDFile(interfaceName)
 
 }
 
-// 通过 UAPI 停止服务
-func stopViaUAPI(interfaceName string) error {
-	uapiConn, err := ipc.UAPIOpen(interfaceName)
-	if err != nil {
-		return fmt.Errorf("无法连接到守护进程的 UAPI 套接字: %v", err)
-	}
-	defer uapiConn.Close()
-
-	// 发送停止命令，可以是特定的命令字符串
-	_, err = uapiConn.Write([]byte("stop\n\n"))
-	if err != nil {
-		return fmt.Errorf("发送停止命令失败: %v", err)
-	}
-
-	// 读取响应
-	buf := make([]byte, 4096)
-	n, err := uapiConn.Read(buf)
-	if err != nil {
-		return fmt.Errorf("读取响应失败: %v", err)
-	}
-
-	if string(buf[:n]) != "OK\n\n" {
-		return fmt.Errorf("未收到成功响应")
-	}
-
-	return nil
-}
-
 // 通过 PID 文件停止进程
 func stopViaPIDFile(interfaceName string) error {
-	// 获取 PID 文件路径
-	pidFilePath := fmt.Sprintf("/var/run/linkany-%s.pid", interfaceName)
+	// 获取 socket 文件路径
+	socketPath := fmt.Sprintf("/var/run/wireguard/%s.sock", interfaceName)
+	// 检查 sock 文件是否存在
+	if _, err := os.Stat(socketPath); os.IsNotExist(err) {
+		return fmt.Errorf("套接字文件:%s不存在", socketPath)
+	}
 
-	// 读取 PID 文件
-	pidBytes, err := os.ReadFile(pidFilePath)
+	// 连接到 Unix 域套接字
+	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		return fmt.Errorf("无法读取 PID 文件: %v", err)
+		return fmt.Errorf("连接套接字失败: %v", err)
 	}
-
-	// 解析 PID
-	pid, err := strconv.Atoi(strings.TrimSpace(string(pidBytes)))
+	defer conn.Close()
+	// 发送消息到服务器
+	_, err = conn.Write([]byte("stop\n"))
 	if err != nil {
-		return fmt.Errorf("无效的 PID: %v", err)
+		return fmt.Errorf("发送消息失败: %v", err)
 	}
 
-	// 查找进程
-	process, err := os.FindProcess(pid)
+	// 接收响应
+	buffer := make([]byte, 4096)
+	n, err := conn.Read(buffer)
 	if err != nil {
-		return fmt.Errorf("找不到进程 (PID %d): %v", pid, err)
+		return fmt.Errorf("接收响应失败: %v", err)
 	}
 
-	// 发送 SIGTERM 信号
-	err = process.Signal(syscall.SIGTERM)
-	if err != nil {
-		return fmt.Errorf("无法发送终止信号: %v", err)
-	}
-
-	// 等待进程退出
-	done := make(chan error, 1)
-	go func() {
-		_, err := process.Wait()
-		done <- err
-	}()
-
-	// 设置超时
-	select {
-	case err := <-done:
-		if err != nil {
-			return fmt.Errorf("等待进程退出时出错: %v", err)
-		}
-	case <-time.After(5 * time.Second):
-		// 超时后尝试发送 SIGKILL
-		process.Kill()
-		return fmt.Errorf("进程未在预期时间内退出，已强制终止")
-	}
-
-	// 删除 PID 文件
-	os.Remove(pidFilePath)
+	fmt.Printf("linkany stopped: %s\n", string(buffer[:n]))
 
 	return nil
 }
