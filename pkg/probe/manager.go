@@ -120,7 +120,7 @@ func (m *manager) NewProbe(cfg *internal.ProbeConfig) (internal.Probe, error) {
 
 	switch newProbe.connectType {
 	case internal.DirectType:
-		if newProbe.agent, err = m.NewAgent(newProbe.gatherCh, p.OnConnectionStateChange); err != nil {
+		if newProbe.agent, err = m.NewAgent(newProbe.gatherCh, newProbe.OnConnectionStateChange); err != nil {
 			return nil, err
 		}
 
