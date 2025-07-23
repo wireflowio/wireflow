@@ -116,6 +116,7 @@ func (m *manager) NewProbe(cfg *internal.ProbeConfig) (internal.Probe, error) {
 		to:              cfg.To,
 		done:            make(chan interface{}),
 		connectType:     cfg.ConnectType,
+		probeManager:    m,
 	}
 
 	switch newProbe.connectType {
