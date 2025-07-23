@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"linkany/monitor/collector"
-	"log"
+	"linkany/pkg/log"
 	"time"
 )
 
@@ -13,6 +13,7 @@ type NodeMonitor struct {
 	storage    collector.Storage
 	alerter    collector.Alerter
 	stopChan   chan struct{}
+	logger     *log.Logger
 }
 
 func NewNodeMonitor(interval time.Duration, storage collector.Storage, alerter collector.Alerter) *NodeMonitor {
@@ -22,6 +23,7 @@ func NewNodeMonitor(interval time.Duration, storage collector.Storage, alerter c
 		storage:    storage,
 		alerter:    alerter,
 		stopChan:   make(chan struct{}),
+		logger:     log.NewLogger(log.Loglevel, "monitor"),
 	}
 }
 
@@ -45,7 +47,7 @@ func (m *NodeMonitor) Start() error {
 				for _, collector := range m.collectors {
 					metrics, err := collector.Collect()
 					if err != nil {
-						log.Printf("Error collecting metrics from %s: %v", collector.Name(), err)
+						m.logger.Errorf("Error collecting metrics from %s: %v", collector.Name(), err)
 						continue
 					}
 					allMetrics = append(allMetrics, metrics...)
@@ -53,18 +55,20 @@ func (m *NodeMonitor) Start() error {
 
 				// 存储指标数据
 				if err := m.storage.Store(allMetrics); err != nil {
-					log.Printf("Error storing metrics: %v", err)
+					m.logger.Errorf("Error storing metrics: %v", err)
 				}
 
 				// 告警检查
-				alerts, err := m.alerter.Evaluate(allMetrics)
-				if err != nil {
-					log.Printf("Error evaluating alerts: %v", err)
-				} else if len(alerts) > 0 {
-					if err := m.alerter.Send(alerts); err != nil {
-						log.Printf("Error sending alerts: %v", err)
-					}
-				}
+				//alerts, err := m.alerter.Evaluate(allMetrics)
+				//if err != nil {
+				//	log.Printf("Error evaluating alerts: %v", err)
+				//} else if len(alerts) > 0 {
+				//	if err := m.alerter.Send(alerts); err != nil {
+				//		log.Printf("Error sending alerts: %v", err)
+				//	}
+				//}
+
+				m.logger.Verbosef("Storing %d metrics", len(allMetrics))
 			}
 		}
 	}()

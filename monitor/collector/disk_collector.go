@@ -37,6 +37,7 @@ func (c *DiskCollector) Collect() ([]Metric, error) {
 			float64(diskStats.Total),
 			map[string]string{"path": path},
 			now,
+			"disk total usage",
 		))
 
 		metrics = append(metrics, NewSimpleMetric(
@@ -44,6 +45,7 @@ func (c *DiskCollector) Collect() ([]Metric, error) {
 			float64(diskStats.Used),
 			map[string]string{"path": path},
 			now,
+			"disk used usage",
 		))
 
 		metrics = append(metrics, NewSimpleMetric(
@@ -51,6 +53,7 @@ func (c *DiskCollector) Collect() ([]Metric, error) {
 			float64(diskStats.Free),
 			map[string]string{"path": path},
 			now,
+			"disk free usage",
 		))
 
 		metrics = append(metrics, NewSimpleMetric(
@@ -58,6 +61,7 @@ func (c *DiskCollector) Collect() ([]Metric, error) {
 			diskStats.UsedPercent,
 			map[string]string{"path": path},
 			now,
+			"disk used percent",
 		))
 	}
 

@@ -26,6 +26,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 		float64(memStats.Total),
 		nil,
 		now,
+		"memory total",
 	))
 
 	metrics = append(metrics, NewSimpleMetric(
@@ -33,6 +34,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 		float64(memStats.Used),
 		nil,
 		now,
+		"memory used",
 	))
 
 	metrics = append(metrics, NewSimpleMetric(
@@ -40,6 +42,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 		float64(memStats.Free),
 		nil,
 		now,
+		"memory free",
 	))
 
 	metrics = append(metrics, NewSimpleMetric(
@@ -47,6 +50,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 		memStats.UsedPercent,
 		nil,
 		now,
+		"memory used_percent",
 	))
 
 	return metrics, nil

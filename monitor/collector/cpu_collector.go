@@ -34,6 +34,7 @@ func (c *CPUCollector) Collect() ([]Metric, error) {
 		totalPercent[0],
 		map[string]string{"type": "total"},
 		time.Now(),
+		"total CPU usage",
 	))
 
 	// 各核心CPU指标
@@ -43,6 +44,7 @@ func (c *CPUCollector) Collect() ([]Metric, error) {
 			p,
 			map[string]string{"core": fmt.Sprintf("%d", i)},
 			time.Now(),
+			"every cpu usage",
 		))
 	}
 

@@ -12,6 +12,7 @@ type Metric interface {
 	Value() interface{}
 	Labels() map[string]string
 	Timestamp() time.Time
+	Help() string
 }
 
 type SimpleMetric struct {
@@ -19,14 +20,16 @@ type SimpleMetric struct {
 	value     interface{}
 	labels    map[string]string
 	timestamp time.Time
+	help      string
 }
 
-func NewSimpleMetric(name string, value interface{}, labels map[string]string, timestamp time.Time) *SimpleMetric {
+func NewSimpleMetric(name string, value interface{}, labels map[string]string, timestamp time.Time, help string) *SimpleMetric {
 	return &SimpleMetric{
 		name:      name,
 		value:     value,
 		labels:    labels,
 		timestamp: timestamp,
+		help:      help,
 	}
 }
 
@@ -44,6 +47,10 @@ func (m *SimpleMetric) Labels() map[string]string {
 
 func (m *SimpleMetric) Timestamp() time.Time {
 	return m.timestamp
+}
+
+func (m *SimpleMetric) Help() string {
+	return m.help
 }
 
 type Query struct{}
