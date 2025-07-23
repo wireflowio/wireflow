@@ -16,6 +16,7 @@ type GroupNodeRepository interface {
 	Delete(ctx context.Context, id uint64) error
 	DeleteByGroupNodeId(ctx context.Context, groupId, nodeId uint64) error
 	Update(ctx context.Context, dto *dto.GroupNodeDto) error
+	UpdateById(ctx context.Context, groupNode *entity.GroupNode) error
 	Find(ctx context.Context, groupNodeId uint64) (*entity.GroupNode, error)
 	FindByGroupNodeId(ctx context.Context, groupId, nodeId uint64) (*entity.GroupNode, error)
 
@@ -29,6 +30,10 @@ var (
 type groupNodeRepository struct {
 	db     *gorm.DB
 	logger *log.Logger
+}
+
+func (r *groupNodeRepository) UpdateById(ctx context.Context, groupNode *entity.GroupNode) error {
+	return r.db.WithContext(ctx).Model(&entity.GroupNode{}).Where("id = ?", groupNode.ID).Updates(groupNode).Error
 }
 
 func NewGroupNodeRepository(db *gorm.DB) GroupNodeRepository {
@@ -80,10 +85,11 @@ func (r *groupNodeRepository) FindByGroupNodeId(ctx context.Context, groupId, no
 	}
 	query := conditions.BuildQuery(r.db.WithContext(ctx))
 
-	err := query.Find(&groupNode).Error
-	if err != nil {
-		return nil, err
+	result := query.Find(&groupNode)
+	if result.Error == nil && result.RowsAffected == 0 {
+		return nil, nil
 	}
+
 	return &groupNode, nil
 }
 

@@ -40,6 +40,7 @@ func init() {
 	rootCmd.AddCommand(signalingCmd())
 	rootCmd.AddCommand(turnCmd())
 	rootCmd.AddCommand(stop())
+	rootCmd.AddCommand(status())
 }
 
 //

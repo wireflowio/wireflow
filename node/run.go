@@ -200,6 +200,30 @@ func Stop(flags *LinkFlags) error {
 
 }
 
+func Status(flags *LinkFlags) error {
+	interfaceName := flags.InterfaceName
+	if flags.InterfaceName == "" {
+		ctr, err := wgctrl.New()
+		if err != nil {
+			return nil
+		}
+
+		devices, err := ctr.Devices()
+		if err != nil {
+			return err
+		}
+
+		if len(devices) == 0 {
+			return fmt.Errorf("没有找到任何 Linkany 设备")
+		}
+
+		interfaceName = devices[0].Name
+	}
+
+	fmt.Printf("Linkany interface: %s\n", interfaceName)
+	return nil
+}
+
 // stop linkany daemon via sock file
 func stopViaPIDFile(interfaceName string) error {
 	// get sock
