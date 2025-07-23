@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // Start start linkany
@@ -55,12 +56,26 @@ func Start(flags *LinkFlags) error {
 		env := os.Environ()
 		env = append(env, "LINKANY_DAEMON=true")
 		if os.Getenv("LINKANY_DAEMON") == "" {
-
 			// 确保日志目录存在
-			logDir := "/Library/Logs/linkany"
-			if err := os.MkdirAll(logDir, 0755); err != nil {
-				fmt.Printf("Failed to create log directory: %v\n", err)
-				os.Exit(1)
+			var logDir string
+			switch runtime.GOOS {
+			case "darwin":
+				host, _ := os.UserHomeDir()
+				logDir = fmt.Sprintf("%s/%s", host, "Library/Logs/linkany")
+			case "windows":
+				logDir = "C:\\ProgramData\\linkany\\logs"
+			default:
+				logDir = "/var/log/linkany"
+			}
+
+			if _, err := os.Stat(logDir); err != nil {
+				// 如果目录不存在或不是目录，则创建目录
+				if err := os.MkdirAll(logDir, 0755); err != nil {
+					fmt.Printf("Failed to create log directory: %v\n", err)
+					os.Exit(1)
+				}
+			} else {
+				fmt.Printf("Log directory already exists: %s\n", logDir)
 			}
 
 			// 打开日志文件
@@ -190,7 +205,7 @@ func Stop(flags *LinkFlags) error {
 		}
 
 		if len(devices) == 0 {
-			return fmt.Errorf("没有找到任何 Linkany 设备")
+			return fmt.Errorf("%s", "Linkany daemon is not running, no devices found")
 		}
 
 		interfaceName = devices[0].Name
