@@ -146,7 +146,7 @@ func Start(flags *LinkFlags) error {
 
 	if flags.MetricsEnable {
 		go func() {
-			metric := monitor.NewNodeMonitor(10*time.Second, &collector.PrometheusStorage{}, nil)
+			metric := monitor.NewNodeMonitor(10*time.Second, collector.NewPrometheusStorage(""), nil)
 			metric.AddCollector(&collector.CPUCollector{})
 			metric.AddCollector(&collector.MemoryCollector{})
 			metric.AddCollector(&collector.DiskCollector{})
