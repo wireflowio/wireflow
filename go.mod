@@ -24,7 +24,6 @@ require (
 	golang.org/x/crypto v0.38.0
 	golang.org/x/net v0.40.0
 	golang.org/x/sync v0.15.0
-	golang.org/x/sys v0.30.0
 	golang.org/x/sys v0.33.0
 	golang.zx2c4.com/wireguard v0.0.0
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
@@ -71,11 +70,15 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pion/dtls/v3 v3.0.4 // indirect
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/common v0.62.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
