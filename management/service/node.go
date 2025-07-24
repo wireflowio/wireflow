@@ -350,7 +350,7 @@ func (n *nodeServiceImpl) GetNetworkMap(ctx context.Context, appId, userId strin
 	}
 
 	if groupNode == nil {
-		return nil, errors.New("node not in any group")
+		return nil, nil
 	}
 
 	groupNodes, _, err = n.groupNodeRepo.List(ctx, &dto.GroupNodeParams{
