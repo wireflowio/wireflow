@@ -345,6 +345,13 @@ func (n *nodeServiceImpl) GetNetworkMap(ctx context.Context, appId, userId strin
 
 	//find current node which group in
 	groupNode, err = n.groupNodeRepo.FindByGroupNodeId(ctx, 0, current.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if groupNode == nil {
+		return nil, errors.New("node not in any group")
+	}
 
 	groupNodes, _, err = n.groupNodeRepo.List(ctx, &dto.GroupNodeParams{
 		GroupID: groupNode.GroupId,
