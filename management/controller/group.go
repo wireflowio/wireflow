@@ -59,18 +59,18 @@ func (p *GroupController) QueryGroups(ctx context.Context, params *dto.GroupPara
 }
 
 // api group
-func (p *GroupController) JoinGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (p *GroupController) JoinGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return p.groupService.JoinGroup(ctx, params)
 }
 
-func (p *GroupController) LeaveGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (p *GroupController) LeaveGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return p.groupService.LeaveGroup(ctx, params)
 }
 
-func (p *GroupController) RemoveGroup(ctx context.Context, params *dto.ApiGroupParams) error {
-	return p.groupService.LeaveGroup(ctx, params)
+func (p *GroupController) RemoveGroup(ctx context.Context, params *dto.ApiCommandParams) error {
+	return p.groupService.RemoveGroup(ctx, params)
 }
 
-func (p *GroupController) AddGroup(ctx context.Context, params *dto.ApiGroupParams) error {
-	return p.groupService.LeaveGroup(ctx, params)
+func (p *GroupController) AddGroup(ctx context.Context, params *dto.ApiCommandParams) error {
+	return p.groupService.AddGroup(ctx, params)
 }

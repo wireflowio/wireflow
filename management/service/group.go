@@ -30,10 +30,10 @@ type GroupService interface {
 	DeleteGroupNode(ctx context.Context, groupId, nodeId uint64) error
 
 	//api
-	JoinGroup(ctx context.Context, params *dto.ApiGroupParams) error
-	LeaveGroup(ctx context.Context, params *dto.ApiGroupParams) error
-	RemoveGroup(ctx context.Context, params *dto.ApiGroupParams) error
-	AddGroup(ctx context.Context, params *dto.ApiGroupParams) error
+	JoinGroup(ctx context.Context, params *dto.ApiCommandParams) error
+	LeaveGroup(ctx context.Context, params *dto.ApiCommandParams) error
+	RemoveGroup(ctx context.Context, params *dto.ApiCommandParams) error
+	AddGroup(ctx context.Context, params *dto.ApiCommandParams) error
 }
 
 var (
@@ -460,7 +460,7 @@ func (g *groupServiceImpl) DeleteGroupNode(ctx context.Context, groupId, nodeId 
 
 // api groups
 
-func (g *groupServiceImpl) JoinGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (g *groupServiceImpl) JoinGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return g.db.Transaction(func(tx *gorm.DB) error {
 		var (
 			err       error
@@ -501,7 +501,7 @@ func (g *groupServiceImpl) JoinGroup(ctx context.Context, params *dto.ApiGroupPa
 	})
 }
 
-func (g *groupServiceImpl) LeaveGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (g *groupServiceImpl) LeaveGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return g.db.Transaction(func(tx *gorm.DB) error {
 		var (
 			err   error
@@ -526,7 +526,7 @@ func (g *groupServiceImpl) LeaveGroup(ctx context.Context, params *dto.ApiGroupP
 	})
 }
 
-func (g *groupServiceImpl) RemoveGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (g *groupServiceImpl) RemoveGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return g.db.Transaction(func(tx *gorm.DB) error {
 		var (
 			err   error
@@ -545,7 +545,7 @@ func (g *groupServiceImpl) RemoveGroup(ctx context.Context, params *dto.ApiGroup
 	})
 }
 
-func (g *groupServiceImpl) AddGroup(ctx context.Context, params *dto.ApiGroupParams) error {
+func (g *groupServiceImpl) AddGroup(ctx context.Context, params *dto.ApiCommandParams) error {
 	return g.db.Transaction(func(tx *gorm.DB) error {
 		var (
 			err   error
@@ -554,7 +554,9 @@ func (g *groupServiceImpl) AddGroup(ctx context.Context, params *dto.ApiGroupPar
 
 		// find group
 		if group, err = g.groupRepo.WithTx(tx).FindByName(ctx, params.Name); err != nil {
-			return err
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
 		}
 
 		if group != nil {
