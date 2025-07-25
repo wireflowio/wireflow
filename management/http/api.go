@@ -9,6 +9,7 @@ import (
 func (s *Server) RegisterApis() {
 	s.RegisterGroupApis()
 	s.RegisterNodeApis()
+	s.RegisterPolicyApis()
 }
 
 func (s *Server) RegisterGroupApis() {
@@ -25,6 +26,11 @@ func (s *Server) RegisterNodeApis() {
 	nodeApis.POST("/label/add", s.tokenFilter(), s.addLabel())
 	nodeApis.POST("/label/show", s.tokenFilter(), s.showLabel())
 	nodeApis.POST("/label/rm", s.tokenFilter(), s.removeLabel())
+}
+
+func (s *Server) RegisterPolicyApis() {
+	nodeApis := s.RouterGroup.Group(PREFIX + "/policy/command")
+	nodeApis.POST("/list", s.tokenFilter(), s.listUserPolicies())
 }
 
 func (s *Server) joinGroup() gin.HandlerFunc {
@@ -165,5 +171,26 @@ func (s *Server) removeLabel() gin.HandlerFunc {
 		}
 
 		WriteOK(c.JSON, "remove label successfully")
+	}
+}
+
+func (s *Server) listUserPolicies() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var (
+			params dto.ApiCommandParams
+			labels []vo.AccessPolicyVo
+			err    error
+		)
+		if err = c.ShouldBindJSON(&params); err != nil {
+			WriteBadRequest(c.JSON, "invalid request: "+err.Error())
+			return
+		}
+
+		if labels, err = s.accessController.ListUserPolicies(c, &params); err != nil {
+			WriteError(c.JSON, err.Error())
+			return
+		}
+
+		WriteOK(c.JSON, labels)
 	}
 }
