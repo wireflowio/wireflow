@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/gin-gonic/gin"
 	"linkany/management/dto"
+	"linkany/management/vo"
 )
 
 func (s *Server) RegisterApis() {
@@ -131,18 +132,22 @@ func (s *Server) addLabel() gin.HandlerFunc {
 
 func (s *Server) showLabel() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var params dto.ApiCommandParams
-		if err := c.ShouldBindJSON(&params); err != nil {
+		var (
+			params dto.ApiCommandParams
+			labels []vo.NodeLabelVo
+			err    error
+		)
+		if err = c.ShouldBindJSON(&params); err != nil {
 			WriteBadRequest(c.JSON, "invalid request: "+err.Error())
 			return
 		}
 
-		if err := s.nodeController.ShowLabel(c, &params); err != nil {
+		if labels, err = s.nodeController.ShowLabel(c, &params); err != nil {
 			WriteError(c.JSON, err.Error())
 			return
 		}
 
-		WriteOK(c.JSON, "add label successfully")
+		WriteOK(c.JSON, labels)
 	}
 }
 

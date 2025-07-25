@@ -786,8 +786,8 @@ func (n *nodeServiceImpl) RemoveLabel(ctx context.Context, params *dto.ApiComman
 			return fmt.Errorf("failed to query label: %w", err)
 		}
 
-		if count > 0 {
-			return fmt.Errorf("label %s already exists", params.Name)
+		if count == 0 {
+			return fmt.Errorf("label %s not found", params.Name)
 		}
 
 		return n.nodeLabelRepo.WithTx(tx).DeleteByLabelId(ctx, node.ID, labels[0].ID)
@@ -814,7 +814,7 @@ func (n *nodeServiceImpl) ShowLabel(ctx context.Context, params *dto.ApiCommandP
 	}
 
 	if count == 0 {
-		return nil, fmt.Errorf("labels %s not found", params.Name)
+		return nil, nil
 	}
 
 	var vos []vo.NodeLabelVo
