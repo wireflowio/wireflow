@@ -1,9 +1,9 @@
 package vo
 
 import (
-	"linkany/internal"
-	"linkany/management/utils"
 	"time"
+	"wireflow/internal"
+	"wireflow/management/utils"
 
 	"gorm.io/gorm"
 )

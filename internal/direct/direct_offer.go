@@ -3,7 +3,7 @@ package direct
 import (
 	"encoding/binary"
 	"encoding/json"
-	"linkany/internal"
+	"wireflow/internal"
 )
 
 var (

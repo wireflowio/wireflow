@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"linkany/internal"
+	"wireflow/internal"
 )
 
 type NetworkMap struct {

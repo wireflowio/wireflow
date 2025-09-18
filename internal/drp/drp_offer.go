@@ -2,7 +2,7 @@ package drp
 
 import (
 	"encoding/json"
-	"linkany/internal"
+	"wireflow/internal"
 )
 
 var (

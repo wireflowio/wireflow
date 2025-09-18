@@ -2,11 +2,11 @@ package management
 
 import (
 	"github.com/spf13/viper"
-	"linkany/management/db"
-	grpcserver "linkany/management/grpc/server"
-	"linkany/management/http"
-	"linkany/pkg/log"
-	"linkany/pkg/redis"
+	"wireflow/management/db"
+	grpcserver "wireflow/management/grpc/server"
+	"wireflow/management/http"
+	"wireflow/pkg/log"
+	"wireflow/pkg/redis"
 )
 
 func Start(listen string) error {

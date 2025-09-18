@@ -2,8 +2,8 @@ package vo
 
 import (
 	"encoding/json"
-	"linkany/internal"
 	"testing"
+	"wireflow/internal"
 )
 
 func TestNewMessage(t *testing.T) {

@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"linkany/management/utils"
-	"linkany/pkg/log"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
+	"wireflow/management/utils"
+	"wireflow/pkg/log"
 )
 
 var lock sync.Mutex

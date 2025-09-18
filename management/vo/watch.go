@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"linkany/internal"
+	"wireflow/internal"
 )
 
 // Message used to wrapper the message for watch
@@ -11,7 +11,7 @@ import (
 	"code": 200,
 	"msg": "success",
 	"data": {
-		"drpUrl": "http://drp.linkany.io/drp",
+		"drpUrl": "http://drp.wireflow.io/drp",
 		"device": {
 			"privateKey": "mBngM2k7qWp9pVFGWMO0q1l7tiWjiIIAgsU/jwj+BHU=",
 			"publicKey": "3Hyx1Sbq0F9SZc6CUnmJ1pCPMgaAi6JRIxwoTrc1wSA=",

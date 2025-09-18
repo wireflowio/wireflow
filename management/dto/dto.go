@@ -1,10 +1,10 @@
 package dto
 
 import (
-	"linkany/internal"
-	"linkany/management/entity"
-	"linkany/management/utils"
 	"time"
+	"wireflow/internal"
+	"wireflow/management/entity"
+	"wireflow/management/utils"
 
 	"gorm.io/gorm"
 )

@@ -7,14 +7,14 @@ import (
 	"github.com/moby/term"
 	"github.com/pion/turn/v4"
 	"github.com/spf13/cobra"
-	"linkany/internal"
-	"linkany/management/client"
-	mgtclient "linkany/management/grpc/client"
-	"linkany/pkg/config"
-	"linkany/pkg/linkerrors"
-	"linkany/pkg/log"
-	"linkany/pkg/redis"
 	"os"
+	"wireflow/internal"
+	"wireflow/management/client"
+	mgtclient "wireflow/management/grpc/client"
+	"wireflow/pkg/config"
+	"wireflow/pkg/linkerrors"
+	"wireflow/pkg/log"
+	"wireflow/pkg/redis"
 )
 
 type loginOptions struct {
@@ -29,8 +29,8 @@ func loginCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:          "login",
 		SilenceUsage: true,
-		Short:        "logon to linkany",
-		Long:         `when you are using linkany, you should logon first,use username and password that registered on our site, once you logon, you can join your own created networks.`,
+		Short:        "logon to wireflow",
+		Long:         `when you are using wireflow, you should logon first,use username and password that registered on our site, once you logon, you can join your own created networks.`,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
@@ -51,7 +51,7 @@ func loginCmd() *cobra.Command {
 
 // runJoin join a network cmd
 func runLogin(opts loginOptions) error {
-	logger := log.NewLogger(log.Loglevel, "linkany")
+	logger := log.NewLogger(log.Loglevel, "wireflow")
 	var err error
 	defer func() {
 		if err == nil {
@@ -113,7 +113,7 @@ func runLogin(opts loginOptions) error {
 			return fmt.Errorf("failed to connect redis: %v", err)
 		}
 
-		key := turn.GenerateAuthKey(opts.Username, "linkany.io", opts.Password)
+		key := turn.GenerateAuthKey(opts.Username, "wireflow.io", opts.Password)
 		if err = rdbClient.Set(context.Background(), opts.Username, string(key)); err != nil {
 			return fmt.Errorf("failed to set user turnKey to redis: %v", err)
 		}

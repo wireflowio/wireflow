@@ -1,9 +1,9 @@
 package entity
 
 import (
-	"linkany/internal"
-	"linkany/management/utils"
-	"linkany/management/vo"
+	"wireflow/internal"
+	"wireflow/management/utils"
+	"wireflow/management/vo"
 )
 
 type GroupRoleType string

@@ -10,16 +10,16 @@ import (
 	"google.golang.org/grpc/status"
 
 	"io"
-	drpclient "linkany/drp/client"
-	drpgrpc "linkany/drp/grpc"
-	"linkany/management/grpc/client"
-	"linkany/management/service"
-	"linkany/pkg/drp"
-	"linkany/pkg/linkerrors"
-	"linkany/pkg/log"
 	"net"
 	"sync"
 	"time"
+	drpclient "wireflow/drp/client"
+	drpgrpc "wireflow/drp/grpc"
+	"wireflow/management/grpc/client"
+	"wireflow/management/service"
+	"wireflow/pkg/drp"
+	"wireflow/pkg/linkerrors"
+	"wireflow/pkg/log"
 )
 
 type Server struct {
@@ -45,7 +45,7 @@ type ServerConfig struct {
 func NewServer(cfg *ServerConfig) (*Server, error) {
 
 	mgtClient, err := client.NewClient(&client.GrpcConfig{
-		Addr:   "console.linkany.io:32051",
+		Addr:   "console.wireflow.io:32051",
 		Logger: log.NewLogger(log.Loglevel, "mgt-client"),
 	})
 	if err != nil {

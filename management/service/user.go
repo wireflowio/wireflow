@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"linkany/management/dto"
-	"linkany/management/entity"
-	"linkany/management/repository"
-	"linkany/management/utils"
-	"linkany/management/vo"
-	"linkany/pkg/linkerrors"
-	"linkany/pkg/log"
-	"linkany/pkg/redis"
 	"strconv"
 	"strings"
 	"time"
+	"wireflow/management/dto"
+	"wireflow/management/entity"
+	"wireflow/management/repository"
+	"wireflow/management/utils"
+	"wireflow/management/vo"
+	"wireflow/pkg/linkerrors"
+	"wireflow/pkg/log"
+	"wireflow/pkg/redis"
 
 	"github.com/pion/turn/v4"
 	"gorm.io/gorm"
@@ -107,7 +107,7 @@ func (u *userServiceImpl) Login(ctx context.Context, dto *dto.UserDto) (*entity.
 	}
 
 	// Save turn key to redis
-	key := turn.GenerateAuthKey(user.Username, "linkany.io", dto.Password)
+	key := turn.GenerateAuthKey(user.Username, "wireflow.io", dto.Password)
 	if err = u.rdb.Set(context.Background(), user.Username, string(key)); err != nil {
 		return nil, err
 	}

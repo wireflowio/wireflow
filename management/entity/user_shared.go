@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"linkany/management/utils"
+	"wireflow/management/utils"
 )
 
 // SharedNodeGroup is the entity that represents the shared group

@@ -7,26 +7,26 @@ import (
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/wgctrl"
-	"linkany/dns"
-	"linkany/internal"
-	"linkany/management/vo"
-	"linkany/monitor"
-	"linkany/monitor/collector"
-	"linkany/pkg/config"
-	"linkany/pkg/log"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
+	"wireflow/dns"
+	"wireflow/internal"
+	"wireflow/management/vo"
+	"wireflow/monitor"
+	"wireflow/monitor/collector"
+	"wireflow/pkg/config"
+	"wireflow/pkg/log"
 )
 
-// Start start linkany
+// Start start wireflow
 func Start(flags *LinkFlags) error {
 	var err error
 	ctx := SetupSignalHandler()
 
-	logger := log.NewLogger(log.Loglevel, "linkany")
+	logger := log.NewLogger(log.Loglevel, "wireflow")
 
 	conf, err := config.GetLocalConfig()
 	if err != nil {
@@ -58,7 +58,7 @@ func Start(flags *LinkFlags) error {
 	}
 
 	if flags.DaemonGround {
-		fmt.Println("Run linkany in daemon mode")
+		fmt.Println("Run wireflow in daemon mode")
 		env := os.Environ()
 		env = append(env, "LINKANY_DAEMON=true")
 		if os.Getenv("LINKANY_DAEMON") == "" {
@@ -67,11 +67,11 @@ func Start(flags *LinkFlags) error {
 			switch runtime.GOOS {
 			case "darwin":
 				host, _ := os.UserHomeDir()
-				logDir = fmt.Sprintf("%s/%s", host, "Library/Logs/linkany")
+				logDir = fmt.Sprintf("%s/%s", host, "Library/Logs/wireflow")
 			case "windows":
-				logDir = "C:\\ProgramData\\linkany\\logs"
+				logDir = "C:\\ProgramData\\wireflow\\logs"
 			default:
-				logDir = "/var/log/linkany"
+				logDir = "/var/log/wireflow"
 			}
 
 			if _, err := os.Stat(logDir); err != nil {
@@ -86,7 +86,7 @@ func Start(flags *LinkFlags) error {
 
 			// 打开日志文件
 			logFile, err := os.OpenFile(
-				filepath.Join(logDir, "linkany.log"),
+				filepath.Join(logDir, "wireflow.log"),
 				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
 				0644,
 			)
@@ -218,7 +218,7 @@ func Start(flags *LinkFlags) error {
 	return err
 }
 
-// Stop stop linkany daemon
+// Stop stop wireflow daemon
 func Stop(flags *LinkFlags) error {
 	interfaceName := flags.InterfaceName
 	if flags.InterfaceName == "" {
@@ -267,7 +267,7 @@ func Status(flags *LinkFlags) error {
 	return nil
 }
 
-// stop linkany daemon via sock file
+// stop wireflow daemon via sock file
 func stopViaPIDFile(interfaceName string) error {
 	// get sock
 	socketPath := fmt.Sprintf("/var/run/wireguard/%s.sock", interfaceName)
@@ -279,7 +279,7 @@ func stopViaPIDFile(interfaceName string) error {
 	// connect to the socket
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		return fmt.Errorf("linkany sock connect failed: %v", err)
+		return fmt.Errorf("wireflow sock connect failed: %v", err)
 	}
 	defer conn.Close()
 	// 发送消息到服务器
@@ -295,6 +295,6 @@ func stopViaPIDFile(interfaceName string) error {
 		return fmt.Errorf("receive error: %v", err)
 	}
 
-	fmt.Printf("linkany stopped: %s\n", interfaceName)
+	fmt.Printf("wireflow stopped: %s\n", interfaceName)
 	return nil
 }

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"gorm.io/gorm"
-	"linkany/management/dto"
-	"linkany/management/entity"
-	"linkany/management/repository"
-	"linkany/management/utils"
-	"linkany/management/vo"
-	"linkany/pkg/linkerrors"
-	"linkany/pkg/log"
+	"wireflow/management/dto"
+	"wireflow/management/entity"
+	"wireflow/management/repository"
+	"wireflow/management/utils"
+	"wireflow/management/vo"
+	"wireflow/pkg/linkerrors"
+	"wireflow/pkg/log"
 )
 
 type AccessPolicyService interface {

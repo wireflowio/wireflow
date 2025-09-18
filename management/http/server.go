@@ -2,14 +2,14 @@ package http
 
 import (
 	"gorm.io/gorm"
-	"linkany/internal"
-	"linkany/management/client"
-	"linkany/management/controller"
-	"linkany/management/db"
-	"linkany/management/dto"
-	"linkany/management/entity"
-	"linkany/pkg/log"
-	"linkany/pkg/redis"
+	"wireflow/internal"
+	"wireflow/management/client"
+	"wireflow/management/controller"
+	"wireflow/management/db"
+	"wireflow/management/dto"
+	"wireflow/management/entity"
+	"wireflow/pkg/log"
+	"wireflow/pkg/redis"
 
 	"github.com/gin-gonic/gin"
 )

@@ -2,8 +2,8 @@ package relay
 
 import (
 	"encoding/json"
-	"linkany/internal"
 	"net"
+	"wireflow/internal"
 )
 
 const (

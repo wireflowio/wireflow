@@ -2,7 +2,7 @@ package http
 
 import (
 	"github.com/gin-gonic/gin"
-	"linkany/management/client"
+	"wireflow/management/client"
 )
 
 func (s *Server) tokenFilter() gin.HandlerFunc {

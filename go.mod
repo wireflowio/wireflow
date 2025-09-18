@@ -1,4 +1,4 @@
-module linkany
+module wireflow
 
 go 1.23.0
 

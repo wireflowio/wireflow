@@ -1,7 +1,7 @@
 package server
 
 import (
-	"linkany/internal"
+	"wireflow/internal"
 )
 
 func CreateChannel(pubKey string) *internal.NodeChannel {

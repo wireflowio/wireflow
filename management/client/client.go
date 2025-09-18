@@ -5,23 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"linkany/internal"
-	mgtclient "linkany/management/grpc/client"
-	"linkany/management/grpc/mgt"
-	grpcserver "linkany/management/grpc/server"
-	"linkany/management/vo"
-	"linkany/pkg/config"
-	"linkany/pkg/linkerrors"
-	"linkany/pkg/log"
-	turnclient "linkany/turn/client"
 	"net"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+	"wireflow/internal"
+	mgtclient "wireflow/management/grpc/client"
+	"wireflow/management/grpc/mgt"
+	grpcserver "wireflow/management/grpc/server"
+	"wireflow/management/vo"
+	"wireflow/pkg/config"
+	"wireflow/pkg/linkerrors"
+	"wireflow/pkg/log"
+	turnclient "wireflow/turn/client"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/linkanyio/ice"
+	"github.com/wireflowio/ice"
 )
 
 type NodeMap struct {
@@ -29,7 +29,7 @@ type NodeMap struct {
 	m    map[string]ice.Candidate
 }
 
-// Client is control client of linkany, will fetch config from origin server interval
+// Client is control client of wireflow, will fetch config from origin server interval
 type Client struct {
 	as           internal.AgentManagerFactory
 	logger       *log.Logger
@@ -97,7 +97,7 @@ func (c *Client) SetTurnManager(turnManager *turnclient.TurnManager) *Client {
 	return c
 }
 
-// RegisterToManagement will register device to linkany center
+// RegisterToManagement will register device to wireflow center
 func (c *Client) RegisterToManagement() (*internal.DeviceConf, error) {
 	// TODO implement this function
 	return nil, nil
@@ -129,7 +129,7 @@ func (c *Client) Login(user *config.User) error {
 	}
 
 	homeDir, err := os.UserHomeDir()
-	path := filepath.Join(homeDir, ".linkany/config.json")
+	path := filepath.Join(homeDir, ".wireflow/config.json")
 	_, err = os.Stat(path)
 	var file *os.File
 	if os.IsNotExist(err) {
@@ -374,7 +374,7 @@ func (c *Client) doProbe(probe internal.Probe, node *internal.NodeMessage) {
 // TODO implement this function
 func (c *Client) GetUsers() []*config.User {
 	var users []*config.User
-	users = append(users, config.NewUser("linkany", "123456"))
+	users = append(users, config.NewUser("wireflow", "123456"))
 	return users
 }
 
@@ -432,7 +432,7 @@ func (c *Client) Keepalive(ctx context.Context) error {
 	return c.grpcClient.Keepalive(ctx, &mgt.ManagementMessage{Body: body})
 }
 
-// Register will register device to linkany center
+// Register will register device to wireflow center
 func (c *Client) Register(privateKey, publicKey, token string) (*internal.DeviceConf, error) {
 	var err error
 	ctx := context.Background()
