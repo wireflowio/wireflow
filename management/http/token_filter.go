@@ -42,5 +42,6 @@ func (s *Server) tokenFilter() gin.HandlerFunc {
 		c.Set("userId", u.ID)
 
 		c.Next()
+
 	}
 }

@@ -11,7 +11,7 @@ import (
 func (s *Server) RegisterNodeRoutes() {
 	nodeGroup := s.RouterGroup.Group(PREFIX + "/node")
 	nodeGroup.GET("/appId/:appId", s.tokenFilter(), s.getNodeByAppId())
-	nodeGroup.POST("/a", s.tokenFilter(), s.createAppId())
+	nodeGroup.POST("/a", s.tokenFilter(), s.withCallback(), s.createAppId())
 	nodeGroup.POST("/", s.tokenFilter(), s.createNode())
 	nodeGroup.PUT("/u", s.tokenFilter(), s.updateNode())
 	nodeGroup.DELETE("/:appId", s.tokenFilter(), s.deleteNode())

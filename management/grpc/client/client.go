@@ -70,7 +70,7 @@ func (c *Client) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 	return c.client.Login(ctx, in)
 }
 
-func (c *Client) Watch(ctx context.Context, in *mgt.ManagementMessage, callback func(wm *internal.Message) error) error {
+func (c *Client) Watch(ctx context.Context, in *mgt.ManagementMessage, fn func(message *internal.Message) error) error {
 	logger := c.logger
 	stream, err := c.client.Watch(ctx)
 	if err != nil {
@@ -117,7 +117,7 @@ func (c *Client) Watch(ctx context.Context, in *mgt.ManagementMessage, callback 
 					return
 				}
 
-				if err = callback(&message); err != nil {
+				if err = fn(&message); err != nil {
 					c.logger.Errorf("Failed to callback: %v", err)
 					errChan <- err
 					return

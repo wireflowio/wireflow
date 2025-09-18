@@ -1,7 +1,7 @@
 package http
 
 import (
-	"gorm.io/gorm"
+	"context"
 	"wireflow/internal"
 	"wireflow/management/client"
 	"wireflow/management/controller"
@@ -10,6 +10,8 @@ import (
 	"wireflow/management/entity"
 	"wireflow/pkg/log"
 	"wireflow/pkg/redis"
+
+	"gorm.io/gorm"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,6 +22,7 @@ const (
 
 // Server is the main server struct
 type Server struct {
+	ctx context.Context
 	*gin.Engine
 	logger            *log.Logger
 	listen            string
@@ -48,21 +51,22 @@ type ServerConfig struct {
 // NewServer creates a new server
 func NewServer(cfg *ServerConfig) *Server {
 	e := gin.Default()
+	wt := internal.NewWatchManager()
 	s := &Server{
-		logger:         log.NewLogger(log.Loglevel, "mgt-server"),
-		Engine:         e,
-		listen:         cfg.Listen,
-		userController: controller.NewUserController(cfg.DatabaseService, cfg.Rdb),
-		nodeController: controller.NewPeerController(cfg.DatabaseService),
-		//planController:     controller.NewPlanController(service.NewPlanService(cfg.DatabaseService)),
-		//supportController:  controller.NewSupportController(service.NewSupportMapper(cfg.DatabaseService)),
+		logger:             log.NewLogger(log.Loglevel, "mgt-server"),
+		Engine:             e,
+		listen:             cfg.Listen,
+		userController:     controller.NewUserController(cfg.DatabaseService, cfg.Rdb),
+		nodeController:     controller.NewPeerController(cfg.DatabaseService),
 		accessController:   controller.NewAccessController(cfg.DatabaseService),
 		groupController:    controller.NewGroupController(cfg.DatabaseService),
 		sharedController:   controller.NewSharedController(cfg.DatabaseService),
 		settingsController: controller.NewSettingsController(cfg.DatabaseService),
 		tokenController:    controller.NewTokenController(cfg.DatabaseService),
-		manager:            internal.NewWatchManager(),
+		manager:            wt,
 	}
+
+	//启动informer
 	s.initRoute()
 
 	return s

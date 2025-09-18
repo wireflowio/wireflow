@@ -61,7 +61,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 }
 
 func (s *Server) Start() error {
-	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 32132))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 6066))
 	if err != nil {
 		return err
 	}

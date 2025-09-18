@@ -42,12 +42,11 @@ import (
 }
 */
 
-func (vo *NodeVo) TransferToNodeMessage() *internal.NodeMessage {
-	return &internal.NodeMessage{
-		ID:                  vo.ID,
+func (vo *NodeVo) TransferToNode() *internal.Node {
+	return &internal.Node{
 		Name:                vo.Name,
 		Description:         vo.Description,
-		GroupID:             vo.GroupID,
+		NetworkId:           vo.NetworkID,
 		CreatedBy:           vo.CreatedBy,
 		UserId:              vo.UserId,
 		Hostname:            vo.Hostname,

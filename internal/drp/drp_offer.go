@@ -10,11 +10,11 @@ var (
 )
 
 type DrpOffer struct {
-	Node *internal.NodeMessage `json:"node,omitempty"` // Node information, if needed
+	Node *internal.Node `json:"node,omitempty"` // Node information, if needed
 }
 
 type DrpOfferConfig struct {
-	Node *internal.NodeMessage `json:"node,omitempty"` // Node information, if needed
+	Node *internal.Node `json:"node,omitempty"` // Node information, if needed
 }
 
 func NewOffer(cfg *DrpOfferConfig) *DrpOffer {
@@ -38,7 +38,7 @@ func (d *DrpOffer) TieBreaker() uint64 {
 	return 0
 }
 
-func (d *DrpOffer) GetNode() *internal.NodeMessage {
+func (d *DrpOffer) GetNode() *internal.Node {
 	return d.Node
 }
 

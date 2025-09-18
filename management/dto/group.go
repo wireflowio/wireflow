@@ -19,7 +19,7 @@ type GroupPolicyDto struct {
 
 type GroupPolicyParams struct {
 	vo.PageModel
-	GroupId    uint64 `json:"groupId" form:"groupId"`
+	NetworkId  string `json:"networkId" form:"networkId"`
 	PolicyId   uint64 `json:"policyId" form:"policyId"`
 	PolicyName string `json:"policyName" form:"policyName"`
 }

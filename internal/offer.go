@@ -11,7 +11,7 @@ type Offer interface {
 	Marshal() (int, []byte, error)
 	GetOfferType() OfferType
 	TieBreaker() uint64
-	GetNode() *NodeMessage
+	GetNode() *Node
 }
 
 type OfferHandler interface {

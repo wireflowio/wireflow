@@ -370,13 +370,13 @@ func (e *Engine) DeviceConfigure(conf *internal.DeviceConfig) error {
 }
 
 func (e *Engine) AddPeer(peer internal.NodeMessage) error {
-	return e.device.IpcSet(peer.NodeString())
+	return e.device.IpcSet(peer.Node())
 }
 
 // RemovePeer add remove=true
 func (e *Engine) RemovePeer(peer internal.NodeMessage) error {
 	peer.Remove = true
-	return e.device.IpcSet(peer.NodeString())
+	return e.device.IpcSet(peer.Node())
 }
 
 func (e *Engine) close() {

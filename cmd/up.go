@@ -14,7 +14,7 @@ func up() *cobra.Command {
 		SilenceUsage: true,
 		Long:         `wireflow startup, will create a wireguard interface and join your wireflow network,and also will config the interface automatically`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runLinkanyd(&flags)
+			return runWireflowd(&flags)
 		},
 	}
 
@@ -32,7 +32,7 @@ func up() *cobra.Command {
 	return cmd
 }
 
-func runLinkanyd(flags *node.LinkFlags) error {
+func runWireflowd(flags *node.LinkFlags) error {
 	if flags.LogLevel == "" {
 		flags.LogLevel = "error"
 	}

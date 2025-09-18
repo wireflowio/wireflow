@@ -1,7 +1,6 @@
 package server
 
 import (
-	"github.com/pion/turn/v4"
 	"net"
 	"os"
 	"os/signal"
@@ -10,6 +9,8 @@ import (
 	"wireflow/management/client"
 	"wireflow/pkg/config"
 	"wireflow/pkg/log"
+
+	"github.com/pion/turn/v4"
 )
 
 type TurnServer struct {
@@ -52,7 +53,8 @@ func (ts *TurnServer) start(publicIP string, port int) error {
 	//	usersMap[kv[1]] = turn.GenerateAuthKey(kv[1], "wireflow.io", kv[2])
 	//}
 
-	usersMap := generateAuthKeyMap(ts.client.GetUsers())
+	//usersMap := generateAuthKeyMap(ts.client.GetUsers())
+	usersMap := make(map[string][]byte)
 
 	s, err := turn.NewServer(turn.ServerConfig{
 		Realm: "wireflow.io",
