@@ -51,6 +51,7 @@ func NewController(
 	// 尝试使用 kubeconfig 文件
 	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
+		klog.Warningf("using in-cluster configuration: %v", err)
 		// 如果失败，尝试使用 in-cluster 配置
 		config, err = rest.InClusterConfig()
 		if err != nil {

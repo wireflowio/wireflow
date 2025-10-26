@@ -54,6 +54,7 @@ steps: # 定义流水线执行步骤，这些步骤将顺序执行
 #        - cd /root/docker/maven/build/wireflow && source ~/.bash_profile
 #        - git pull
 #        - make turn && make turn-image
+
   - name: deploy
     image: registry.cn-hangzhou.aliyuncs.com/wireflow-io/drone-ssh:latest # SSH工具镜像
     settings:
@@ -64,10 +65,10 @@ steps: # 定义流水线执行步骤，这些步骤将顺序执行
       port: 22 # 远程连接端口
       script:
         - source ~/.bash_profile
-        - docker-compose -f /root/wireflow/docker-compose.yaml stop rm
-        - docker-compose -f /root/wireflow/docker-compose.yaml rm -f
-        - docker-compose -f /root/wireflow/docker-compose.yaml up -d
+        - docker-compose -f /root/wireflow/turn-compose.yaml stop rm
+        - docker-compose -f /root/wireflow/turn-compose.yaml rm -f
+        - docker-compose -f /root/wireflow/turn-compose.yaml up -d
 #        - kubectl apply -f /root/docker/maven/build/wireflow/conf/signaling-deployment.yaml
 #        - kubectl apply -f /root/docker/maven/build/wireflow/conf/control-deployment.yaml
-#        - kubectl rollout restart deployment/wireflow-control -n wireflow
+        - kubectl rollout restart deployment/wireflow-control -n wireflow
 #        - kubectl rollout restart deployment/wireflow-signaling -n wireflow

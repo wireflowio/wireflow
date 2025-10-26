@@ -53,8 +53,7 @@ func (ts *TurnServer) start(publicIP string, port int) error {
 	//	usersMap[kv[1]] = turn.GenerateAuthKey(kv[1], "wireflow.io", kv[2])
 	//}
 
-	//usersMap := generateAuthKeyMap(ts.client.GetUsers())
-	usersMap := make(map[string][]byte)
+	usersMap := generateAuthKeyMap(ts.client.GetUsers())
 
 	s, err := turn.NewServer(turn.ServerConfig{
 		Realm: "wireflow.io",

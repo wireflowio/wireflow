@@ -24,12 +24,13 @@ func NewTaskLoop(queueSize int) *TaskLoop {
 	if queueSize <= 0 {
 		queueSize = 100 // 默认队列大小
 	}
-
-	return &TaskLoop{
+	l := &TaskLoop{
 		tasks:  make(chan Task, queueSize),
 		stopCh: make(chan struct{}),
 		doneCh: make(chan struct{}),
 	}
+	l.Start(context.Background())
+	return l
 }
 
 func (l *TaskLoop) AddTask(ctx context.Context, task Task) error {

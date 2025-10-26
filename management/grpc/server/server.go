@@ -17,9 +17,10 @@ import (
 	"wireflow/management/resource"
 	"wireflow/management/utils"
 	"wireflow/management/vo"
-	"wireflow/pkg/linkerrors"
 	"wireflow/pkg/log"
+	"wireflow/pkg/loop"
 	"wireflow/pkg/redis"
+	"wireflow/pkg/wferrors"
 
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
@@ -47,6 +48,8 @@ type Server struct {
 	port               int
 	tokenController    *controller.TokenController
 	resourceController *resource.Controller
+	loop               *loop.TaskLoop
+	checkInterval      time.Duration
 }
 
 // ServerConfig used for Server builder
@@ -107,7 +110,9 @@ func NewServer(cfg *ServerConfig) *Server {
 		tokenController:    controller.NewTokenController(cfg.DataBaseService),
 		watchManager:       wt,
 		resourceController: resourceController,
+		loop:               loop.NewTaskLoop(100),
 		nodeResource:       resource.NewNodeResource(resourceController),
+		checkInterval:      30,
 	}
 }
 
@@ -140,39 +145,18 @@ func (s *Server) Login(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Man
 
 // Registry will return a list of response
 func (s *Server) Registry(ctx context.Context, in *mgt.ManagementMessage) (*mgt.ManagementMessage, error) {
-	var req RegRequest
-	if err := json.Unmarshal(in.Body, &req); err != nil {
+	var dto dto.NodeDto
+	if err := json.Unmarshal(in.Body, &dto); err != nil {
 		return nil, err
 	}
-	s.logger.Infof("Received peer info: %+v", req)
-	user, err := s.userController.Get(ctx, req.Token)
-	if err != nil {
-		s.logger.Errorf("get user info err: %s\n", err.Error())
-		return nil, err
-	}
+	s.logger.Infof("Received peer info: %+v", dto)
+	node, err := s.nodeResource.Register(ctx, &dto)
 
-	peer, err := s.nodeController.Registry(ctx, &dto.NodeDto{
-		Hostname:            req.Hostname,
-		UserID:              user.ID,
-		AppID:               req.AppID,
-		Address:             req.Address,
-		PersistentKeepalive: req.PersistentKeepalive,
-		PublicKey:           req.PublicKey,
-		PrivateKey:          req.PrivateKey,
-		AllowedIPs:          req.AllowedIPs,
-		TieBreaker:          req.TieBreaker,
-		UpdatedAt:           time.Now(),
-		CreatedAt:           time.Now(),
-		Ufrag:               req.Ufrag,
-		Pwd:                 req.Pwd,
-		Port:                req.Port,
-		Status:              req.Status,
-	})
 	if err != nil {
 		return nil, err
 	}
 
-	bs, err := json.Marshal(peer)
+	bs, err := json.Marshal(node)
 	if err != nil {
 		return nil, err
 	}
@@ -186,12 +170,12 @@ func (s *Server) Get(ctx context.Context, in *mgt.ManagementMessage) (*mgt.Manag
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, err
 	}
-	_, err := s.userController.Get(ctx, req.Token)
-	if err != nil {
-		return nil, err
-	}
+	//_, err := s.userController.Get(ctx, req.Token)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	node, err := s.nodeController.GetByAppId(ctx, req.AppId)
+	node, err := s.nodeResource.GetByAppId(ctx, req.AppId)
 	if err != nil {
 		return nil, err
 	}
@@ -297,18 +281,6 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 	}
 
 	clientId := req.PubKey
-
-	// query node which group it lived in
-	currents, err := s.nodeController.QueryNodes(context.Background(), &dto.QueryParams{PubKey: &clientId})
-	if err != nil {
-		return status.Errorf(codes.Internal, "query node failed: %v", err)
-	}
-	if len(currents) == 0 {
-		return status.Errorf(codes.Internal, "node not found")
-	}
-	current := currents[0]
-	s.logger.Infof("node %v is now watching, groupId: %v", req.PubKey, current.NetworkID)
-
 	// create a chan for the peer
 	watchChannel := CreateChannel(clientId)
 	s.logger.Infof("node %v is now watching, channel: %v", req.PubKey, watchChannel)
@@ -344,9 +316,9 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 	var (
 		err      error
+		body     []byte
 		req      *mgt.Request
 		clientId string
-		userId   string
 	)
 
 	ctx := context.Background()
@@ -357,23 +329,17 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 	clientId = req.PubKey
 	logger := s.logger
 
-	currents, err := s.nodeController.QueryNodes(ctx, &dto.QueryParams{PubKey: &clientId})
-	if err != nil {
-		return err
-	}
-	if len(currents) == 0 {
-		return status.Errorf(codes.Internal, "node not found")
-	}
-
-	current := currents[0]
-	s.logger.Infof("receive keepalive packet from client, pubkey: %v, userId: %v", clientId, userId)
-	check := func(ctx context.Context) error {
+	s.logger.Infof("receive keepalive packet from client, pubkey: %v, appId: %v", req.PubKey, req.AppId)
+	check := func(ctx context.Context, checkChan chan struct{}) error {
+		defer func() {
+			close(checkChan)
+		}()
 		req, err = s.recv(ctx, stream)
-		if err != nil {
-			return err
+		if req == nil || err != nil {
+			return fmt.Errorf("receive keepalive packet failed: %v", err)
 		}
-		s.logger.Verbosef("got keepalive resp packet from client,clientId: %s", req.PubKey)
-		return nil
+		s.logger.Infof("recv keepalive packet from app, appId: %s", req.AppId)
+		return s.nodeResource.UpdateNodeState(req.AppId, internal.Active)
 	}
 
 	timer := time.NewTimer(10 * time.Second)
@@ -383,60 +349,38 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 			// check 10s receive the response
 			newCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 			checkReq := &mgt.Request{PubKey: clientId}
-			body, err := proto.Marshal(checkReq)
+			body, err = proto.Marshal(checkReq)
 			if err != nil {
 				s.logger.Errorf("marshal check request failed: %v", err)
 				cancel()
 				return err
 			}
-
-			checkChannel := make(chan interface{})
-
-			// work
-			go func() {
-				// got resp, check success
-				var err error
-				defer func() {
-					if err != nil {
-						cancel()
-					}
-				}()
-
+			checkChan := make(chan struct{})
+			if err = s.loop.AddTask(newCtx, func(taskCtx context.Context) error {
 				if err = stream.Send(&mgt.ManagementMessage{Body: body, Timestamp: time.Now().UnixMilli()}); err != nil {
 					s, ok := status.FromError(err)
 					if ok && s.Code() == codes.Canceled {
 						logger.Errorf("stream canceled")
-						return
+						return err
 					} else if errors.Is(err, io.EOF) {
-						// client exit
 						logger.Verbosef("node %s is disconnected", clientId)
-						return
+						return err
 					}
 				}
 
-				if err = check(newCtx); err != nil {
-					logger.Errorf("check failed: %v", err)
-					return
-				}
-
-				close(checkChannel)
-				timer.Reset(10 * time.Second)
-
-			}()
+				return check(newCtx, checkChan)
+			}); err != nil {
+				return s.nodeResource.UpdateNodeState(req.AppId, internal.Inactive)
+			}
 
 			select {
 			case <-newCtx.Done():
 				logger.Infof("timeout or cancel")
 				//timeout or cancel
-				return s.nodeResource.UpdateNodeState(clientId, internal.Inactive)
-			case <-checkChannel:
-				if current.Status != utils.Online {
-					logger.Verbosef("got heartbeat")
-					if err = s.nodeResource.UpdateNodeState(clientId, internal.Inactive); err != nil {
-						logger.Errorf("update node state failed: %v", err)
-						return err
-					}
-				}
+				return s.nodeResource.UpdateNodeState(req.AppId, internal.Inactive)
+			case <-checkChan:
+				logger.Infof("node %s is active", req.AppId)
+				timer.Reset(s.checkInterval * time.Second)
 			}
 		}
 	}
@@ -475,7 +419,7 @@ func (s *Server) UpdateStatus(current *vo.NodeVo, status utils.NodeStatus) error
 }
 
 func (s *Server) Start() error {
-	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", 32051))
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", internal.DefaultManagementPort))
 	if err != nil {
 		return err
 	}
@@ -512,5 +456,5 @@ func (s *Server) VerifyToken(ctx context.Context, in *mgt.ManagementMessage) (*m
 		}, nil
 	}
 
-	return nil, linkerrors.ErrInvalidToken
+	return nil, wferrors.ErrInvalidToken
 }

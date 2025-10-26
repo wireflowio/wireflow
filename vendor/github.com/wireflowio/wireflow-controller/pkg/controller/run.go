@@ -2,12 +2,14 @@ package controller
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
 	"time"
 
 	"github.com/wireflowio/wireflow-controller/pkg/http"
 	"github.com/wireflowio/wireflow-controller/pkg/signals"
+	"k8s.io/client-go/rest"
 
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -36,14 +38,20 @@ func Run(options *PushOptions) error {
 	} else {
 		kubeconfig = "/root/.kube/config"
 	}
+
 	// set up signals so we handle the shutdown signal gracefully
 	ctx := signals.SetupSignalHandler()
 	logger := klog.FromContext(ctx)
 
+	// 尝试使用 kubeconfig 文件
 	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		logger.Error(err, "Error building kubeconfig")
-		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
+		klog.Warningf("using in-cluster configuration: %v", err)
+		// 如果失败，尝试使用 in-cluster 配置
+		cfg, err = rest.InClusterConfig()
+		if err != nil {
+			return fmt.Errorf("Error when createing kubernetes config: %v", err)
+		}
 	}
 
 	kubeClient, err := kubernetes.NewForConfig(cfg)

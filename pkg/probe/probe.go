@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/wireflowio/ice"
 	"net"
 	"strings"
 	"sync"
@@ -15,9 +14,11 @@ import (
 	"wireflow/internal/direct"
 	"wireflow/internal/drp"
 	"wireflow/internal/relay"
-	"wireflow/pkg/linkerrors"
 	"wireflow/pkg/log"
+	"wireflow/pkg/wferrors"
 	turnclient "wireflow/turn/client"
+
+	"github.com/wireflowio/ice"
 )
 
 var (
@@ -270,7 +271,7 @@ func (p *probe) ProbeFailed(ctx context.Context, checker internal.Checker, offer
 		p.UpdateConnectionState(internal.ConnectionStateFailed)
 	}()
 
-	return linkerrors.ErrProbeFailed
+	return wferrors.ErrProbeFailed
 }
 
 func (p *probe) IsForceRelay() bool {

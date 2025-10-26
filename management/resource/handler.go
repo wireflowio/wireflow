@@ -10,7 +10,7 @@ import (
 
 type EventHandler interface {
 	RunWorker(ctx context.Context)
-	ProcessNextItem() bool
+	ProcessNextItem(ctx context.Context) bool
 	EventType() EventType
 	Informer() cache.SharedIndexInformer
 

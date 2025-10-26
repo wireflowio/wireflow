@@ -12,7 +12,7 @@ build: clean
 		--env GOARCH=amd64 \
 		-v $(shell pwd):/root/wireflow \
 		-w /root/wireflow \
-		registry.cn-hangzhou.aliyuncs.com/linkany-io/golang:1.23.0 \
+		registry.cn-hangzhou.aliyuncs.com/wireflow-io/golang:1.25.2 \
 		go build -v -o /root/wireflow/bin/wireflow \
 		-v /root/wireflow/main.go
 

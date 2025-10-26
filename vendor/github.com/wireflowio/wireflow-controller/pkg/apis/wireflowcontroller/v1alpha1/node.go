@@ -18,6 +18,7 @@ type Node struct {
 
 // NodeSpec is the spec for a Node resource
 type NodeSpec struct {
+	AppId string `json:"appId"`
 
 	// node belongs to which user
 	Username string `json:"username"`
@@ -27,6 +28,8 @@ type NodeSpec struct {
 
 	// node's public key
 	ClientId string `json:"clientId"`
+
+	PublicKey string `json:"publicKey"`
 
 	Tags []string `json:"tags"`
 

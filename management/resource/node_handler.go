@@ -140,10 +140,13 @@ func (n *NodeEventHandler) WorkQueue() workqueue.TypedRateLimitingInterface[cont
 
 // handleIPChange will send a new ip to client
 func (n *NodeEventHandler) handleIPChange(node *wireflowv1alpha1.Node) {
+	logger := klog.FromContext(context.Background())
 	msg := new(internal.Message)
 	msg.EventType = internal.EventTypeIPChange
 	msg.Current = new(internal.Node)
 	msg.Current.Address = node.Spec.Address
-	msg.Current.PublicKey = node.Spec.ClientId
+	msg.Current.PublicKey = node.Spec.PublicKey
+	msg.Current.PrivateKey = node.Spec.ClientId
 	n.wt.Send(msg.Current.PublicKey, msg)
+	logger.Info("Node IP address send to client success", "address", node.Spec.Address)
 }

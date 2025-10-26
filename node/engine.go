@@ -30,7 +30,6 @@ import (
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/tun"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var (
@@ -68,7 +67,7 @@ type Engine struct {
 	keepaliveChan chan struct{} // channel for keepalive
 	watchChan     chan struct{} // channel for watch
 
-	eventHandler EventHandler
+	eventHandler *EventHandler
 }
 
 type EngineConfig struct {
@@ -148,7 +147,6 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 		device       tun.Device
 		err          error
 		engine       *Engine
-		count        int64
 		probeManager internal.ProbeManager
 		proxy        *drpclient.Proxy
 		turnClient   *turnclient.Client
@@ -162,7 +160,6 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 		logger:        cfg.Logger,
 		keepaliveChan: make(chan struct{}),
 		watchChan:     make(chan struct{}),
-		eventHandler:  EventHandler{},
 	}
 
 	engine.turnManager = new(turnclient.TurnManager)
@@ -181,32 +178,17 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 		Conf:          cfg.Conf,
 	})
 
-	// limit node count
-	if engine.current, count, err = engine.mgtClient.Get(engine.ctx); err != nil {
+	appId, err := config.GetAppId()
+	if err != nil {
+		return nil, err
+	}
+	var privateKey string
+	engine.current, err = engine.mgtClient.Register(context.Background(), appId)
+	if err != nil {
 		return nil, err
 	}
 
-	// TODO
-	if count >= 5 {
-		return nil, errors.New("your device count has reached the maximum limit")
-	}
-	var privateKey, publicKey string
-	if engine.current.AppID != cfg.Conf.AppId {
-		key, err := wgtypes.GeneratePrivateKey()
-		if err != nil {
-			return nil, err
-		}
-		privateKey = key.String()
-		publicKey = key.PublicKey().String()
-		_, err = engine.mgtClient.Register(privateKey, publicKey, cfg.Conf.Token)
-		if err != nil {
-			engine.logger.Errorf("register failed, with err: %s\n", err.Error())
-			return nil, err
-		}
-		engine.logger.Infof("register to manager success")
-	} else {
-		privateKey = engine.current.PrivateKey
-	}
+	privateKey = engine.current.PrivateKey
 
 	//update key
 	engine.keyManager = internal.NewKeyManager(privateKey)
@@ -300,29 +282,11 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 
 // Start will get networkmap
 func (e *Engine) Start() error {
+	// init event handler
+	e.eventHandler = NewEventHandler(e, log.NewLogger(log.Loglevel, "event-handler"), e.mgtClient)
 	// start engine, open udp port
 	if err := e.device.Up(); err != nil {
 		return err
-	}
-	// GetNetMap peers from control plane first time, then use watch
-	networkMap, err := e.GetNetworkMap()
-	if err != nil {
-		e.logger.Errorf("sync peers failed: %v", err)
-	}
-
-	e.logger.Verbosef("get network map: %s", networkMap)
-
-	// config device
-	internal.SetDeviceIP()("add", e.current.Address, e.Name)
-
-	if err = e.DeviceConfigure(&internal.DeviceConfig{
-		PrivateKey: e.keyManager.GetKey(),
-	}); err != nil {
-		return err
-	}
-
-	for _, node := range networkMap.Nodes {
-		e.nodeManager.AddPeer(node.PublicKey, node)
 	}
 	// watch
 	go func() {

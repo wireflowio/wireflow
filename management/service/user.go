@@ -12,9 +12,9 @@ import (
 	"wireflow/management/repository"
 	"wireflow/management/utils"
 	"wireflow/management/vo"
-	"wireflow/pkg/linkerrors"
 	"wireflow/pkg/log"
 	"wireflow/pkg/redis"
+	"wireflow/pkg/wferrors"
 
 	"github.com/pion/turn/v4"
 	"gorm.io/gorm"
@@ -98,7 +98,7 @@ func (u *userServiceImpl) Login(ctx context.Context, dto *dto.UserDto) (*entity.
 	}
 
 	if err := utils.ComparePassword(user.Password, dto.Password); err != nil {
-		return nil, linkerrors.ErrInvalidPassword
+		return nil, wferrors.ErrInvalidPassword
 	}
 
 	token, err := u.tokenService.Generate(user.Username, user.Password)
@@ -201,7 +201,7 @@ func (u *userServiceImpl) Invite(ctx context.Context, dto *dto.InviteDto) error 
 			return err
 		}
 		if exists != nil {
-			return linkerrors.ErrInvitationExists
+			return wferrors.ErrInvitationExists
 		}
 
 		groupName := getGroupNames(tx, dto.GroupIdList)

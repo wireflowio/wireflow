@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"time"
 	"wireflow/internal"
@@ -153,7 +152,6 @@ func (c *Client) Keepalive(ctx context.Context, in *mgt.ManagementMessage) error
 	}()
 
 	for {
-		fmt.Println("")
 		select {
 		case <-c.keepaliveChan:
 			c.logger.Infof("keepalive stream closed by user")

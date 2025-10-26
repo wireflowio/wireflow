@@ -4,9 +4,6 @@ package node
 
 import (
 	"fmt"
-	wg "golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/ipc"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"net"
 	"os"
 	"path/filepath"
@@ -19,6 +16,10 @@ import (
 	"wireflow/monitor/collector"
 	"wireflow/pkg/config"
 	"wireflow/pkg/log"
+
+	wg "golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 // Start start wireflow
@@ -38,6 +39,9 @@ func Start(flags *LinkFlags) error {
 		Conf:          conf,
 		Port:          51820,
 		InterfaceName: flags.InterfaceName,
+		ManagementUrl: flags.ManagementUrl,
+		SignalingUrl:  flags.SignalingUrl,
+		TurnServerUrl: flags.TurnServerUrl,
 		WgLogger: wg.NewLogger(
 			wg.LogLevelError,
 			fmt.Sprintf("(%s) ", flags.InterfaceName),
@@ -208,13 +212,13 @@ func Start(flags *LinkFlags) error {
 			go engine.IpcHandle(conn)
 		}
 	}()
-	logger.Infof("Linkany started")
+	logger.Infof("wireflow started")
 
 	<-ctx.Done()
 	uapi.Close()
 
 	engine.close()
-	logger.Infof("Linkany shutting down")
+	logger.Infof("wireflow shutting down")
 	return err
 }
 
@@ -233,7 +237,7 @@ func Stop(flags *LinkFlags) error {
 		}
 
 		if len(devices) == 0 {
-			return fmt.Errorf("%s", "Linkany daemon is not running, no devices found")
+			return fmt.Errorf("%s", "Wireflow daemon is not running, no devices found")
 		}
 
 		interfaceName = devices[0].Name

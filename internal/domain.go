@@ -6,7 +6,7 @@ const (
 	ManagementDomain      = "console.linkany.io"
 	SignalingDomain       = "signaling.linkany.io"
 	TurnServerDomain      = "stun.linkany.io"
-	DefaultManagementPort = 6060
+	DefaultManagementPort = 32051
 	DefaultSignalingPort  = 6066
 	DefaultTurnServerPort = 3478
 )

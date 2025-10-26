@@ -4,17 +4,18 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/moby/term"
-	"github.com/pion/turn/v4"
-	"github.com/spf13/cobra"
 	"os"
 	"wireflow/internal"
 	"wireflow/management/client"
 	mgtclient "wireflow/management/grpc/client"
 	"wireflow/pkg/config"
-	"wireflow/pkg/linkerrors"
 	"wireflow/pkg/log"
 	"wireflow/pkg/redis"
+	"wireflow/pkg/wferrors"
+
+	"github.com/moby/term"
+	"github.com/pion/turn/v4"
+	"github.com/spf13/cobra"
 )
 
 type loginOptions struct {
@@ -75,7 +76,7 @@ func runLogin(opts loginOptions) error {
 			//	}
 			//} else {
 			if password, err := readLine("password: ", false); err != nil {
-				return linkerrors.ErrPasswordRequired
+				return wferrors.ErrPasswordRequired
 			} else {
 				opts.Password = password
 			}

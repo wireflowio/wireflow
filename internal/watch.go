@@ -205,6 +205,8 @@ func (e EventType) String() string {
 		return "nodeUpdate"
 	case EventTypeNodeAdd:
 		return "nodeAdd"
+	case EventTypeIPChange:
+		return "ipChange"
 	}
 	return "unknown"
 }

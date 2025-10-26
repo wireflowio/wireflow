@@ -13,6 +13,14 @@ type EventHandler struct {
 	client *mgtclient.Client
 }
 
+func NewEventHandler(engine internal.EngineManager, logger *log.Logger, client *mgtclient.Client) *EventHandler {
+	return &EventHandler{
+		engine: engine,
+		logger: logger,
+		client: client,
+	}
+}
+
 type HandlerFunc func(msg *internal.Message) error
 
 func (h *EventHandler) HandleEvent() HandlerFunc {
@@ -42,6 +50,14 @@ func (h *EventHandler) HandleEvent() HandlerFunc {
 			}
 		case internal.EventTypeIPChange:
 			h.logger.Infof("watch received event type: %v, node: %v", internal.EventTypeIPChange, msg.Current.String())
+			// 设置Device
+			internal.SetDeviceIP()("add", msg.Current.Address, h.engine.GetWgConfiger().GetIfaceName())
+
+			if err = h.engine.DeviceConfigure(&internal.DeviceConfig{
+				PrivateKey: msg.Current.PrivateKey,
+			}); err != nil {
+				return err
+			}
 		case internal.EventTypeNodeRemove:
 			h.logger.Infof("watch received event type: %v, node: %v", internal.EventTypeNodeRemove, msg.Current.String())
 		case internal.EventTypeNodeUpdate:

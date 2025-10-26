@@ -1,4 +1,4 @@
-package linkerrors
+package wferrors
 
 import "errors"
 
