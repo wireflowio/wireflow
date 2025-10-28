@@ -23,9 +23,11 @@ var manager *WatchManager
 // m is a map of groupId_nodeId to channel, a channel is used to send messages to the connected peer
 // The key is a combination of networkId and publicKey, which is used to identify the connected peer
 type WatchManager struct {
-	mu       sync.Mutex
-	channels map[string]*NodeChannel // key: clientId, value: channel
-	logger   *log.Logger
+	mu sync.Mutex
+	// push channel
+	channels     map[string]*NodeChannel // key: clientId, value: channel
+	recvChannels map[string]*NodeChannel
+	logger       *log.Logger
 }
 
 type NodeChannel struct {

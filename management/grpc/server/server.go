@@ -292,23 +292,24 @@ func (s *Server) Watch(server mgt.ManagementService_WatchServer) error {
 		s.mu.Unlock()
 	}()
 
-	for {
-		select {
-		case wm := <-watchChannel.GetChannel():
+	go func() {
+		for wm := range watchChannel.GetChannel() {
 			s.logger.Infof("sending watch message: %v to node: %v", wm, req.PubKey)
 			bs, err := json.Marshal(wm)
 			if err != nil {
-				return status.Errorf(codes.Internal, "marshal failed: %v", err)
+				s.logger.Errorf("marshal failed: %v", err)
 			}
 
 			msg = &mgt.ManagementMessage{PubKey: req.PubKey, Body: bs}
 			if err = server.Send(msg); err != nil {
-				return status.Errorf(codes.Internal, "send failed: %v", err)
+				s.logger.Errorf("send failed: %v", err)
 			}
-		case <-server.Context().Done():
-			return nil
 		}
-	}
+	}()
+
+	<-s.ctx.Done()
+	s.logger.Infof("watch server closed")
+	return nil
 }
 
 // Keepalive used to check whether a node is living， server will send 'ping' packet to nodes
@@ -319,6 +320,7 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 		body     []byte
 		req      *mgt.Request
 		clientId string
+		appId    string
 	)
 
 	ctx := context.Background()
@@ -326,64 +328,76 @@ func (s *Server) Keepalive(stream mgt.ManagementService_KeepaliveServer) error {
 	if err != nil {
 		return status.Errorf(codes.Internal, "receive keepalive packet failed: %v", err)
 	}
-	clientId = req.PubKey
-	logger := s.logger
+	clientId, appId = req.PubKey, req.AppId
 
 	s.logger.Infof("receive keepalive packet from client, pubkey: %v, appId: %v", req.PubKey, req.AppId)
-	check := func(ctx context.Context, checkChan chan struct{}) error {
-		defer func() {
-			close(checkChan)
-		}()
-		req, err = s.recv(ctx, stream)
-		if req == nil || err != nil {
-			return fmt.Errorf("receive keepalive packet failed: %v", err)
+	var check func(ctx context.Context) error
+	check = func(ctx context.Context) error {
+		if err = stream.Send(&mgt.ManagementMessage{Body: body, Timestamp: time.Now().UnixMilli()}); err != nil {
+			st, ok := status.FromError(err)
+			if ok && st.Code() == codes.Canceled {
+				s.logger.Errorf("stream canceled")
+				return status.Errorf(codes.Canceled, "stream canceled")
+			} else if errors.Is(err, io.EOF) {
+				s.logger.Verbosef("node %s is disconnected", clientId)
+				return status.Errorf(codes.Internal, "client closed")
+			}
 		}
+
+		req, err = s.recv(ctx, stream)
+		if err != nil {
+			return status.Errorf(codes.Internal, "receive keepalive packet failed: %v", err)
+		}
+
 		s.logger.Infof("recv keepalive packet from app, appId: %s", req.AppId)
-		return s.nodeResource.UpdateNodeState(req.AppId, internal.Active)
+		return nil
 	}
 
-	timer := time.NewTimer(10 * time.Second)
-	for {
-		select {
-		case <-timer.C:
+	go func() {
+		timer := time.NewTimer(10 * time.Second)
+		for range timer.C {
 			// check 10s receive the response
 			newCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 			checkReq := &mgt.Request{PubKey: clientId}
 			body, err = proto.Marshal(checkReq)
 			if err != nil {
 				s.logger.Errorf("marshal check request failed: %v", err)
-				cancel()
-				return err
 			}
-			checkChan := make(chan struct{})
-			if err = s.loop.AddTask(newCtx, func(taskCtx context.Context) error {
-				if err = stream.Send(&mgt.ManagementMessage{Body: body, Timestamp: time.Now().UnixMilli()}); err != nil {
-					s, ok := status.FromError(err)
-					if ok && s.Code() == codes.Canceled {
-						logger.Errorf("stream canceled")
-						return err
-					} else if errors.Is(err, io.EOF) {
-						logger.Verbosef("node %s is disconnected", clientId)
-						return err
-					}
-				}
 
-				return check(newCtx, checkChan)
-			}); err != nil {
-				return s.nodeResource.UpdateNodeState(req.AppId, internal.Inactive)
-			}
+			resultCh := make(chan error, 1)
+			go func() {
+				resultCh <- check(newCtx)
+			}()
 
 			select {
 			case <-newCtx.Done():
-				logger.Infof("timeout or cancel")
-				//timeout or cancel
-				return s.nodeResource.UpdateNodeState(req.AppId, internal.Inactive)
-			case <-checkChan:
-				logger.Infof("node %s is active", req.AppId)
-				timer.Reset(s.checkInterval * time.Second)
+				s.logger.Infof("check timeout!!!")
+				// timeout or cancel
+				if err = s.nodeResource.UpdateNodeState(appId, internal.Inactive); err != nil {
+					s.logger.Errorf("update node %s status to inactive failed: %v", req.AppId, err)
+				}
+			case err := <-resultCh:
+				if err != nil {
+					s.logger.Infof("check failed, mark node %s inactive: %v", appId, err)
+					if err = s.nodeResource.UpdateNodeState(appId, internal.Inactive); err != nil {
+						s.logger.Errorf("update node %s status to inactive failed: %v", req.AppId, err)
+					}
+				} else {
+					s.logger.Infof("node %s is active", appId)
+					if err = s.nodeResource.UpdateNodeState(appId, internal.Active); err != nil {
+						s.logger.Errorf("update node %s status to active failed: %v", req.AppId, err)
+					}
+				}
 			}
+
+			cancel()
+			timer.Reset(s.checkInterval * time.Second)
 		}
-	}
+	}()
+
+	<-s.ctx.Done()
+	s.logger.Infof("keepalive server closed")
+	return nil
 }
 
 func (s *Server) recv(ctx context.Context, stream mgt.ManagementService_KeepaliveServer) (*mgt.Request, error) {
