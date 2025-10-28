@@ -80,7 +80,6 @@ func (n *NodeEventHandler) syncHandler(ctx context.Context, item controller.Work
 		if oldNode.Spec.Address != newNode.Spec.Address {
 			n.handleIPChange(newNode)
 			logger.Info("Node IP address changed", "oldAddress", oldNode.Spec.Address, "newAddress", newNode.Spec.Address)
-
 		}
 
 	case controller.DeleteEvent:
@@ -150,3 +149,5 @@ func (n *NodeEventHandler) handleIPChange(node *wireflowv1alpha1.Node) {
 	n.wt.Send(msg.Current.PublicKey, msg)
 	logger.Info("Node IP address send to client success", "address", node.Spec.Address)
 }
+
+// handleNodeAdd will send msg to client
