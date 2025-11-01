@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"wireflow/management/utils"
 	"wireflow/pkg/log"
+	"wireflow/pkg/utils"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -192,6 +192,7 @@ const (
 	EventTypeNodeAdd
 	EventTypeNodeRemove
 	EventTypeIPChange
+	EventTypeKeyChanged
 	EventTypePolicyRuleAdd
 	EventTypePolicyRuleChanged
 	EventTypePolicyRuleRemove
@@ -242,7 +243,7 @@ func (p *Node) String() string {
 	printf(&sb, "preshared_key", p.PresharedKey, keyf)
 	printf(&sb, "replace_allowed_ips", strconv.FormatBool(true), nil)
 	printf(&sb, "persistent_keepalive_interval", strconv.Itoa(p.PersistentKeepalive), nil)
-	printf(&sb, "allowed_ip", p.AllowedIPs, nil)
+	printf(&sb, "allowed_ips", p.AllowedIPs, nil)
 	printf(&sb, "endpoint", p.Endpoint, nil)
 
 	return sb.String()
