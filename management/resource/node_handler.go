@@ -2,9 +2,16 @@ package resource
 
 import (
 	"context"
-	"github.com/wireflowio/wireflow-controller/pkg/generated/informers/externalversions/wireflowcontroller/v1alpha1"
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 	"wireflow/internal"
+
+	"github.com/wireflowio/wireflow-controller/pkg/generated/informers/externalversions/wireflowcontroller/v1alpha1"
+	listers "github.com/wireflowio/wireflow-controller/pkg/generated/listers/wireflowcontroller/v1alpha1"
+	"github.com/wireflowio/wireflow-controller/pkg/utils"
 
 	wireflowv1alpha1 "github.com/wireflowio/wireflow-controller/pkg/apis/wireflowcontroller/v1alpha1"
 	"github.com/wireflowio/wireflow-controller/pkg/controller"
@@ -15,10 +22,18 @@ import (
 )
 
 type NodeEventHandler struct {
-	ctx      context.Context
-	informer v1alpha1.NodeInformer
-	wt       *internal.WatchManager
-	queue    workqueue.TypedRateLimitingInterface[controller.WorkerItem]
+	ctx             context.Context
+	informer        v1alpha1.NodeInformer
+	wt              *internal.WatchManager
+	queue           workqueue.TypedRateLimitingInterface[controller.WorkerItem]
+	lastPushedState *StateCache
+	hashMu          sync.RWMutex
+	networkLister   listers.NetworkLister
+}
+
+type StateCache struct {
+	states map[string]string
+	sync.RWMutex
 }
 
 func NewNodeEventHandler(
@@ -31,6 +46,9 @@ func NewNodeEventHandler(
 		informer: informer,
 		wt:       wt,
 		queue:    queue,
+		lastPushedState: &StateCache{
+			states: make(map[string]string),
+		},
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -47,7 +65,11 @@ func NewNodeEventHandler(
 			if oldNode.ResourceVersion == newNode.ResourceVersion {
 				return
 			}
-			EnqueueItem(controller.UpdateEvent, oldObj, newObj, h.queue)
+
+			// ready的时候才会推送
+			if newNode.Status.Phase == wireflowv1alpha1.NodeReady {
+				EnqueueItem(controller.UpdateEvent, oldObj, newObj, h.queue)
+			}
 		},
 		DeleteFunc: func(obj interface{}) {
 			EnqueueItem(controller.DeleteEvent, nil, obj, h.queue)
@@ -70,24 +92,220 @@ func (n *NodeEventHandler) syncHandler(ctx context.Context, item controller.Work
 	// Get the Node resource with this namespace/name
 	namespace, name := item.Key.Namespace, item.Key.Name
 	logger := klog.FromContext(ctx)
-
 	switch item.EventType {
 	case controller.AddEvent:
-		logger.Info("Add event", "namespace", namespace, "name", name, "resource type", "Node")
+		// 新节点加入
+		node := item.NewObject.(*wireflowv1alpha1.Node)
+		logger.Info("Node Add event", "namespace", namespace, "name", name, "appId", node.Spec.AppId)
+
+		// 检查节点状态，决定是否推送
+		return n.reconcileNodeAdd(ctx, node)
+
 	case controller.UpdateEvent:
-		oldNode, newNode := item.OldObject.(*wireflowv1alpha1.Node), item.NewObject.(*wireflowv1alpha1.Node)
-		logger.Info("Update event", "namespace", namespace, "name", name, "resource type", "Node")
-		// ip 地址
-		if oldNode.Spec.Address != newNode.Spec.Address {
-			n.handleIPChange(newNode)
-			logger.Info("Node IP address changed", "oldAddress", oldNode.Spec.Address, "newAddress", newNode.Spec.Address)
-		}
+		oldNode := item.OldObject.(*wireflowv1alpha1.Node)
+		newNode := item.NewObject.(*wireflowv1alpha1.Node)
+		logger.Info("Node Update event", "namespace", namespace, "name", name, "appId", newNode.Spec.AppId)
+
+		// 分析变化类型，执行相应的推送
+		return n.reconcileNodeUpdate(ctx, oldNode, newNode)
 
 	case controller.DeleteEvent:
-		logger.Info("Delete event", "namespace", namespace, "name", name, "resource type", "Node")
+		// 节点删除
+		node := item.NewObject.(*wireflowv1alpha1.Node)
+		logger.Info("Node Delete event", "namespace", namespace, "name", name, "appId", node.Spec.AppId)
+
+		return n.reconcileNodeDelete(ctx, node)
 	}
 
 	return nil
+}
+
+// reconcileNodeAdd 处理节点新增
+func (n *NodeEventHandler) reconcileNodeAdd(ctx context.Context, node *wireflowv1alpha1.Node) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("Node Add event", "node", node)
+
+	// Node is not ready yet, skip
+	if node.Status.Phase != wireflowv1alpha1.NodeReady {
+		logger.Info("Node not ready, skip")
+		return nil
+	}
+
+	if len(node.Spec.Network) == 0 {
+		logger.Info("Node has no network, skip")
+		return nil
+	}
+
+	msg := n.buildNodeConfig(ctx, node)
+
+	// 5. 推送配置到节点
+	return n.pushToNode(ctx, node, msg, internal.EventTypeNodeAdd)
+}
+
+func (n *NodeEventHandler) buildNodeConfig(ctx context.Context, node *wireflowv1alpha1.Node) *internal.Message {
+	logger := klog.FromContext(ctx)
+	logger.Info("Build node config", "node", node)
+
+	return &internal.Message{
+		EventType: internal.EventTypeIPChange,
+		Current: &internal.Node{
+			Address:    node.Spec.Address,
+			AppID:      node.Spec.AppId,
+			PublicKey:  node.Spec.PublicKey,
+			PrivateKey: node.Spec.PrivateKey,
+		},
+		Network: &internal.Network{
+			Nodes: make([]*internal.Node, 0),
+		},
+	}
+}
+
+func (n *NodeEventHandler) buildMessage(ctx context.Context, event internal.EventType, node *internal.Node, network *internal.Network) *internal.Message {
+	return &internal.Message{
+		EventType: event,
+		Current:   node,
+		Network:   network,
+	}
+}
+
+func (n *NodeEventHandler) initNode(ctx context.Context, node *wireflowv1alpha1.Node) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("Node init event", "node", node)
+
+	return nil
+}
+
+func (n *NodeEventHandler) reconcileNodeUpdate(ctx context.Context, oldNode, newNode *wireflowv1alpha1.Node) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("Node Update event", "oldNode", oldNode, "newNode", newNode)
+
+	if newNode.Status.Phase != wireflowv1alpha1.NodeReady {
+		logger.Info("Node not ready, skip")
+		return nil
+	}
+
+	// when node is ready, push full configuration
+	if len(newNode.Spec.Network) == 0 {
+		logger.Info("Node has no network, skip")
+		return nil
+	}
+
+	msg := n.buildNodeConfig(ctx, newNode)
+
+	return n.pushToNode(ctx, newNode, msg, internal.EventTypeNodeUpdate)
+}
+
+func (n *NodeEventHandler) analyzeEvent(oldNode, newNode *wireflowv1alpha1.Node) (internal.EventType, error) {
+	logger := klog.FromContext(context.Background())
+	logger.Info("Node changed", "node", newNode.Name, "status", newNode.Status.Status)
+
+	//新节点
+	if oldNode == nil {
+		logger.V(4).Info("Node is new, skip push", "appId", newNode.Spec.AppId, "status", newNode.Status.Status)
+		return internal.EventTypeNone, nil
+	}
+
+	//节点还未reconcile就绪
+	if newNode.Status.Phase != wireflowv1alpha1.NodeReady {
+		logger.V(4).Info("Node not ready, skip push", "appId", newNode.Spec.AppId, "status", newNode.Status.Status)
+		return internal.EventTypeNone, nil
+	}
+
+	//节点不在线
+	if newNode.Status.Status != wireflowv1alpha1.Active {
+		logger.V(4).Info("Node not active, skip push", "appId", newNode.Spec.AppId, "status", newNode.Status.Status)
+		return internal.EventTypeNone, nil
+	}
+
+	// node private key changed
+	if n.SpecEquals(oldNode, newNode) {
+		logger.V(4).Info("Node unchanged, skip push", "appId", newNode.Spec.AppId)
+		return internal.EventTypeNodeUpdate, nil
+	}
+
+	if len(newNode.Spec.Network) == 0 {
+		logger.V(4).Info("Node has no network, skip push", "appId", newNode.Spec.AppId)
+		return internal.EventTypeNone, nil
+	}
+
+	//网络配置了， IP地址变化
+	if oldNode.Spec.Address != newNode.Spec.Address {
+		logger.V(4).Info("Node address changed", "old", oldNode.Spec.Address, "new", newNode.Spec.Address)
+		return internal.EventTypeIPChange, nil
+	}
+
+	// 主network 变化了
+	if oldNode.Spec.Network[0] != newNode.Spec.Network[0] {
+		logger.V(4).Info("Node network changed", "old", oldNode.Spec.Network, "new", newNode.Spec.Network)
+		return internal.EventTypeNetworkChanged, nil
+	}
+
+	//策略变化
+	if oldNode.Status.Phase == wireflowv1alpha1.NodeUpdatingPolicy && newNode.Status.Phase == wireflowv1alpha1.NodeReady {
+		logger.V(4).Info("Node policy changed", "old", oldNode.Status.Phase, "new", newNode.Status.Phase)
+		return internal.EventTypePolicyChanged, nil
+	}
+
+	adds, removes := utils.Differences(newNode.Spec.Network, oldNode.Spec.Network)
+	if adds == nil && removes == nil {
+		logger.V(4).Info("Node network unchanged", "adds", adds, "removes", removes)
+		return internal.EventTypeNone, nil
+	} else {
+		logger.V(4).Info("Node network changed", "adds", adds, "removes", removes)
+		return internal.EventTypeNodeUpdate, nil
+	}
+
+	return internal.EventTypeNone, nil
+}
+
+func (n *NodeEventHandler) reconcileNodeDelete(ctx context.Context, node *wireflowv1alpha1.Node) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("Node Delete event", "node", node)
+	return nil
+}
+
+// pushToNode 推送消息到节点（带去重检查）
+func (h *NodeEventHandler) pushToNode(ctx context.Context, node *wireflowv1alpha1.Node, msg *internal.Message, eventType internal.EventType) error {
+	logger := klog.FromContext(ctx)
+
+	msg.EventType = eventType
+
+	// 1. 计算消息哈希
+	msgHash := h.computeMessageHash(msg)
+
+	// 2. 检查是否与上次推送相同
+	h.lastPushedState.RLock()
+	lastHash, exists := h.lastPushedState.states[node.Spec.AppId]
+	h.lastPushedState.RUnlock()
+
+	if exists && lastHash == msgHash {
+		logger.V(4).Info("Message unchanged, skipping push", "appId", node.Spec.AppId)
+		return nil
+	}
+
+	// 3. 推送消息
+	if err := h.wt.Send(node.Spec.AppId, msg); err != nil {
+		return fmt.Errorf("failed to send message to node %s: %v", node.Spec.AppId, err)
+	}
+
+	// 4. 更新缓存
+	h.lastPushedState.Lock()
+	h.lastPushedState.states[node.Spec.AppId] = msgHash
+	h.lastPushedState.Unlock()
+
+	// 5. 记录日志
+	b, _ := json.Marshal(msg)
+	logger.Info("Pushed message to node",
+		"appId", node.Spec.AppId,
+		"eventType", eventType,
+		"dataSize", len(b))
+
+	return nil
+}
+
+func (h *NodeEventHandler) computeMessageHash(msg *internal.Message) string {
+	data, _ := json.Marshal(msg)
+	return fmt.Sprintf("%x", sha256.Sum256(data))
 }
 
 func (n *NodeEventHandler) ProcessNextItem(ctx context.Context) bool {
@@ -138,18 +356,119 @@ func (n *NodeEventHandler) WorkQueue() workqueue.TypedRateLimitingInterface[cont
 	return n.queue
 }
 
-// handleIPChange will send a new ip to client
-func (n *NodeEventHandler) handleIPChange(node *wireflowv1alpha1.Node) {
-	logger := klog.FromContext(context.Background())
-	msg := new(internal.Message)
-	msg.EventType = internal.EventTypeIPChange
-	msg.Current = new(internal.Node)
-	msg.Current.Address = node.Spec.Address
-	msg.Current.AppID = node.Spec.AppId
-	msg.Current.PublicKey = node.Spec.PublicKey
-	msg.Current.PrivateKey = node.Spec.PrivateKey
-	n.wt.Send(msg.Current.AppID, msg)
-	logger.Info("Node IP address send to %s client success", "address", msg.Current.AppID, node.Spec.Address)
+func (n *NodeEventHandler) pushIPChange(node *wireflowv1alpha1.Node) {
+	msg := &internal.Message{
+		EventType: internal.EventTypeIPChange,
+		Current: &internal.Node{
+			Name:       node.Name,
+			AppID:      node.Spec.AppId,
+			Address:    node.Spec.Address,
+			PublicKey:  node.Spec.PublicKey,
+			PrivateKey: node.Spec.PrivateKey,
+		},
+	}
+
+	n.pushMessage(node.Spec.AppId, msg)
 }
 
-// handleNodeAdd will send msg to client
+func (n *NodeEventHandler) pushMessage(appId string, msg *internal.Message) {
+	logger := klog.Background()
+
+	// 计算消息哈希
+	msgHash := n.computeMessageHash(msg)
+
+	// 检查是否与上次推送相同
+	n.hashMu.RLock()
+	lastHash, exists := n.lastPushedState.states[appId]
+	n.hashMu.RUnlock()
+
+	if exists && lastHash == msgHash {
+		logger.V(4).Info("Message unchanged, skip push", "appId", appId)
+		return
+	}
+
+	// 推送
+	if err := n.wt.Send(appId, msg); err != nil {
+		logger.Error(err, "Failed to push message", "appId", appId)
+		return
+	}
+
+	// 更新哈希缓存
+	n.hashMu.Lock()
+	n.lastPushedState.states[appId] = msgHash
+	n.hashMu.Unlock()
+
+	b, _ := json.Marshal(msg)
+	logger.Info("Pushed message", "appId", appId, "eventType", msg.EventType, "size", len(b))
+}
+
+// handleNodeDelete 处理 Node 删除
+func (n *NodeEventHandler) handleNodeDelete(node *wireflowv1alpha1.Node) {
+	logger := klog.Background()
+	logger.Info("Node deleted", "node", node.Name)
+
+	// 通知网络中的其他节点
+	if len(node.Spec.Network) > 0 {
+		for _, networkName := range node.Spec.Network {
+			network, err := n.networkLister.Networks(node.Namespace).Get(networkName)
+			if err != nil {
+				logger.Error(err, "Failed to get network", "network", networkName)
+				continue
+			}
+
+			n.notifyPeersNodeRemoved(network, node)
+		}
+	}
+
+	// 清理哈希缓存
+	n.hashMu.Lock()
+	delete(n.lastPushedState.states, node.Spec.AppId)
+	n.hashMu.Unlock()
+}
+
+func (n *NodeEventHandler) notifyPeersNodeRemoved(network *wireflowv1alpha1.Network, node *wireflowv1alpha1.Node) {
+	logger := klog.Background()
+	logger.Info("Notify peers node removed", "network", network.Name, "node", node.Name)
+
+	msg := &internal.Message{
+		EventType: internal.EventTypeNodeRemove,
+		Current: &internal.Node{
+			Name:       node.Name,
+			AppID:      node.Spec.AppId,
+			Address:    node.Spec.Address,
+			PublicKey:  node.Spec.PublicKey,
+			PrivateKey: node.Spec.PrivateKey,
+		},
+	}
+
+	objs, err := n.informer.Informer().GetIndexer().ByIndex("network", network.Name)
+	if err != nil {
+		logger.Error(err, "Failed to get network nodes", "network", network.Name)
+		return
+	}
+
+	for _, obj := range objs {
+		node := obj.(*wireflowv1alpha1.Node)
+		if node.Name == node.Name {
+			continue
+		}
+
+		n.pushMessage(node.Spec.AppId, msg)
+	}
+}
+
+func (n *NodeEventHandler) SpecEquals(old, new *wireflowv1alpha1.Node) bool {
+	if old.Spec.PrivateKey != new.Spec.PrivateKey {
+		return false
+	}
+
+	return true
+}
+
+func (n *NodeEventHandler) StatusEquals(old, new *wireflowv1alpha1.Node) bool {
+	if old.Status.Status != new.Status.Status {
+		return false
+	}
+
+	return true
+}

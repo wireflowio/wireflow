@@ -178,9 +178,10 @@ func (n *Network) WithPolicy(policy *Policy) *Network {
 	return n
 }
 
-func (w *WatchManager) Send(clientId string, msg *Message) {
+func (w *WatchManager) Send(clientId string, msg *Message) error {
 	channel := w.GetChannel(clientId)
 	channel.channel <- msg
+	return nil
 }
 
 type EventType int
@@ -193,9 +194,9 @@ const (
 	EventTypeNodeRemove
 	EventTypeIPChange
 	EventTypeKeyChanged
-	EventTypePolicyRuleAdd
-	EventTypePolicyRuleChanged
-	EventTypePolicyRuleRemove
+	EventTypeNetworkChanged
+	EventTypePolicyChanged
+	EventTypeNone
 )
 
 func (e EventType) String() string {

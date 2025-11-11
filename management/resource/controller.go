@@ -78,12 +78,12 @@ func NewController(
 
 	nodeQueue, networkQueue := workqueue.NewTypedRateLimitingQueue(ratelimiter), workqueue.NewTypedRateLimitingQueue(ratelimiter)
 
-	nodeLister := nodeInformer.Lister()
+	//nodeLister := nodeInformer.Lister()
 
 	eventHandlers := make([]EventHandler, 0)
 	eventHandlers = append(eventHandlers,
 		NewNodeEventHandler(ctx, nodeInformer, wt, nodeQueue),
-		NewNetworkEventHandler(ctx, networkInformer, cs, wt, nodeLister, networkQueue),
+		//NewNetworkEventHandler(ctx, networkInformer, cs, wt, nodeLister, networkQueue),
 	)
 
 	c := &Controller{
