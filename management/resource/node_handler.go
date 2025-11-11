@@ -52,6 +52,7 @@ func NewNodeEventHandler(
 	informer v1alpha1.NodeInformer,
 	wt *internal.WatchManager,
 	networkLister listers.NetworkLister,
+	policyLister listers.NetworkPolicyLister,
 	queue workqueue.TypedRateLimitingInterface[controller.WorkerItem]) *NodeEventHandler {
 	h := &NodeEventHandler{
 		ctx:            ctx,
@@ -61,6 +62,8 @@ func NewNodeEventHandler(
 		lastPushedHash: make(map[string]string),
 		changeDetector: NewChangeDetector(),
 		networkLister:  networkLister,
+		policyLister:   policyLister,
+		nodeContext:    make(map[string]*NodeContext),
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -196,21 +199,18 @@ func (n *NodeEventHandler) reconcileNodeUpdate(ctx context.Context, oldNode, new
 	logger := klog.FromContext(ctx)
 	logger.Info("Node Update event", "oldNode", oldNode, "newNode", newNode)
 
-	if !n.IsConnected(ctx, newNode) {
-		logger.Info("Node not connected, skip")
-		context := n.getNodeContext(newNode)
-		n.cacheNodeContext(newNode.Name, context)
-		return nil
-	}
-
-	if newNode.Status.Status != wireflowv1alpha1.Active {
-		logger.Info("Node not active, skip")
-		context := n.getNodeContext(newNode)
-		n.cacheNodeContext(newNode.Name, context)
-		return nil
-	}
+	//if !n.IsConnected(ctx, newNode) {
+	//	logger.Info("Node not connected, skip")
+	//	context := n.getNodeContext(newNode)
+	//	n.cacheNodeContext(newNode.Name, context)
+	//	return nil
+	//}
 
 	oldContext := n.getCachedNodeContext(oldNode)
+	if oldContext == nil {
+		oldContext = n.getNodeContext(oldNode)
+		n.cacheNodeContext(oldNode.Name, oldContext)
+	}
 	newContext := n.getNodeContext(newNode)
 
 	//更新缓存

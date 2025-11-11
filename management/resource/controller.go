@@ -75,8 +75,9 @@ func NewController(
 
 	nodeInformer := informerFactory.Wireflowcontroller().V1alpha1().Nodes()
 	networkInformer := informerFactory.Wireflowcontroller().V1alpha1().Networks()
+	policyInformer := informerFactory.Wireflowcontroller().V1alpha1().NetworkPolicies()
 
-	networkLister := networkInformer.Lister()
+	networkLister, policyLister := networkInformer.Lister(), policyInformer.Lister()
 
 	nodeQueue, networkQueue := workqueue.NewTypedRateLimitingQueue(ratelimiter), workqueue.NewTypedRateLimitingQueue(ratelimiter)
 
@@ -84,7 +85,7 @@ func NewController(
 
 	eventHandlers := make([]EventHandler, 0)
 	eventHandlers = append(eventHandlers,
-		NewNodeEventHandler(ctx, nodeInformer, wt, networkLister, nodeQueue),
+		NewNodeEventHandler(ctx, nodeInformer, wt, networkLister, policyLister, nodeQueue),
 		//NewNetworkEventHandler(ctx, networkInformer, cs, wt, nodeLister, networkQueue),
 	)
 
