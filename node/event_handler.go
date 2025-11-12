@@ -28,7 +28,7 @@ type HandlerFunc func(msg *internal.Message) error
 
 func (h *EventHandler) HandleEvent() HandlerFunc {
 	return func(msg *internal.Message) error {
-		h.logger.Infof("Received config update v%s: %s", msg.ConfigVersion, msg.Changes.Summary())
+		h.logger.Infof("Received config update %s: %s", msg.ConfigVersion, msg.Changes.Summary())
 		if msg == nil {
 			return nil
 		}
