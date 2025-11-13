@@ -239,16 +239,13 @@ func (s *Server) List(ctx context.Context, in *wgrpc.ManagementMessage) (*wgrpc.
 
 // GetNetMap used to get node's net map, to connect to when node starting
 func (s *Server) GetNetMap(ctx context.Context, in *wgrpc.ManagementMessage) (*wgrpc.ManagementMessage, error) {
+	logger := klog.FromContext(ctx)
+	logger.Info("GetNetMap starting")
 	var req wgrpc.Request
 	if err := proto.Unmarshal(in.Body, &req); err != nil {
 		return nil, status.Errorf(codes.Internal, "unmarshal failed: %v", err)
 	}
-	user, err := s.userController.Get(ctx, req.GetToken())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "get user info err: %v", err)
-	}
-	s.logger.Infof("%v", user)
-	networkMap, err := s.nodeController.GetNetworkMap(ctx, req.AppId, fmt.Sprintf("%d", user.ID))
+	networkMap, err := s.nodeResource.GetNetworkMap(ctx, "default", req.AppId)
 	if err != nil {
 		return nil, err
 	}

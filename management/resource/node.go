@@ -142,6 +142,20 @@ func (n *NodeResource) UpdateNetworkSpec(ctx context.Context, namespace, name st
 	})
 }
 
+// GetNetworkMap get network map when node init
+func (n *NodeResource) GetNetworkMap(ctx context.Context, namespace, name string) (*internal.Message, error) {
+	logger := klog.FromContext(ctx)
+	logger.Info("Get node", "namespace", namespace, "name", name)
+	node, err := n.controller.nodeLister.Nodes(namespace).Get(name)
+	if err != nil {
+		return nil, err
+	}
+
+	context := nodeContext(node, n.controller.nodeLister, n.controller.networkLister, n.controller.policyLister)
+
+	return buildFullConfig(node, context, nil, "init")
+}
+
 func (n *NodeResource) GetByAppId(ctx context.Context, appId string) (*entity.Node, error) {
 	return nil, nil
 }

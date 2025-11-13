@@ -48,6 +48,8 @@ type Controller struct {
 	nodeSynced      cache.InformerSynced
 	networkSynced   cache.InformerSynced
 	networkLister   listers.NetworkLister
+	nodeLister      listers.NodeLister
+	policyLister    listers.NetworkPolicyLister
 }
 
 func NewController(
@@ -93,7 +95,7 @@ func NewController(
 	networkInformer := informerFactory.Wireflowcontroller().V1alpha1().Networks()
 	policyInformer := informerFactory.Wireflowcontroller().V1alpha1().NetworkPolicies()
 
-	networkLister, policyLister := networkInformer.Lister(), policyInformer.Lister()
+	nodeLister, networkLister, policyLister := nodeInformer.Lister(), networkInformer.Lister(), policyInformer.Lister()
 
 	nodeQueue, networkQueue := workqueue.NewTypedRateLimitingQueue(ratelimiter), workqueue.NewTypedRateLimitingQueue(ratelimiter)
 
@@ -115,6 +117,8 @@ func NewController(
 		nodeSynced:      nodeInformer.Informer().HasSynced,
 		networkSynced:   networkInformer.Informer().HasSynced,
 		networkLister:   networkLister,
+		nodeLister:      nodeLister,
+		policyLister:    policyLister,
 	}
 
 	stopCh := make(chan struct{})
