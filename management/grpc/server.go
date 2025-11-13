@@ -28,12 +28,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+	"k8s.io/klog/v2"
 )
-
-type ServerInterface interface {
-	Login(ctx context.Context, in *wgrpc.ManagementMessage) (*wgrpc.ManagementMessage, error)
-	Registry(ctx context.Context, in *wgrpc.ManagementMessage) (*wgrpc.ManagementMessage, error)
-}
 
 // Server is grpc server used to list watch resources to nodes.
 type Server struct {
@@ -486,4 +482,48 @@ func (s *Server) VerifyToken(ctx context.Context, in *wgrpc.ManagementMessage) (
 	}
 
 	return nil, wferrors.ErrInvalidToken
+}
+
+// Do will handle cli request
+func (s *Server) Do(ctx context.Context, in *wgrpc.ManagementMessage) (*wgrpc.ManagementMessage, error) {
+	logger := klog.FromContext(ctx)
+	logger.Info("Handle cli request", "pubKey", in.PubKey, "")
+
+	switch in.Type {
+	case wgrpc.Type_MessageTypeJoinNetwork:
+		var req struct {
+			AppId     string `json:"appId"`
+			NetworkId string `json:"networkId"`
+		}
+		if err := json.Unmarshal(in.Body, &req); err != nil {
+			return nil, err
+		}
+		if err := s.JoinNetwork(ctx, req.AppId, req.NetworkId); err != nil {
+			logger.Error(err, "Join network failed")
+			return nil, err
+		}
+
+		return &wgrpc.ManagementMessage{
+			Body: []byte("Join network success"),
+		}, nil
+
+	case wgrpc.Type_MessageTypeLeaveNetwork:
+		var req struct {
+			AppId     string `json:"appId"`
+			NetworkId string `json:"networkId"`
+		}
+
+		if err := json.Unmarshal(in.Body, &req); err != nil {
+			return nil, err
+		}
+		if err := s.LeaveNetwork(ctx, req.AppId, req.NetworkId); err != nil {
+			logger.Error(err, "Join network failed")
+			return nil, err
+		}
+
+		return &wgrpc.ManagementMessage{
+			Body: []byte("Join network success"),
+		}, nil
+	}
+	return nil, nil
 }

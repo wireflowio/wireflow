@@ -116,6 +116,32 @@ func (n *NodeResource) UpdateNodeStatus(ctx context.Context, namespace, name str
 	})
 }
 
+// UpdateNetworkSpec union update network spec
+func (n *NodeResource) UpdateNetworkSpec(ctx context.Context, namespace, name string, updateFunc func(spec *wireflowcontrollerv1alpha1.Network)) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("Update node status", "namespace", namespace, "name", name)
+	return retry.RetryOnConflict(retry.DefaultBackoff, func() error {
+		network, err := n.controller.networkLister.Networks(namespace).Get(name)
+		if err != nil {
+			return fmt.Errorf("get node %s failed: %v", name, err)
+		}
+
+		networkCopy := network.DeepCopy()
+		updateFunc(networkCopy)
+
+		_, err = n.controller.Clientset.WireflowcontrollerV1alpha1().Networks(namespace).Update(ctx, networkCopy, v1.UpdateOptions{})
+
+		if err != nil {
+			if errors.IsConflict(err) {
+				return nil
+			}
+			return fmt.Errorf("update network %s failed: %v", name, err)
+		}
+		return err
+
+	})
+}
+
 func (n *NodeResource) GetByAppId(ctx context.Context, appId string) (*entity.Node, error) {
 	return nil, nil
 }

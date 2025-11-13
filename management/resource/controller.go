@@ -25,6 +25,7 @@ import (
 	"github.com/wireflowio/wireflow-controller/pkg/controller"
 	clientset "github.com/wireflowio/wireflow-controller/pkg/generated/clientset/versioned"
 	informers "github.com/wireflowio/wireflow-controller/pkg/generated/informers/externalversions"
+	listers "github.com/wireflowio/wireflow-controller/pkg/generated/listers/wireflowcontroller/v1alpha1"
 	"golang.org/x/time/rate"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -46,6 +47,7 @@ type Controller struct {
 	informerFactory informers.SharedInformerFactory
 	nodeSynced      cache.InformerSynced
 	networkSynced   cache.InformerSynced
+	networkLister   listers.NetworkLister
 }
 
 func NewController(
@@ -112,6 +114,7 @@ func NewController(
 		informerFactory: informerFactory,
 		nodeSynced:      nodeInformer.Informer().HasSynced,
 		networkSynced:   networkInformer.Informer().HasSynced,
+		networkLister:   networkLister,
 	}
 
 	stopCh := make(chan struct{})
