@@ -23,6 +23,7 @@ import (
 	"wireflow/pkg/log"
 
 	"github.com/wireflowio/ice"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -114,6 +115,8 @@ func (dt *directChecker) handleDirectOffer(offer *internal.DirectOffer) error {
 
 // ProbeConnect probes the connection
 func (dt *directChecker) ProbeConnect(ctx context.Context, isControlling bool, remoteOffer internal.Offer) error {
+	logger := klog.FromContext(ctx)
+	logger.Info("starting direct checker", "isControlling", isControlling, "remoteOffer", remoteOffer, "to", dt.to, "addr", dt.addr)
 	var conn *ice.Conn
 	var err error
 
@@ -127,7 +130,7 @@ func (dt *directChecker) ProbeConnect(ctx context.Context, isControlling bool, r
 		dt.logger.Errorf("get local user credentials failed: %v", err)
 		return dt.ProbeFailure(ctx, remoteOffer)
 	}
-	dt.logger.Infof("===========agent %v, remote candidates: %v, current node is controlling: %v, local ufrag: %v, pwd: %v, remote ufrag: %v, pwd: %v", agent, candidates, isControlling, ufrag, pwd, offer.Ufrag, offer.Pwd)
+	logger.Info("local user credentials", "ufrag", ufrag, "pwd", pwd, "candidates", candidates, "isControlling", isControlling, "remoteOffer", remoteOffer, "to", dt.to, "addr", dt.addr)
 	if isControlling {
 		conn, err = agent.Dial(ctx, offer.Ufrag, offer.Pwd)
 	} else {
@@ -140,7 +143,6 @@ func (dt *directChecker) ProbeConnect(ctx context.Context, isControlling bool, r
 	}
 
 	return dt.ProbeSuccess(ctx, conn.RemoteAddr().String())
-	//}
 }
 
 func (dt *directChecker) ProbeSuccess(ctx context.Context, conn string) error {

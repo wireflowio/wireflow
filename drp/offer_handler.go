@@ -134,8 +134,8 @@ func (h *offerHandler) handleOffer(ctx context.Context, msg *drpgrpc.DrpMessage)
 		connectType = internal.RelayType
 	}
 
-	// add peer
-	if offer.GetNode() != nil {
+	// add peer if not exist in node manager
+	if offer.GetNode() != nil && h.nodeManager.GetPeer(msg.From) == nil {
 		h.nodeManager.AddPeer(msg.From, offer.GetNode())
 	}
 	probe := h.probeManager.GetProbe(msg.From)
