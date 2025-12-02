@@ -1,8 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/name: wireflow-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: wireflow
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wireflow-control
-  namespace: wireflow
   labels:
     k8s-app: wireflow-control
 spec:
@@ -15,14 +22,14 @@ spec:
       labels:
         k8s-app: wireflow-control
     spec:
-#      imagePullSecrets:
-#        - name: ali-registry
+      #      imagePullSecrets:
+      #        - name: ali-registry
       serviceAccountName: wireflow-controller-admin
       containers:
         - name: wireflow-control
           image: controller:latest
           imagePullPolicy: Always
-          command: [ "wireflow", "manager" ]
+          command: [ "wfctl", "start","management" ]
           args:
             - "--log-level=INFO"
           volumeMounts:
@@ -37,30 +44,10 @@ spec:
               - key: control.yaml
                 path: control.yaml
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: wireflow-control-config
-  namespace: wireflow
-data:
-  control.yaml: |
-    listen: :8080
-    database:
-      host: 81.68.109.143
-      port: 3306
-      name: linkany
-      user: root
-      password: dhvuYUoxnSZMavdJ
-    Redis:
-      Addr: 81.68.109.143:6379
-      Password: dhvuYap
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wireflow-signaling
-  namespace: wireflow
   labels:
     k8s-app: wireflow-signaling
 spec:
@@ -73,40 +60,22 @@ spec:
       labels:
         k8s-app: wireflow-signaling
     spec:
-      imagePullSecrets:
-        - name: ali-registry
       hostAliases:
         - ip: "10.96.98.115"
           hostnames:
             - "console.wireflow.io"
       containers:
         - name: wireflow-signaling
-          image: registry.cn-hangzhou.aliyuncs.com/wireflow-io/wireflow:latest
+          image: controller:latest
           imagePullPolicy: Always
-          command: [ "wireflow", "signaling" ]
+          command: [ "wfctl", "start", "signaling" ]
           args:
             - "--log-level=verbose"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: wireflow-signaling-svc
-  namespace: wireflow
-spec:
-  ports:
-    - protocol: TCP
-      port: 32132
-      targetPort: 32132
-      nodePort: 32132
-  selector:
-    k8s-app: wireflow-signaling
-  type: NodePort
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wireflow-turn
-  namespace: wireflow
   labels:
     k8s-app: wireflow-turn
 spec:
@@ -119,14 +88,12 @@ spec:
       labels:
         k8s-app: wireflow-turn
     spec:
-      imagePullSecrets:
-        - name: ali-registry
       hostAliases:
         - ip: "10.96.80.105"
           hostnames:
             - "console.wireflow.io"
       containers:
         - name: wireflow-turn
-          image: registry.cn-hangzhou.aliyuncs.com/wireflow-io/wireflow:latest
+          image: controller:latest
           imagePullPolicy: Always
-          command: [ "wireflow", "turn" ]
+          command: [ "wfctl", "start", "turn" ]
