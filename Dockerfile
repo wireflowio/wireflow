@@ -29,7 +29,9 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o wf
 #FROM gcr.io/distroless/static:nonroot
 FROM registry.cn-hangzhou.aliyuncs.com/wireflow-io/distroless:nonroot
 WORKDIR /
-COPY --from=builder /workspace/wireflow .
+COPY --from=builder /workspace/wfctl .
+COPY templates templates
+COPY static static
 USER 65532:65532
 
 ENTRYPOINT ["/wfctl"]

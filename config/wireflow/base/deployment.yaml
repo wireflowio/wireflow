@@ -29,8 +29,9 @@ spec:
         - name: wireflow-control
           image: controller:latest
           imagePullPolicy: Always
-          command: [ "wfctl", "start","management" ]
           args:
+            - "start"
+            - "manager"
             - "--log-level=INFO"
           volumeMounts:
             - mountPath: /app/control.yaml
@@ -68,8 +69,9 @@ spec:
         - name: wireflow-signaling
           image: controller:latest
           imagePullPolicy: Always
-          command: [ "wfctl", "start", "signaling" ]
           args:
+            - "start"
+            - "signaling"
             - "--log-level=verbose"
 ---
 apiVersion: apps/v1
@@ -96,4 +98,7 @@ spec:
         - name: wireflow-turn
           image: controller:latest
           imagePullPolicy: Always
-          command: [ "wfctl", "start", "turn" ]
+          args:
+            - "start"
+            - "turn"
+            - "--log-level=verbose"
