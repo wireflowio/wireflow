@@ -64,6 +64,7 @@ steps: # 定义流水线执行步骤，这些步骤将顺序执行
         from_secret: ssh_password # 从Secret中读取SSH密码
       port: 22 # 远程连接端口
       script:
+        - make deploy
         - source ~/.bash_profile
         - docker-compose -f /root/wireflow/turn-compose.yaml stop rm
         - docker-compose -f /root/wireflow/turn-compose.yaml rm -f

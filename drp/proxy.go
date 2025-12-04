@@ -22,6 +22,7 @@ import (
 	"time"
 	"wireflow/internal"
 	drpgrpc "wireflow/internal/grpc"
+	"wireflow/pkg/client"
 	"wireflow/pkg/log"
 
 	"golang.zx2c4.com/wireguard/conn"
@@ -36,7 +37,7 @@ type Proxy struct {
 	outBoundQueue chan *drpgrpc.DrpMessage
 	inBoundQueue  chan *drpgrpc.DrpMessage
 	drpAddr       string
-	drpClient     *Client
+	drpClient     client.IDRPClient
 	offerHandler  internal.OfferHandler
 	msgManager    *MessageManager
 	probeManager  internal.ProbeManager
@@ -46,9 +47,11 @@ type Proxy struct {
 
 type ProxyConfig struct {
 	OfferHandler internal.OfferHandler
-	DrpClient    *Client
+	DrpClient    client.IDRPClient
 	DrpAddr      string
 }
+
+type ProxyOptions func(p *Proxy) error
 
 func NewProxy(cfg *ProxyConfig) (*Proxy, error) {
 	addr, err := net.ResolveTCPAddr("tcp", cfg.DrpAddr)
@@ -67,10 +70,27 @@ func NewProxy(cfg *ProxyConfig) (*Proxy, error) {
 	}, nil
 }
 
-func (p *Proxy) OfferAndProbe(offerHandler internal.OfferHandler, probeManager internal.ProbeManager) *Proxy {
-	p.offerHandler = offerHandler
-	p.probeManager = probeManager
-	return p
+func WithOfferHandler(offerHandler internal.OfferHandler) ProxyOptions {
+	return func(p *Proxy) error {
+		p.offerHandler = offerHandler
+		return nil
+	}
+}
+
+func WithProbeManager(probeManager internal.ProbeManager) ProxyOptions {
+	return func(p *Proxy) error {
+		p.probeManager = probeManager
+		return nil
+	}
+}
+
+func (p *Proxy) Configure(opts ...ProxyOptions) error {
+	for _, opt := range opts {
+		if err := opt(p); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (p *Proxy) Start() error {

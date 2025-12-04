@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"log"
 	"wireflow/client"
+	"wireflow/pkg/config"
+	"wireflow/pkg/log"
 )
 
 func main() {
-	flags := &client.Flags{}
+	flags := &config.Flags{}
 	//configFile := flag.String("config", "/etc/wireflow/client.yaml", "config file")
 	flag.StringVar(&flags.InterfaceName, "interface-name", "", "name which create interface use")
 	flag.BoolVar(&flags.ForceRelay, "force-relay", false, "force relay mode")
@@ -20,7 +21,8 @@ func main() {
 	flag.BoolVar(&flags.DnsEnable, "dns", false, "enable dns")
 	flag.Parse()
 
+	log.SetLogLevel(flags.LogLevel)
 	if err := client.Start(flags); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }
