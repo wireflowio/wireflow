@@ -513,3 +513,7 @@ func (c *Client) Register(ctx context.Context, appId string) (*internal.Peer, er
 
 	return &node, nil
 }
+
+func (c *Client) Request(ctx context.Context, message *grpc.ManagementMessage) (*grpc.ManagementMessage, error) {
+	return c.grpcClient.Request(ctx, message)
+}

@@ -32,7 +32,6 @@ import (
 	"wireflow/internal"
 	ctrclient "wireflow/management/client"
 	mgtclient "wireflow/management/grpc/client"
-	"wireflow/pkg/client"
 	"wireflow/pkg/config"
 	lipc "wireflow/pkg/ipc"
 	"wireflow/pkg/log"
@@ -61,7 +60,7 @@ type Client struct {
 	Name          string
 	iface         *wg.Device
 	ctrClient     *ctrclient.Client
-	drpClient     client.IDRPClient
+	drpClient     *drp.Client
 	bind          *WireFlowBind
 	GetNetworkMap func() (*internal.Message, error)
 	updated       atomic.Bool
@@ -212,6 +211,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
+	// init drp client
 	if client.drpClient, err = drp.NewClient(&drp.ClientConfig{
 		Addr:       cfg.SignalingUrl,
 		Logger:     log.NewLogger(log.Loglevel, "drp-ctrClient"),
@@ -263,8 +263,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		TurnManager:  client.turnManager,
 	})
 
-	// init proxy
-	proxy.Configure(
+	// init proxy in drp client
+	client.drpClient.Configure(
 		drp.WithProbeManager(probeManager),
 		drp.WithOfferHandler(offerHandler))
 

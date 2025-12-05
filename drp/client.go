@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"wireflow/internal"
 	drpgrpc "wireflow/internal/grpc"
-	"wireflow/pkg/client"
 
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -63,7 +62,7 @@ type Heart struct {
 	Last   string
 }
 
-func NewClient(cfg *ClientConfig) (client.IDRPClient, error) {
+func NewClient(cfg *ClientConfig) (*Client, error) {
 
 	// grpc连接优化
 	opts := []grpc.DialOption{
@@ -114,18 +113,25 @@ func NewClient(cfg *ClientConfig) (client.IDRPClient, error) {
 
 type ClientOption func(*Client) error
 
-func (p *Client) Configure(opts ...ClientOption) error {
+func (c *Client) Configure(opts ...ClientOption) error {
 	for _, opt := range opts {
-		if err := opt(p); err != nil {
+		if err := opt(c); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func WithProxy(proxy *Proxy) ClientOption {
+func WithOfferHandler(offerHandler internal.OfferHandler) ClientOption {
 	return func(c *Client) error {
-		c.proxy = proxy
+		c.proxy.offerHandler = offerHandler
+		return nil
+	}
+}
+
+func WithProbeManager(probeManager internal.ProbeManager) ClientOption {
+	return func(c *Client) error {
+		c.proxy.probeManager = probeManager
 		return nil
 	}
 }

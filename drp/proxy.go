@@ -70,29 +70,6 @@ func NewProxy(cfg *ProxyConfig) (*Proxy, error) {
 	}, nil
 }
 
-func WithOfferHandler(offerHandler internal.OfferHandler) ProxyOptions {
-	return func(p *Proxy) error {
-		p.offerHandler = offerHandler
-		return nil
-	}
-}
-
-func WithProbeManager(probeManager internal.ProbeManager) ProxyOptions {
-	return func(p *Proxy) error {
-		p.probeManager = probeManager
-		return nil
-	}
-}
-
-func (p *Proxy) Configure(opts ...ProxyOptions) error {
-	for _, opt := range opts {
-		if err := opt(p); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (p *Proxy) Start() error {
 	return p.drpClient.HandleMessage(context.Background(), p.outBoundQueue, p.ReceiveMessage)
 }

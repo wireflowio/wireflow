@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"wireflow/client"
 	"wireflow/pkg/config"
 	"wireflow/pkg/log"
@@ -23,6 +25,7 @@ func main() {
 
 	log.SetLogLevel(flags.LogLevel)
 	if err := client.Start(flags); err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 }
