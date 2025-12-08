@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"wireflow/cmd/wfctl/controller"
-	"wireflow/cmd/wfctl/drp"
-	"wireflow/cmd/wfctl/management"
-	"wireflow/cmd/wfctl/turn"
+	"wireflow/cmd/wfsctl/controller"
+	"wireflow/cmd/wfsctl/drp"
+	"wireflow/cmd/wfsctl/management"
+	"wireflow/cmd/wfsctl/turn"
 
 	"github.com/spf13/cobra"
 )

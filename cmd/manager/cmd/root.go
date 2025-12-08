@@ -17,7 +17,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"wireflow/cmd/wfctl/cmd/network"
 
 	"github.com/spf13/cobra"
 )
@@ -37,5 +36,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(network.NewNetworkCommand())
+	rootCmd.AddCommand(newStartCommand())
 }
