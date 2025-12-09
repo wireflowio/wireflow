@@ -257,7 +257,7 @@ func (r *NodeReconciler) getNodeContext(ctx context.Context, node *wireflowv1alp
 			//policies, err := n.clientSet.WireflowcontrollerV1alpha1().
 			//	NetworkPolicies(node.Namespace).
 			//	List(context.Background(), metav1.ListOptions{
-			//		LabelSelector: fmt.Sprintf("wireflow.io/network=%s", networkName),
+			//		LabelSelector: fmt.Sprintf("wireflowio.com/network=%s", networkName),
 			//	})
 
 			//policies, err := policyLister.NetworkPolicies(node.Namespace).List(labels.Everything())

@@ -58,7 +58,7 @@ func (c *Client) Register(ctx context.Context, e *dto.NodeDto) (*internal.Peer, 
 		if err = c.client.Patch(ctx, &wireflowv1alpha1.Node{
 			TypeMeta: v1.TypeMeta{
 				Kind:       "Node",
-				APIVersion: "wireflowcontroller.wireflow.io/v1alpha1",
+				APIVersion: "wireflowcontroller.wireflowio.com/v1alpha1",
 			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: "default",
@@ -171,7 +171,7 @@ func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wi
 		if err = c.client.Patch(ctx, &wireflowv1alpha1.Network{
 			TypeMeta: v1.TypeMeta{
 				Kind:       "Network",
-				APIVersion: "wireflowcontroller.wireflow.io/v1alpha1",
+				APIVersion: "wireflowcontroller.wireflowio.com/v1alpha1",
 			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: "default",

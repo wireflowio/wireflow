@@ -212,7 +212,7 @@ func runController(flags *ControllerFlags) error {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: flags.probeAddr,
 		LeaderElection:         flags.enableLeaderElection,
-		LeaderElectionID:       "05657094.wireflow.io",
+		LeaderElectionID:       "05657094.wireflowio.com",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly

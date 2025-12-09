@@ -7,7 +7,7 @@ clone:
 
 steps: # 定义流水线执行步骤，这些步骤将顺序执行
   - name: build
-    image: registry.cn-hangzhou.aliyuncs.com/wireflow-io/drone-ssh:latest # SSH工具镜像
+    image: registry.cn-hangzhou.aliyuncs.com/wireflowio.com/drone-ssh:latest # SSH工具镜像
     settings:
       host: 81.68.109.143 # 远程连接地址
       username: root # 远程连接账号
@@ -19,7 +19,7 @@ steps: # 定义流水线执行步骤，这些步骤将顺序执行
         - git pull
         - make docker-all
   - name: deploy
-    image: registry.cn-hangzhou.aliyuncs.com/wireflow-io/drone-ssh:latest # SSH工具镜像
+    image: registry.cn-hangzhou.aliyuncs.com/wireflowio.com/drone-ssh:latest # SSH工具镜像
     settings:
       host: 81.68.109.143 # 远程连接地址
       username: root # 远程连接账号

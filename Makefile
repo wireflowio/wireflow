@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= registry.cn-hangzhou.aliyuncs.com/wireflow-io/wireflow-manager:dev
+IMG ?= registry.cn-hangzhou.aliyuncs.com/wireflowio.com/wireflow-manager:dev
 
-REGISTRY ?= registry.cn-hangzhou.aliyuncs.com/wireflow-io
+REGISTRY ?= registry.cn-hangzhou.aliyuncs.com/wireflowio.com
 SERVICES := manager wfctl wireflow
 TARGETOS ?= linux
 TARGETARCH ?=amd64
