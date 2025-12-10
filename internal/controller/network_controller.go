@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	wireflowcontrollerv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
+	"wireflow/api/v1alpha1"
 )
 
 // NetworkReconciler reconciles a Networks object
@@ -62,7 +62,7 @@ type NetworkReconciler struct {
 func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	//更新status
 	var (
-		network wireflowcontrollerv1alpha1.Network
+		network v1alpha1.Network
 		err     error
 	)
 
@@ -77,6 +77,17 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	// 更新Phase为Creating
+	if network.Status.Phase == "" {
+		if _, err = r.updateStatus(ctx, &network, func(network *v1alpha1.Network) {
+			network.Status.Phase = v1alpha1.NetworkPhaseCreating
+		}); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{}, nil
+	}
+
 	// 不做任何处理
 	cidr := network.Spec.CIDR
 	//statusCidr := network.Status.ActiveCIDR
@@ -86,7 +97,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	//获取node的变化，更新network spec
-	var nodeList wireflowcontrollerv1alpha1.NodeList
+	var nodeList v1alpha1.NodeList
 	nodeList, err = r.findNodesByLabels(ctx, &network)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -98,7 +109,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	//update nodes
-	ok, err := r.updateSpec(ctx, &network, func(network *wireflowcontrollerv1alpha1.Network) {
+	ok, err := r.updateSpec(ctx, &network, func(network *v1alpha1.Network) {
 		network.Spec.Nodes = setsToSlice(currentNodes)
 	})
 
@@ -138,7 +149,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	for nodeName, _ := range diff {
 		if _, ok = activeNodes[nodeName]; !ok {
 			// 不存在， 则是添加node逻辑
-			var node wireflowcontrollerv1alpha1.Node
+			var node v1alpha1.Node
 			if err = r.Get(ctx, types.NamespacedName{Namespace: network.Namespace, Name: nodeName}, &node); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -159,17 +170,11 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	//统一更新
-	if err = r.Status().Update(ctx, &network); err != nil {
-		return ctrl.Result{}, err
+	if _, err = r.updateStatus(ctx, &network, func(network *v1alpha1.Network) {
+		network.Status.Phase = v1alpha1.NetworkPhaseReady
+	}); err != nil {
+		return ctrl.Result{}, nil
 	}
-
-	// CIDR changed
-	//if cidr != statusCidr && statusCidr != "" {
-	//	if err = r.reconcileCIDRChanged(ctx, req, network); err != nil {
-	//		return ctrl.Result{}, err
-	//	}
-	//}
 
 	return ctrl.Result{}, nil
 }
@@ -177,7 +182,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 // reconcileSpec 检查并修正 Network.Spec 字段。
 // 如果 Spec 被修改并成功写入，返回 (true, nil)，调用者应立即退出 Reconcile。
 // 否则返回 (false, nil) 或 (false, error)。
-func (r *NetworkReconciler) updateSpec(ctx context.Context, network *wireflowcontrollerv1alpha1.Network, updateFunc func(node *wireflowcontrollerv1alpha1.Network)) (bool, error) {
+func (r *NetworkReconciler) updateSpec(ctx context.Context, network *v1alpha1.Network, updateFunc func(node *v1alpha1.Network)) (bool, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
@@ -229,31 +234,59 @@ func (r *NetworkReconciler) updateSpec(ctx context.Context, network *wireflowcon
 	return false, nil
 }
 
+func (r *NetworkReconciler) updateStatus(ctx context.Context, network *v1alpha1.Network, updateFunc func(network *v1alpha1.Network)) (bool, error) {
+	log := logf.FromContext(ctx)
+	networkCopy := network.DeepCopy()
+	updateFunc(networkCopy)
+
+	// 使用 Patch 发送差异。client.MergeFrom 会自动检查 nodeCopy 和 node 之间的差异。
+	if err := r.Status().Patch(ctx, networkCopy, client.MergeFrom(network)); err != nil {
+		if errors.IsConflict(err) {
+			// 遇到并发冲突 (409)，不返回错误，让 Manager 自动通过新的事件重试。
+			log.Info("Conflict detected during Node Spec patch, will retry on next reconcile.")
+			return false, nil
+		}
+		// 其他写入错误（例如权限不足）
+		log.Error(err, "Failed to patch Node Spec")
+		return false, err
+	}
+
+	if !reflect.DeepEqual(networkCopy.Status, network.Status) {
+
+		log.Info("Network Metadata/Spec successfully patched. Returning to trigger next reconcile.")
+		// Spec 或 Metadata 被修改并成功写入 API Server
+		return true, nil
+	}
+
+	// Spec 未发生修改
+	return false, nil
+}
+
 // 查询所有的node， 然后更新Network的Spec
-func (r *NetworkReconciler) findNodesByLabels(ctx context.Context, network *wireflowcontrollerv1alpha1.Network) (wireflowcontrollerv1alpha1.NodeList, error) {
+func (r *NetworkReconciler) findNodesByLabels(ctx context.Context, network *v1alpha1.Network) (v1alpha1.NodeList, error) {
 	labels := fmt.Sprintf("wireflowio.com/network-%s", network.Name)
-	var nodes wireflowcontrollerv1alpha1.NodeList
+	var nodes v1alpha1.NodeList
 	if err := r.List(ctx, &nodes, client.InNamespace(network.Namespace), client.MatchingLabels(map[string]string{labels: "true"})); err != nil {
 		return nodes, err
 	}
 	return nodes, nil
 }
 
-func (r *NetworkReconciler) reconcileCIDRChanged(ctx context.Context, req ctrl.Request, network wireflowcontrollerv1alpha1.Network) error {
+func (r *NetworkReconciler) reconcileCIDRChanged(ctx context.Context, req ctrl.Request, network v1alpha1.Network) error {
 	var err error
 	log := logf.FromContext(ctx)
 	log.Info("CIDR changed", "oldCIDR", network.Status.ActiveCIDR, "newCIDR", network.Spec.CIDR, "reallocateIPs", true)
 	network.Status.ActiveCIDR = network.Spec.CIDR
 
 	//为所有节点重新分配ip
-	var nodeList wireflowcontrollerv1alpha1.NodeList
+	var nodeList v1alpha1.NodeList
 	if err = r.List(ctx, &nodeList, client.InNamespace(req.Namespace)); err != nil {
 		// TODO add label selector
 		return err
 	}
 
 	//先删除原来的status中的数据
-	network.Status.AllocatedIPs = []wireflowcontrollerv1alpha1.IPAllocation{}
+	network.Status.AllocatedIPs = []v1alpha1.IPAllocation{}
 	network.Status.AvailableIPs = 0
 
 	for _, node := range nodeList.Items {
@@ -278,8 +311,8 @@ func (r *NetworkReconciler) reconcileCIDRChanged(ctx context.Context, req ctrl.R
 // SetupWithManager sets up the controller with the Manager.
 func (r *NetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&wireflowcontrollerv1alpha1.Network{}).
-		Watches(&wireflowcontrollerv1alpha1.Node{},
+		For(&v1alpha1.Network{}).
+		Watches(&v1alpha1.Node{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNodeForNetworks),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Named("network").
@@ -287,7 +320,7 @@ func (r *NetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.Object) []reconcile.Request {
-	node := obj.(*wireflowcontrollerv1alpha1.Node)
+	node := obj.(*v1alpha1.Node)
 
 	networkToUpdate := make([]string, 0)
 	// 1. 获取node的spec包含network
@@ -318,7 +351,7 @@ func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.O
 }
 
 // allocateIPsForNode 为节点在其所属的网络中分配 IP
-func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *wireflowcontrollerv1alpha1.Node) (string, error) {
+func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alpha1.Node) (string, error) {
 	log := logf.FromContext(ctx)
 	var err error
 	if len(node.Spec.Networks) == 0 {
@@ -328,7 +361,7 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *wirefl
 	primaryNetwork := node.Spec.Networks[0]
 
 	// 获取 Network 资源
-	var network wireflowcontrollerv1alpha1.Network
+	var network v1alpha1.Network
 	if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, primaryNetwork)}, &network); err != nil {
 		return "", err
 	}
@@ -355,7 +388,7 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *wirefl
 	return r.allocate(ctx, &network, node)
 }
 
-func (r *NetworkReconciler) allocate(ctx context.Context, network *wireflowcontrollerv1alpha1.Network, node *wireflowcontrollerv1alpha1.Node) (string, error) {
+func (r *NetworkReconciler) allocate(ctx context.Context, network *v1alpha1.Network, node *v1alpha1.Node) (string, error) {
 	log := logf.FromContext(ctx)
 	var (
 		err         error
@@ -372,9 +405,9 @@ func (r *NetworkReconciler) allocate(ctx context.Context, network *wireflowcontr
 }
 
 // updateNetworkIPAllocation 更新网络的 IP 分配记录
-func (r *NetworkReconciler) updateNetworkIPAllocation(ctx context.Context, network *wireflowcontrollerv1alpha1.Network, ip, nodeName string) error {
+func (r *NetworkReconciler) updateNetworkIPAllocation(ctx context.Context, network *v1alpha1.Network, ip, nodeName string) error {
 
-	allocations := make(map[string]wireflowcontrollerv1alpha1.IPAllocation)
+	allocations := make(map[string]v1alpha1.IPAllocation)
 	for _, allocation := range network.Status.AllocatedIPs {
 		allocations[allocation.Node] = allocation
 	}
@@ -383,7 +416,7 @@ func (r *NetworkReconciler) updateNetworkIPAllocation(ctx context.Context, netwo
 		return nil
 	}
 	// 添加 IP 分配记录
-	allocation := wireflowcontrollerv1alpha1.IPAllocation{
+	allocation := v1alpha1.IPAllocation{
 		IP:          ip,
 		Node:        nodeName,
 		AllocatedAt: metav1.Now(),

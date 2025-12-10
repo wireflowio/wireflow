@@ -39,7 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	wireflowv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
+	"wireflow/api/v1alpha1"
 )
 
 // NodeReconciler reconciles a Node object
@@ -71,7 +71,7 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	var (
 		err  error
-		node wireflowv1alpha1.Node
+		node v1alpha1.Node
 	)
 
 	if err = r.Get(ctx, req.NamespacedName, &node); err != nil {
@@ -111,7 +111,7 @@ const (
 )
 
 // reconcileJoinNetwork handle join network
-func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflowv1alpha1.Node, request ctrl.Request) (ctrl.Result, error) {
+func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *v1alpha1.Node, request ctrl.Request) (ctrl.Result, error) {
 	var (
 		err error
 		ok  bool
@@ -120,9 +120,9 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflo
 	log.Info("Join network", "namespace", request.Namespace, "name", request.Name)
 
 	//1. 更新Phase为Pending
-	if node.Status.Phase != wireflowv1alpha1.NodePhasePending {
-		ok, err = r.updateStatus(ctx, node, func(node *wireflowv1alpha1.Node) {
-			node.Status.Phase = wireflowv1alpha1.NodePhasePending
+	if node.Status.Phase != v1alpha1.NodePhasePending {
+		ok, err = r.updateStatus(ctx, node, func(node *v1alpha1.Node) {
+			node.Status.Phase = v1alpha1.NodePhasePending
 		})
 
 		if err != nil {
@@ -135,7 +135,7 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflo
 	}
 
 	// 2.修改Spec
-	ok, err = r.updateSpec(ctx, node, func(node *wireflowv1alpha1.Node) {
+	ok, err = r.updateSpec(ctx, node, func(node *v1alpha1.Node) {
 		associatedNetworks, err := r.getAssociatedNetworks(ctx, node)
 		if err != nil {
 			return
@@ -182,7 +182,7 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflo
 
 	//查询primary network 分配的ip
 	primaryNetwork := node.Spec.Networks[0]
-	var network wireflowv1alpha1.Network
+	var network v1alpha1.Network
 	if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, primaryNetwork)}, &network); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -200,8 +200,8 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflo
 		return ctrl.Result{}, nil
 	}
 
-	if ok, err = r.updateStatus(ctx, node, func(node *wireflowv1alpha1.Node) {
-		node.Status.Phase = wireflowv1alpha1.NodePhaseReady
+	if ok, err = r.updateStatus(ctx, node, func(node *v1alpha1.Node) {
+		node.Status.Phase = v1alpha1.NodePhaseReady
 		node.Status.ActiveNetworkPolicies = node.Spec.Networks
 		node.Status.AllocatedAddress = allocatedIP
 		node.Status.ActiveNetworks = node.Spec.Networks
@@ -217,7 +217,7 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *wireflo
 }
 
 // reconcileConfigMap create or update the configmap
-func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, node *wireflowv1alpha1.Node, request ctrl.Request) (ctrl.Result, error) {
+func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, node *v1alpha1.Node, request ctrl.Request) (ctrl.Result, error) {
 	var (
 		err              error
 		changes          *internal.ChangeDetails
@@ -307,7 +307,7 @@ func (r *NodeReconciler) buildConfigMap(namespace, configMapName, message string
 }
 
 // reconcileLeaveNetwork handle leave network
-func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wireflowv1alpha1.Node, req ctrl.Request) (ctrl.Result, error) {
+func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *v1alpha1.Node, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Leaving network", "namespace", req.Namespace, "name", req.Name)
 	var (
@@ -316,9 +316,9 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 	)
 
 	//1. 更新Phase为Pending
-	if node.Status.Phase != wireflowv1alpha1.NodePhasePending {
-		ok, err = r.updateStatus(ctx, node, func(node *wireflowv1alpha1.Node) {
-			node.Status.Phase = wireflowv1alpha1.NodePhasePending
+	if node.Status.Phase != v1alpha1.NodePhasePending {
+		ok, err = r.updateStatus(ctx, node, func(node *v1alpha1.Node) {
+			node.Status.Phase = v1alpha1.NodePhasePending
 		})
 		if err != nil {
 			return ctrl.Result{}, err
@@ -334,7 +334,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 	specNetworks := stringSet(node.Spec.Networks)
 
 	// 2.修改Spec
-	ok, err = r.updateSpec(ctx, node, func(node *wireflowv1alpha1.Node) {
+	ok, err = r.updateSpec(ctx, node, func(node *v1alpha1.Node) {
 
 		labels := node.GetLabels()
 		for _, network := range leavingNetworks {
@@ -377,7 +377,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 	//查询primary network 分配的ip
 	var allocatedIP string
 	if len(node.Spec.Networks) == 0 {
-		ok, err = r.updateStatus(ctx, node, func(node *wireflowv1alpha1.Node) {
+		ok, err = r.updateStatus(ctx, node, func(node *v1alpha1.Node) {
 			node.Status.AllocatedAddress = allocatedIP
 			node.Status.ActiveNetworks = node.Spec.Networks
 		})
@@ -391,7 +391,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 
 	} else {
 		primaryNetwork := node.Spec.Networks[0]
-		var network wireflowv1alpha1.Network
+		var network v1alpha1.Network
 		if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, primaryNetwork)}, &network); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -403,7 +403,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 			}
 		}
 
-		ok, err = r.updateStatus(ctx, node, func(node *wireflowv1alpha1.Node) {
+		ok, err = r.updateStatus(ctx, node, func(node *v1alpha1.Node) {
 			node.Status.AllocatedAddress = allocatedIP
 			node.Status.ActiveNetworks = node.Spec.Networks
 		})
@@ -420,7 +420,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *wirefl
 	return r.reconcileConfigMap(ctx, node, req)
 }
 
-func (r *NodeReconciler) getLeavingNetwork(ctx context.Context, node *wireflowv1alpha1.Node) []string {
+func (r *NodeReconciler) getLeavingNetwork(ctx context.Context, node *v1alpha1.Node) []string {
 	specNetworks := stringSet(node.Spec.Networks)
 	activeNetworks := stringSet(node.Status.ActiveNetworks)
 
@@ -439,7 +439,7 @@ func (r *NodeReconciler) getLeavingNetwork(ctx context.Context, node *wireflowv1
 // reconcileSpec 检查并修正 Node.Spec 字段。
 // 如果 Spec 被修改并成功写入，返回 (true, nil)，调用者应立即退出 Reconcile。
 // 否则返回 (false, nil) 或 (false, error)。
-func (r *NodeReconciler) updateSpec(ctx context.Context, node *wireflowv1alpha1.Node, updateFunc func(node *wireflowv1alpha1.Node)) (bool, error) {
+func (r *NodeReconciler) updateSpec(ctx context.Context, node *v1alpha1.Node, updateFunc func(node *v1alpha1.Node)) (bool, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
@@ -494,7 +494,7 @@ func (r *NodeReconciler) updateSpec(ctx context.Context, node *wireflowv1alpha1.
 // reconcileSpec 检查并修正 Node.Spec 字段。
 // 如果 Spec 被修改并成功写入，返回 (true, nil)，调用者应立即退出 Reconcile。
 // 否则返回 (false, nil) 或 (false, error)。
-func (r *NodeReconciler) updateStatus(ctx context.Context, node *wireflowv1alpha1.Node, updateFunc func(node *wireflowv1alpha1.Node)) (bool, error) {
+func (r *NodeReconciler) updateStatus(ctx context.Context, node *v1alpha1.Node, updateFunc func(node *v1alpha1.Node)) (bool, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
@@ -545,11 +545,11 @@ func (r *NodeReconciler) updateStatus(ctx context.Context, node *wireflowv1alpha
 }
 
 // reconcileNetworkChanged handle network changed
-func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *wireflowv1alpha1.Node, req ctrl.Request) (ctrl.Result, error) {
+func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *v1alpha1.Node, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	var (
 		err         error
-		networkList wireflowv1alpha1.NetworkList
+		networkList v1alpha1.NetworkList
 	)
 	// 查询监控的所有Networks
 	if err = r.List(ctx, &networkList, client.InNamespace(req.Namespace)); err != nil {
@@ -571,7 +571,7 @@ func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *wire
 				if ipAllcations.Node == node.Name {
 					node.Status.AllocatedAddress = ipAllcations.IP
 					//更新node
-					node.Status.Phase = wireflowv1alpha1.NodePhaseReady
+					node.Status.Phase = v1alpha1.NodePhaseReady
 					if err = r.Status().Update(ctx, node); err != nil {
 						return ctrl.Result{}, err
 					}
@@ -585,7 +585,7 @@ func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *wire
 	return ctrl.Result{}, nil
 }
 
-func (r *NodeReconciler) determineAction(ctx context.Context, node *wireflowv1alpha1.Node) (Action, error) {
+func (r *NodeReconciler) determineAction(ctx context.Context, node *v1alpha1.Node) (Action, error) {
 	activeNets := node.Status.ActiveNetworks
 
 	specNets := stringSet(node.Spec.Networks)
@@ -603,8 +603,8 @@ func (r *NodeReconciler) determineAction(ctx context.Context, node *wireflowv1al
 // SetupWithManager sets up the controller with the Manager.
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&wireflowv1alpha1.Node{}).
-		Watches(&wireflowv1alpha1.Network{},
+		For(&v1alpha1.Node{}).
+		Watches(&v1alpha1.Network{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNetworkForNodes),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.mapConfigMapForNodes), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).Named("node").Complete(r)
@@ -612,11 +612,11 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // mapNetworkForNodes returns a list of Reconcile Requests for Nodes that should be updated based on the given Network.
 func (r *NodeReconciler) mapNetworkForNodes(ctx context.Context, obj client.Object) []reconcile.Request {
-	network := obj.(*wireflowv1alpha1.Network)
+	network := obj.(*v1alpha1.Network)
 	var requests []reconcile.Request
 
 	// 1. 获取所有 Node (或只获取匹配 Network.Spec.NodeSelector 的 Node)
-	nodeList := &wireflowv1alpha1.NodeList{}
+	nodeList := &v1alpha1.NodeList{}
 	if err := r.List(ctx, nodeList, client.MatchingLabels(network.Spec.NodeSelector)); err != nil {
 		return nil
 	}
@@ -638,7 +638,7 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 	var requests []reconcile.Request
 
 	// 1. 获取所有 Node (或只获取匹配 Network.Spec.NodeSelector 的 Node)
-	var node wireflowv1alpha1.Node
+	var node v1alpha1.Node
 	names := strings.Split(cm.Name, "-")
 	if err := r.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: names[0]}, &node); err != nil {
 		return nil
@@ -654,7 +654,7 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 	return requests
 }
 
-//func (r *NodeReconciler) updateStatus(ctx context.Context, node *wireflowv1alpha1.Node, updateFunc func(node *wireflowv1alpha1.Node)) error {
+//func (r *NodeReconciler) updateStatus(ctx context.Context, node *v1alpha1.Node, updateFunc func(node *v1alpha1.Node)) error {
 //	nodeCopy := node.DeepCopy()
 //	updateFunc(nodeCopy)
 //	return r.Status().Update(ctx, nodeCopy)
@@ -662,15 +662,15 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 
 // getAssociatedNetworks 会获取所有的Networks，正向声明的或者反向声明的都包含
 // 假设这是 NodeReconciler 的一个辅助方法
-func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *wireflowv1alpha1.Node) ([]wireflowv1alpha1.Network, error) {
+func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alpha1.Node) ([]v1alpha1.Network, error) {
 
 	// 1. 获取所有 Network 资源 (用于反向检查)
-	allNetworks := &wireflowv1alpha1.NetworkList{}
+	allNetworks := &v1alpha1.NetworkList{}
 	if err := r.List(ctx, allNetworks); err != nil {
 		return nil, fmt.Errorf("failed to list all networks: %w", err)
 	}
 
-	associatedNetworks := make(map[string]wireflowv1alpha1.Network) // 用 map 避免重复
+	associatedNetworks := make(map[string]v1alpha1.Network) // 用 map 避免重复
 
 	// --- A. 方式 1: 从 Node.Spec (正向声明) 判断 ---
 	// 检查 Node 自己 Spec 中声明加入的 Network
@@ -708,7 +708,7 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *wirefl
 	}
 
 	// 将 map 转换为 slice
-	result := make([]wireflowv1alpha1.Network, 0, len(associatedNetworks))
+	result := make([]v1alpha1.Network, 0, len(associatedNetworks))
 	for _, net := range associatedNetworks {
 		result = append(result, net)
 	}

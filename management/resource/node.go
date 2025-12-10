@@ -22,7 +22,6 @@ import (
 	"wireflow/management/dto"
 	"wireflow/management/entity"
 
-	wireflowv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	wireflowv1alpha1 "wireflow/api/v1alpha1"
 )
 
 func (c *Client) Register(ctx context.Context, e *dto.NodeDto) (*internal.Peer, error) {

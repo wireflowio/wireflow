@@ -21,12 +21,12 @@ import (
 	"time"
 	"wireflow/internal"
 
-	wireflowv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	wireflowv1alpha1 "wireflow/api/v1alpha1"
 )
 
 type ChangeDetector struct {

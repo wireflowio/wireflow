@@ -17,6 +17,7 @@ package controller
 import (
 	"crypto/tls"
 	"path/filepath"
+	"wireflow/api/v1alpha1"
 	"wireflow/internal/controller"
 
 	"github.com/spf13/cobra"
@@ -38,8 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	wireflowcontrollerv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -51,7 +50,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(wireflowcontrollerv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

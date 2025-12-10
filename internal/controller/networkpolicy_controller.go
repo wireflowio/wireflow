@@ -23,8 +23,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	wireflowcontrollerv1alpha1 "github.com/wireflowio/wireflow-controller/api/v1alpha1"
+	"wireflow/api/v1alpha1"
 )
 
 // NetworkPolicyReconciler reconciles a NetworkPolicy object
@@ -57,7 +56,7 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 // SetupWithManager sets up the controller with the Manager.
 func (r *NetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&wireflowcontrollerv1alpha1.NetworkPolicy{}).
+		For(&v1alpha1.NetworkPolicy{}).
 		Named("networkpolicy").
 		Complete(r)
 }
