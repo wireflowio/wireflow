@@ -1,7 +1,7 @@
 # Image URL to use all building/pushing image targets
-IMG ?= registry.cn-hangzhou.aliyuncs.com/wireflowio.com/wireflow-manager:dev
+IMG ?= registry.cn-hangzhou.aliyuncs.com/wireflow-io/wireflow-manager:dev
 
-REGISTRY ?= registry.cn-hangzhou.aliyuncs.com/wireflowio.com
+REGISTRY ?= registry.cn-hangzhou.aliyuncs.com/wireflow-io
 SERVICES := manager wfctl wireflow
 TARGETOS ?= linux
 TARGETARCH ?=amd64
@@ -180,7 +180,6 @@ docker-push: ## 推送单个服务的 Docker 镜像
 	fi
 	@echo " Pushing $(REGISTRY)/$(SERVICE):$(VERSION)..."
 	$(CONTAINER_TOOL) push $(REGISTRY)/$(SERVICE):$(VERSION)
-	$(CONTAINER_TOOL) push $(REGISTRY)/$(SERVICE):latest
 	@echo "✅ Pushed: $(REGISTRY)/$(SERVICE):$(VERSION)"
 
 # ============ Docker 构建并推送 ============

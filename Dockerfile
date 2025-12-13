@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM registry.cn-hangzhou.aliyuncs.com/wireflowio.com/golang:1.25.2 AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/wireflow-io/golang:1.25.2 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETSERVICE
@@ -28,7 +28,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o $T
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 #FROM gcr.io/distroless/static:nonroot
-FROM registry.cn-hangzhou.aliyuncs.com/wireflowio.com/distroless:nonroot
+FROM registry.cn-hangzhou.aliyuncs.com/wireflow-io/distroless:nonroot
 
 ARG TARGETSERVICE
 

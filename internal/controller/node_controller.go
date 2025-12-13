@@ -62,9 +62,6 @@ type NodeReconciler struct {
 // the Node object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Reconciling Node", "namespace", req.NamespacedName, "node", req.Name)
@@ -96,10 +93,10 @@ func (r *NodeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Info("Handing leave network", "namespace", req.Namespace, "name", req.Name)
 		return r.reconcileLeaveNetwork(ctx, &node, req)
 	default:
+		log.Info("No action to handle", "namespace", req.Namespace, "name", req.Name)
 		return r.reconcileConfigMap(ctx, &node, req)
 	}
 
-	//return ctrl.Result{}, nil
 }
 
 type Action string
@@ -237,10 +234,10 @@ func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, node *v1alpha1.
 	if oldNodeCtx == nil || (err != nil && errors.IsNotFound(err)) {
 		if oldNodeCtx == nil {
 			// first time create cm
-			message, err = r.Detector.buildFullConfig(node, newNodeCtx, changes, "init")
+			message, err = r.Detector.buildFullConfig(ctx, node, newNodeCtx, changes, "init")
 		} else {
-			// new created
-			message, err = r.Detector.buildFullConfig(node, newNodeCtx, changes, r.Detector.generateConfigVersion())
+			// updated
+			message, err = r.Detector.buildFullConfig(ctx, node, newNodeCtx, changes, r.Detector.generateConfigVersion())
 		}
 
 		desiredConfigMap = r.buildConfigMap(node.Namespace, configMapName, message.String())
@@ -265,7 +262,7 @@ func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, node *v1alpha1.
 		r.NodeCtxCache[request.NamespacedName] = newNodeCtx
 		changes = r.Detector.DetectNodeChanges(ctx, oldNodeCtx, oldNodeCtx.Node, newNodeCtx.Node, oldNodeCtx.Network, newNodeCtx.Network, oldNodeCtx.Policies, newNodeCtx.Policies, request)
 		if changes.HasChanges() {
-			message, err = r.Detector.buildFullConfig(node, newNodeCtx, changes, r.Detector.generateConfigVersion())
+			message, err = r.Detector.buildFullConfig(ctx, node, newNodeCtx, changes, r.Detector.generateConfigVersion())
 			desiredConfigMap = r.buildConfigMap(node.Namespace, configMapName, message.String())
 
 			// --- B. 已存在：执行更新操作 (保证幂等性) ---
@@ -417,8 +414,28 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *v1alph
 
 	}
 
+	// handle policy
+
 	return r.reconcileConfigMap(ctx, node, req)
 }
+
+// reconcileNodePolicy handle node policy change
+//func (r *NodeReconciler) buildNodePolicy(ctx context.Context, node *v1alpha1.Node, req ctrl.Request) (ctrl.Result, error) {
+//	log := logf.FromContext(ctx)
+//	log.Info("Reconcile node policy", "namespace", req.Namespace, "name", req.Name)
+//	// find all policy
+//	var policyList v1alpha1.NetworkPolicyList
+//	if err := r.List(context.Background(), &policyList); err != nil {
+//		log.Error(err, "Failed to list NetworkPolicies")
+//		return ctrl.Result{}, err
+//	}
+//
+//	currentLables := node.GetLabels()
+//	for _, policyItem := range policyList.Items {
+//		policyItem.Spec.NodeSelector.MatchLabels
+//	}
+//
+//}
 
 func (r *NodeReconciler) getLeavingNetwork(ctx context.Context, node *v1alpha1.Node) []string {
 	specNetworks := stringSet(node.Spec.Networks)
@@ -442,26 +459,11 @@ func (r *NodeReconciler) getLeavingNetwork(ctx context.Context, node *v1alpha1.N
 func (r *NodeReconciler) updateSpec(ctx context.Context, node *v1alpha1.Node, updateFunc func(node *v1alpha1.Node)) (bool, error) {
 	log := logf.FromContext(ctx)
 
-	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
+	// 深拷贝原始资源，用于 Patch 的对比基准。
 	nodeCopy := node.DeepCopy()
 
-	// 2. --- 核心 Spec 修正逻辑 ---
 	// 添加network spec
 	updateFunc(nodeCopy)
-	//
-	//if _, exists := node.Labels[requiredLabelKey]; !exists {
-	//	if node.Labels == nil {
-	//		node.Labels = make(map[string]string)
-	//	}
-	//	// 🚨 注意：这里假设你可以从某种外部信息源确定 Zone
-	//	// 在生产环境中，这可能更适合在 Admission Webhook 中处理，但作为 Controller 演示，我们在此修正。
-	//	node.Labels[requiredLabelKey] = "default-zone"
-	//	log.Info("Spec field correction: Setting default Zone Label", "Label", requiredLabelKey)
-	//}
-
-	// --- 核心 Spec 修正逻辑结束 ---
-
-	// 3. 比较和写入差异 (使用 Patch)
 
 	// 使用 Patch 发送差异。client.MergeFrom 会自动检查 nodeCopy 和 node 之间的差异。
 	if err := r.Patch(ctx, nodeCopy, client.MergeFrom(node)); err != nil {
@@ -475,7 +477,6 @@ func (r *NodeReconciler) updateSpec(ctx context.Context, node *v1alpha1.Node, up
 		return false, err
 	}
 
-	// 4. 检查是否发生了修改
 	// 如果原始资源和当前资源在 Metadata/Spec/Annotation 上没有差异，说明 Patch 只是空操作。
 	// 注意：判断 Patch 是否执行写入，最简单的方法是比较原始和当前的 Labels/Annotations/Spec 字段。
 	if !reflect.DeepEqual(nodeCopy.Spec, node.Spec) ||
@@ -500,23 +501,8 @@ func (r *NodeReconciler) updateStatus(ctx context.Context, node *v1alpha1.Node, 
 	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
 	nodeCopy := node.DeepCopy()
 
-	// 2. --- 核心 Spec 修正逻辑 ---
 	// 添加network spec
 	updateFunc(nodeCopy)
-	//
-	//if _, exists := node.Labels[requiredLabelKey]; !exists {
-	//	if node.Labels == nil {
-	//		node.Labels = make(map[string]string)
-	//	}
-	//	// 🚨 注意：这里假设你可以从某种外部信息源确定 Zone
-	//	// 在生产环境中，这可能更适合在 Admission Webhook 中处理，但作为 Controller 演示，我们在此修正。
-	//	node.Labels[requiredLabelKey] = "default-zone"
-	//	log.Info("Spec field correction: Setting default Zone Label", "Label", requiredLabelKey)
-	//}
-
-	// --- 核心 Spec 修正逻辑结束 ---
-
-	// 3. 比较和写入差异 (使用 Patch)
 
 	// 使用 Patch 发送差异。client.MergeFrom 会自动检查 nodeCopy 和 node 之间的差异。
 	if err := r.Status().Patch(ctx, nodeCopy, client.MergeFrom(node)); err != nil {
@@ -530,7 +516,6 @@ func (r *NodeReconciler) updateStatus(ctx context.Context, node *v1alpha1.Node, 
 		return false, err
 	}
 
-	// 4. 检查是否发生了修改
 	// 如果原始资源和当前资源在 Metadata/Spec/Annotation 上没有差异，说明 Patch 只是空操作。
 	// 注意：判断 Patch 是否执行写入，最简单的方法是比较原始和当前的 Labels/Annotations/Spec 字段。
 	if !reflect.DeepEqual(nodeCopy.Status, node.Status) {
@@ -586,6 +571,8 @@ func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *v1al
 }
 
 func (r *NodeReconciler) determineAction(ctx context.Context, node *v1alpha1.Node) (Action, error) {
+	log := logf.FromContext(ctx)
+	log.Info("Determine action for node", "namespace", node.Namespace, "name", node.Name)
 	activeNets := node.Status.ActiveNetworks
 
 	specNets := stringSet(node.Spec.Networks)
@@ -597,6 +584,7 @@ func (r *NodeReconciler) determineAction(ctx context.Context, node *v1alpha1.Nod
 	if len(specNets) > 0 && len(activeNets) == 0 {
 		return NodeJoinNetwork, nil
 	}
+
 	return ActionNone, nil
 }
 
@@ -607,7 +595,12 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&v1alpha1.Network{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNetworkForNodes),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
-		Watches(&corev1.ConfigMap{}, handler.EnqueueRequestsFromMapFunc(r.mapConfigMapForNodes), builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).Named("node").Complete(r)
+		Watches(&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigMapForNodes),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
+		Watches(&v1alpha1.NetworkPolicy{},
+			handler.EnqueueRequestsFromMapFunc(r.mapPolicyForNodes),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).Named("node").Complete(r)
 }
 
 // mapNetworkForNodes returns a list of Reconcile Requests for Nodes that should be updated based on the given Network.
@@ -654,14 +647,37 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 	return requests
 }
 
-//func (r *NodeReconciler) updateStatus(ctx context.Context, node *v1alpha1.Node, updateFunc func(node *v1alpha1.Node)) error {
-//	nodeCopy := node.DeepCopy()
-//	updateFunc(nodeCopy)
-//	return r.Status().Update(ctx, nodeCopy)
-//}
+// mapPolicyForNodes returns a list of Reconcile Requests for Nodes that should be updated based on the given NetworkPolicy.
+func (r *NodeReconciler) mapPolicyForNodes(ctx context.Context, obj client.Object) []reconcile.Request {
+	policy := obj.(*v1alpha1.NetworkPolicy)
+	var requests []reconcile.Request
+	//获取对应的节点
+	var nodeList v1alpha1.NodeList
+	selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.NodeSelector)
+	if err != nil {
+		// 记录错误，无法解析选择器
+		return nil
+	}
+	//TODO 是不是不可用？
+	if err = r.List(ctx, &nodeList, client.MatchingLabelsSelector{
+		selector,
+	}); err != nil {
+		return nil
+	}
+
+	// 2. 将所有匹配的 Node 加入请求队列
+	for _, node := range nodeList.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: node.Namespace,
+				Name:      node.Name,
+			},
+		})
+	}
+	return requests
+}
 
 // getAssociatedNetworks 会获取所有的Networks，正向声明的或者反向声明的都包含
-// 假设这是 NodeReconciler 的一个辅助方法
 func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alpha1.Node) ([]v1alpha1.Network, error) {
 
 	// 1. 获取所有 Network 资源 (用于反向检查)
@@ -672,7 +688,6 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alph
 
 	associatedNetworks := make(map[string]v1alpha1.Network) // 用 map 避免重复
 
-	// --- A. 方式 1: 从 Node.Spec (正向声明) 判断 ---
 	// 检查 Node 自己 Spec 中声明加入的 Network
 	if node.Spec.Networks != nil { // 假设您扩展了 Node.Spec
 		for _, netName := range node.Spec.Networks {
@@ -685,7 +700,6 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alph
 		}
 	}
 
-	// --- B. 方式 2: 从 Network.Spec (反向声明/Label) 判断 ---
 	// 检查 Network Spec 中声明包含该 Node 的 Network
 	for _, net := range allNetworks.Items {
 		// 检查 NodeSelector (Label 方式)

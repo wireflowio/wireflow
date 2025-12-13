@@ -19,11 +19,12 @@ package controller
 import (
 	"context"
 
+	"wireflow/api/v1alpha1"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"wireflow/api/v1alpha1"
 )
 
 // NetworkPolicyReconciler reconciles a NetworkPolicy object
@@ -46,9 +47,17 @@ type NetworkPolicyReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
+	log.Info("Reconciling NetworkPolicy", "namespace", req.Namespace, "name", req.Name)
 
-	// TODO(user): your logic here
+	var policy v1alpha1.NetworkPolicy
+	if err := r.Get(ctx, req.NamespacedName, &policy); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "Failed to get NetworkPolicy")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
 
 	return ctrl.Result{}, nil
 }

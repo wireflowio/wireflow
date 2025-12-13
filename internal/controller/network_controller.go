@@ -60,7 +60,6 @@ type NetworkReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	//更新status
 	var (
 		network v1alpha1.Network
 		err     error
@@ -88,12 +87,26 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	// 不做任何处理
 	cidr := network.Spec.CIDR
-	//statusCidr := network.Status.ActiveCIDR
+	statusCidr := network.Status.ActiveCIDR
+
 	if cidr == "" {
-		//TODO implementing network disabled
-		return ctrl.Result{}, nil
+		if statusCidr == "" {
+			log.Info("CIDR not set, waiting for CIDR to be set")
+			return ctrl.Result{}, nil
+		}
+
+		if statusCidr != cidr {
+			log.Info("CIDR clear, reconfigure network")
+			return ctrl.Result{}, nil
+		}
+	}
+
+	if statusCidr != cidr {
+		// cidr changes
+		if err = r.reconcileCIDRChanged(ctx, req, network); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	//获取node的变化，更新network spec
@@ -103,12 +116,8 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	currentNodes := make(map[string]struct{})
-	for _, node := range nodeList.Items {
-		currentNodes[node.Name] = struct{}{}
-	}
-
-	//update nodes
+	currentNodes := r.generateNodesMap(ctx, &nodeList)
+	//update nodes to current Nodes
 	ok, err := r.updateSpec(ctx, &network, func(network *v1alpha1.Network) {
 		network.Spec.Nodes = setsToSlice(currentNodes)
 	})
@@ -128,10 +137,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	currentNodes = make(map[string]struct{})
-	for _, node := range nodeList.Items {
-		currentNodes[node.Name] = struct{}{}
-	}
+	currentNodes = r.generateNodesMap(ctx, &nodeList)
 
 	// 配置好CIDR
 	activeNodeAllocations := network.Status.AllocatedIPs
@@ -179,38 +185,29 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
+func (r *NetworkReconciler) generateNodesMap(ctx context.Context, nodeList *v1alpha1.NodeList) map[string]struct{} {
+	currentNodes := make(map[string]struct{})
+	for _, node := range nodeList.Items {
+		currentNodes[node.Name] = struct{}{}
+	}
+	return currentNodes
+}
+
 // reconcileSpec 检查并修正 Network.Spec 字段。
 // 如果 Spec 被修改并成功写入，返回 (true, nil)，调用者应立即退出 Reconcile。
 // 否则返回 (false, nil) 或 (false, error)。
 func (r *NetworkReconciler) updateSpec(ctx context.Context, network *v1alpha1.Network, updateFunc func(node *v1alpha1.Network)) (bool, error) {
 	log := logf.FromContext(ctx)
-
-	// 1. 深拷贝原始资源，用于 Patch 的对比基准。
 	networkCopy := network.DeepCopy()
 
-	// 2. --- 核心 Spec 修正逻辑 ---
 	// 添加network spec
 	updateFunc(networkCopy)
-	//
-	//if _, exists := node.Labels[requiredLabelKey]; !exists {
-	//	if node.Labels == nil {
-	//		node.Labels = make(map[string]string)
-	//	}
-	//	// 🚨 注意：这里假设你可以从某种外部信息源确定 Zone
-	//	// 在生产环境中，这可能更适合在 Admission Webhook 中处理，但作为 Controller 演示，我们在此修正。
-	//	node.Labels[requiredLabelKey] = "default-zone"
-	//	log.Info("Spec field correction: Setting default Zone Label", "Label", requiredLabelKey)
-	//}
-
-	// --- 核心 Spec 修正逻辑结束 ---
-
-	// 3. 比较和写入差异 (使用 Patch)
 
 	// 使用 Patch 发送差异。client.MergeFrom 会自动检查 networkCopy 和 node 之间的差异。
 	if err := r.Patch(ctx, networkCopy, client.MergeFrom(network)); err != nil {
 		if errors.IsConflict(err) {
 			// 遇到并发冲突 (409)，不返回错误，让 Manager 自动通过新的事件重试。
-			log.Info("Conflict detected during Node Spec patch, will retry on next reconcile.")
+			log.Info("Conflict detected during Network Spec patch, will retry on next reconcile.")
 			return false, nil
 		}
 		// 其他写入错误（例如权限不足）
@@ -218,14 +215,13 @@ func (r *NetworkReconciler) updateSpec(ctx context.Context, network *v1alpha1.Ne
 		return false, err
 	}
 
-	// 4. 检查是否发生了修改
 	// 如果原始资源和当前资源在 Metadata/Spec/Annotation 上没有差异，说明 Patch 只是空操作。
 	// 注意：判断 Patch 是否执行写入，最简单的方法是比较原始和当前的 Labels/Annotations/Spec 字段。
 	if !reflect.DeepEqual(networkCopy.Spec, network.Spec) ||
 		!reflect.DeepEqual(networkCopy.Labels, network.Labels) ||
 		!reflect.DeepEqual(networkCopy.Annotations, network.Annotations) {
 
-		log.Info("Node Metadata/Spec successfully patched. Returning to trigger next reconcile.")
+		log.Info("Network Metadata/Spec successfully patched. Returning to trigger next reconcile.")
 		// Spec 或 Metadata 被修改并成功写入 API Server
 		return true, nil
 	}
@@ -243,11 +239,11 @@ func (r *NetworkReconciler) updateStatus(ctx context.Context, network *v1alpha1.
 	if err := r.Status().Patch(ctx, networkCopy, client.MergeFrom(network)); err != nil {
 		if errors.IsConflict(err) {
 			// 遇到并发冲突 (409)，不返回错误，让 Manager 自动通过新的事件重试。
-			log.Info("Conflict detected during Node Spec patch, will retry on next reconcile.")
+			log.Info("Conflict detected during Network Spec patch, will retry on next reconcile.")
 			return false, nil
 		}
 		// 其他写入错误（例如权限不足）
-		log.Error(err, "Failed to patch Node Spec")
+		log.Error(err, "Failed to patch Network Spec")
 		return false, err
 	}
 
