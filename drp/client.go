@@ -131,7 +131,7 @@ func WithOfferHandler(offerHandler internal.OfferHandler) ClientOption {
 
 func WithProbeManager(probeManager internal.ProbeManager) ClientOption {
 	return func(c *Client) error {
-		c.proxy.probeManager = probeManager
+		c.proxy.manager.probeManager = probeManager
 		return nil
 	}
 }
@@ -182,7 +182,7 @@ func (c *Client) Heartbeat(ctx context.Context, proxy *Proxy, clientId string) e
 		drpMessage.From = clientId
 		drpMessage.MsgType = drpgrpc.MessageType_MessageHeartBeatType
 		drpMessage.Body = body
-		proxy.outBoundQueue <- drpMessage
+		proxy.queue.outBoundQueue <- drpMessage
 
 		return nil
 	}

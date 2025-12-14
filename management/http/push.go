@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"time"
 	"wireflow/internal"
 
@@ -38,7 +40,7 @@ func NewPush() {
 	router := gin.Default()
 
 	// 加载模板文件
-	router.LoadHTMLGlob("management/templates/*")
+	router.LoadHTMLGlob("./management/templates/*")
 
 	// 静态文件服务
 	router.Static("/static", "./management/static")
@@ -72,12 +74,19 @@ func NewPush() {
 		})
 	})
 
-	logger.Info("推送服务启动在 http://localhost:8080")
-	logger.Info("访问 http://localhost:8080 使用推送功能")
+	logger.Info("推送服务启动在 http://localhost:8081")
+	logger.Info("访问 http://localhost:8081 使用推送功能")
 
-	if err := router.Run(":32052"); err != nil {
+	if err := router.Run(":8081"); err != nil {
 		panic(fmt.Sprintf("服务启动失败: %v", err))
 	}
+}
+
+func getCurrentDir() string {
+	// 获取当前文件的完整路径
+	_, file, _, _ := runtime.Caller(1)
+	// 返回当前文件所在的目录
+	return filepath.Dir(file)
 }
 
 // 推送处理函数
