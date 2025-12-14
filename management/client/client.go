@@ -14,7 +14,6 @@ import (
 	"wireflow/internal/grpc"
 	"wireflow/management/dto"
 	grpclient "wireflow/management/grpc/client"
-	"wireflow/pkg/client"
 	"wireflow/pkg/config"
 	"wireflow/pkg/log"
 	turnclient "wireflow/pkg/turn"
@@ -30,7 +29,7 @@ type NodeMap struct {
 }
 
 var (
-	_ client.IManagementClient = (*Client)(nil)
+	_ internal.IManagementClient = (*Client)(nil)
 )
 
 // Client is control client of wireflow, will fetch config from origin server interval

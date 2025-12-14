@@ -25,7 +25,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 	"wireflow/drp"
@@ -33,10 +32,10 @@ import (
 	ctrclient "wireflow/management/client"
 	mgtclient "wireflow/management/grpc/client"
 	"wireflow/pkg/config"
-	lipc "wireflow/pkg/ipc"
 	"wireflow/pkg/log"
 	"wireflow/pkg/probe"
 	turnclient "wireflow/pkg/turn"
+	"wireflow/pkg/wferrors"
 	"wireflow/turn"
 
 	wg "golang.zx2c4.com/wireguard/device"
@@ -48,36 +47,34 @@ var (
 	_ internal.IClient = (*Client)(nil)
 )
 
-const (
-	DefaultMTU = 1420
-)
-
 // Client act as wireflow data plane, wrappers around wireguard device
 type Client struct {
-	ctx           context.Context
-	logger        *log.Logger
-	keyManager    internal.KeyManager
-	Name          string
-	iface         *wg.Device
-	ctrClient     *ctrclient.Client
-	drpClient     *drp.Client
-	bind          *WireFlowBind
+	ctx    context.Context
+	logger *log.Logger
+	Name   string
+	iface  *wg.Device
+	bind   *DefaultBind
+
 	GetNetworkMap func() (*internal.Message, error)
-	updated       atomic.Bool
 
-	group atomic.Value //belong to which group
+	clients struct {
+		ctrClient     *ctrclient.Client
+		drpClient     *drp.Client
+		keepaliveChan chan struct{} // channel for keepalive
+		watchChan     chan struct{} // channel for watch
+	}
 
-	peerManager  *internal.PeerManager
-	agentManager internal.AgentManagerFactory
-	wgConfigure  internal.Configurer
-	current      *internal.Peer
-	turnManager  *turnclient.TurnManager
+	managers struct {
+		agentManager internal.AgentManagerFactory
+		keyManager   internal.KeyManager
+		turnManager  *turnclient.TurnManager
+		peerManager  *internal.PeerManager
+	}
 
-	callback func(message *internal.Message) error
+	wgConfigure internal.Configurer
+	current     *internal.Peer
 
-	keepaliveChan chan struct{} // channel for keepalive
-	watchChan     chan struct{} // channel for watch
-
+	callback     func(message *internal.Message) error
 	eventHandler *EventHandler
 }
 
@@ -126,7 +123,7 @@ func (c *Client) IpcHandle(socket net.Conn) {
 				return
 			}
 			if nextByte != '\n' {
-				err = lipc.IpcErrorf(ipc.IpcErrorInvalid, "trailing character in UAPI get: %q", nextByte)
+				err = wferrors.IpcErrorf(ipc.IpcErrorInvalid, "trailing character in UAPI get: %q", nextByte)
 				break
 			}
 			err = c.iface.IpcGetOperation(buffered.Writer)
@@ -136,10 +133,10 @@ func (c *Client) IpcHandle(socket net.Conn) {
 		}
 
 		// write status
-		var status *lipc.IPCError
+		var status *wferrors.IPCError
 		if err != nil && !errors.As(err, &status) {
 			// shouldn't happen
-			status = lipc.IpcErrorf(ipc.IpcErrorUnknown, "other UAPI error: %w", err)
+			status = wferrors.IpcErrorf(ipc.IpcErrorUnknown, "other UAPI error: %w", err)
 		}
 		if status != nil {
 			c.logger.Errorf("%v", status)
@@ -165,25 +162,22 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		v6conn       *net.UDPConn
 	)
 	client = &Client{
-		ctx:           context.Background(),
-		peerManager:   internal.NewPeerManager(),
-		agentManager:  drp.NewAgentManager(),
-		logger:        cfg.Logger,
-		keepaliveChan: make(chan struct{}, 1),
-		watchChan:     make(chan struct{}, 1),
+		ctx:    context.Background(),
+		logger: cfg.Logger,
 	}
-
-	client.turnManager = new(turnclient.TurnManager)
-	client.Name, iface, err = CreateTUN(DefaultMTU, cfg.Logger)
+	client.clients.keepaliveChan = make(chan struct{}, 1)
+	client.clients.watchChan = make(chan struct{}, 1)
+	client.managers.turnManager = new(turnclient.TurnManager)
+	client.managers.peerManager = internal.NewPeerManager()
+	client.managers.agentManager = drp.NewAgentManager()
+	client.Name, iface, err = CreateTUN(internal.DefaultMTU, cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
 
-	client.ctrClient = ctrclient.NewClient(&ctrclient.ClientConfig{
+	client.clients.ctrClient = ctrclient.NewClient(&ctrclient.ClientConfig{
 		Logger:        log.NewLogger(log.Loglevel, "control-ctrClient"),
 		ManagementUrl: cfg.ManagementUrl,
-		KeepaliveChan: client.keepaliveChan,
-		WatchChan:     client.watchChan,
 		Conf:          cfg.Conf,
 	})
 
@@ -192,7 +186,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 	var privateKey string
-	client.current, err = client.ctrClient.Register(context.Background(), appId)
+	client.current, err = client.clients.ctrClient.Register(context.Background(), appId)
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +194,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	privateKey = client.current.PrivateKey
 
 	//update key
-	client.keyManager = internal.NewKeyManager(privateKey)
-	client.peerManager.AddPeer(client.keyManager.GetPublicKey(), client.current)
+	client.managers.keyManager = internal.NewKeyManager(privateKey)
+	client.managers.peerManager.AddPeer(client.managers.keyManager.GetPublicKey(), client.current)
 
 	if v4conn, _, err = ListenUDP("udp4", uint16(cfg.Port)); err != nil {
 		return nil, err
@@ -211,11 +205,11 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
-	// init drp client
-	if client.drpClient, err = drp.NewClient(&drp.ClientConfig{
+	// init drp clients
+	if client.clients.drpClient, err = drp.NewClient(&drp.ClientConfig{
 		Addr:       cfg.SignalingUrl,
 		Logger:     log.NewLogger(log.Loglevel, "drp-ctrClient"),
-		KeyManager: client.keyManager,
+		KeyManager: client.managers.keyManager,
 	}); err != nil {
 		return nil, err
 	}
@@ -236,9 +230,9 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 
 	client.logger.Verbosef("get relay info, mapped addr: %v, conn addr: %v", info.MappedAddr, info.RelayConn.LocalAddr())
 
-	client.turnManager.SetInfo(info)
+	client.managers.turnManager.SetInfo(info)
 
-	universalUdpMuxDefault := client.agentManager.NewUdpMux(v4conn)
+	universalUdpMuxDefault := client.managers.agentManager.NewUdpMux(v4conn)
 
 	client.bind = NewBind(&BindConfig{
 		Logger:          log.NewLogger(log.Loglevel, "wireflow-bind"),
@@ -246,7 +240,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		V4Conn:          v4conn,
 		V6Conn:          v6conn,
 		Proxy:           proxy,
-		KeyManager:      client.keyManager,
+		KeyManager:      client.managers.keyManager,
 		RelayConn:       info.RelayConn,
 	})
 
@@ -255,16 +249,16 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	offerHandler := drp.NewOfferHandler(&drp.OfferHandlerConfig{
 		Logger:       log.NewLogger(log.Loglevel, "offer-handler"),
 		ProbeManager: probeManager,
-		AgentManager: client.agentManager,
+		AgentManager: client.managers.agentManager,
 		StunUri:      cfg.TurnServerUrl,
-		KeyManager:   client.keyManager,
-		NodeManager:  client.peerManager,
+		KeyManager:   client.managers.keyManager,
+		NodeManager:  client.managers.peerManager,
 		Proxy:        proxy,
-		TurnManager:  client.turnManager,
+		TurnManager:  client.managers.turnManager,
 	})
 
-	// init proxy in drp client
-	client.drpClient.Configure(
+	// init proxy in drp clients
+	client.clients.drpClient.Configure(
 		drp.WithProbeManager(probeManager),
 		drp.WithOfferHandler(offerHandler))
 
@@ -273,18 +267,18 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	wgConfigure := internal.NewConfigurer(&internal.Params{
 		Device:       client.iface,
 		IfaceName:    client.Name,
-		PeersManager: client.peerManager,
+		PeersManager: client.managers.peerManager,
 	})
 	client.wgConfigure = wgConfigure
 
-	// init control client
-	client.ctrClient.Configure(
-		ctrclient.WithNodeManager(client.peerManager),
+	// init control clients
+	client.clients.ctrClient.Configure(
+		ctrclient.WithNodeManager(client.managers.peerManager),
 		ctrclient.WithProbeManager(probeManager),
-		ctrclient.WithTurnManager(client.turnManager),
+		ctrclient.WithTurnManager(client.managers.turnManager),
 		ctrclient.WithIClient(client),
 		ctrclient.WithOfferHandler(offerHandler),
-		ctrclient.WithKeyManager(client.keyManager))
+		ctrclient.WithKeyManager(client.managers.keyManager))
 	return client, err
 }
 
@@ -292,7 +286,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 func (c *Client) Start() error {
 	ctx := context.Background()
 	// init event handler
-	c.eventHandler = NewEventHandler(c, log.NewLogger(log.Loglevel, "event-handler"), c.ctrClient)
+	c.eventHandler = NewEventHandler(c, log.NewLogger(log.Loglevel, "event-handler"), c.clients.ctrClient)
 	// start deviceManager, open udp port
 	if err := c.iface.Up(); err != nil {
 		return err
@@ -303,7 +297,7 @@ func (c *Client) Start() error {
 		internal.SetDeviceIP()("add", c.current.Address, c.wgConfigure.GetIfaceName())
 	}
 
-	if c.keyManager.GetKey() != "" {
+	if c.managers.keyManager.GetKey() != "" {
 		if err := c.Configure(&internal.DeviceConfig{
 			PrivateKey: c.current.PrivateKey,
 		}); err != nil {
@@ -321,14 +315,14 @@ func (c *Client) Start() error {
 
 	// watch
 	go func() {
-		c.watchChan <- struct{}{}
+		c.clients.watchChan <- struct{}{}
 		for {
 			select {
-			case <-c.watchChan:
-				if err = c.ctrClient.Watch(c.ctx, c.eventHandler.HandleEvent()); err != nil {
+			case <-c.clients.watchChan:
+				if err = c.clients.ctrClient.Watch(c.ctx, c.eventHandler.HandleEvent()); err != nil {
 					c.logger.Errorf("watch failed: %v", err)
 					time.Sleep(10 * time.Second) // retry after 10 seconds
-					c.watchChan <- struct{}{}
+					c.clients.watchChan <- struct{}{}
 				}
 			case <-c.ctx.Done():
 				c.logger.Infof("watching chan closed")
@@ -338,14 +332,14 @@ func (c *Client) Start() error {
 	}()
 
 	go func() {
-		c.keepaliveChan <- struct{}{}
+		c.clients.keepaliveChan <- struct{}{}
 		for {
 			select {
-			case <-c.keepaliveChan:
-				if err = c.ctrClient.Keepalive(c.ctx); err != nil {
+			case <-c.clients.keepaliveChan:
+				if err = c.clients.ctrClient.Keepalive(c.ctx); err != nil {
 					c.logger.Errorf("keepalive failed: %v", err)
 					time.Sleep(10 * time.Second)
-					c.keepaliveChan <- struct{}{}
+					c.clients.keepaliveChan <- struct{}{}
 				}
 			case <-c.ctx.Done():
 				return
@@ -384,8 +378,8 @@ func (c *Client) Configure(conf *internal.DeviceConfig) error {
 }
 
 func (c *Client) close() {
-	close(c.keepaliveChan)
-	c.drpClient.Close()
+	close(c.clients.keepaliveChan)
+	c.clients.drpClient.Close()
 	//deviceManager.iface.Close()
 	c.logger.Verbosef("deviceManager closed")
 }
@@ -395,7 +389,7 @@ func (c *Client) GetDeviceConfiger() internal.Configurer {
 }
 
 func (c *Client) AddPeer(peer *internal.Peer) error {
-	return c.ctrClient.AddPeer(peer)
+	return c.clients.ctrClient.AddPeer(peer)
 }
 
 func (c *Client) RemovePeer(peer *internal.Peer) error {

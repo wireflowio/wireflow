@@ -1,8 +1,7 @@
-package client
+package internal
 
 import (
 	"context"
-	"wireflow/internal"
 	"wireflow/internal/grpc"
 )
 
@@ -12,10 +11,10 @@ type ValueSetter struct {
 }
 
 type IManagementClient interface {
-	GetNetMap() (*internal.Message, error)
-	Register(ctx context.Context, appId string) (*internal.Peer, error)
-	AddPeer(p *internal.Peer) error
-	Watch(ctx context.Context, fn func(message *internal.Message) error) error
+	GetNetMap() (*Message, error)
+	Register(ctx context.Context, appId string) (*Peer, error)
+	AddPeer(p *Peer) error
+	Watch(ctx context.Context, fn func(message *Message) error) error
 	Keepalive(ctx context.Context) error
 }
 

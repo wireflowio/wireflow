@@ -38,10 +38,10 @@ func NewPush() {
 	router := gin.Default()
 
 	// 加载模板文件
-	router.LoadHTMLGlob("templates/*")
+	router.LoadHTMLGlob("management/templates/*")
 
 	// 静态文件服务
-	router.Static("/static", "./static")
+	router.Static("/static", "./management/static")
 
 	// 首页 - 推送页面
 	router.GET("/", func(c *gin.Context) {

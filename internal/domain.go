@@ -15,6 +15,7 @@
 package internal
 
 const (
+	DefaultMTU = 1420
 	// ConsoleDomain domain for service
 	ConsoleDomain         = "http://console.The Wireflow Authors"
 	ManagementDomain      = "console.The Wireflow Authors"

@@ -23,12 +23,13 @@ import (
 	"wireflow/pkg/utils"
 	"wireflow/pkg/wferrors"
 
+	"wireflow/api/v1alpha1"
+
 	"github.com/golang/protobuf/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
-	"wireflow/api/v1alpha1"
 )
 
 // Server is grpc server used to list watch resources to nodes.
@@ -85,7 +86,6 @@ type RegRequest struct {
 }
 
 func NewServer(cfg *ServerConfig) *Server {
-
 	stopCh := make(chan struct{})
 	wt := internal.NewWatchManager()
 	client, err := resource.NewClient(wt)

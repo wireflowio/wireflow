@@ -103,12 +103,14 @@ func (handler *EventHandler) HandleEvent() HandlerFunc {
 				}
 			}
 
-			if len(msg.Changes.PoliciesAdded) > 0 {
-				handler.logger.Infof("policies added: %v", msg.Changes.PoliciesAdded)
-			}
-
-			if len(msg.Changes.PoliciesUpdated) > 0 {
-				handler.logger.Infof("policies updated: %v", msg.Changes.PoliciesUpdated)
+			if len(msg.Changes.PoliciesAdded) > 0 || len(msg.Changes.PoliciesRemoved) > 0 || len(msg.Changes.PoliciesUpdated) > 0 {
+				peers := handler.handlePeerFromPolicy(msg.Network, msg.Changes.PoliciesAdded)
+				for _, peer := range peers {
+					handler.deviceManager.GetDeviceConfiger().GetPeersManager().AddPeer(peer.PublicKey, peer)
+					if err := handler.deviceManager.AddPeer(peer); err != nil {
+						return err
+					}
+				}
 			}
 
 		}
@@ -120,19 +122,65 @@ func (handler *EventHandler) HandleEvent() HandlerFunc {
 // ApplyFullConfig when wireflow start, apply full config
 func (handler *EventHandler) ApplyFullConfig(ctx context.Context, msg *internal.Message) error {
 	handler.logger.Verbosef("ApplyFullConfig start: %v", msg)
+
+	peers := handler.handlePeerFromPolicy(msg.Network, msg.Policies)
 	//apply peers, add peer to peers deviceManager
-	for _, peer := range msg.Network.Peers {
+	for _, peer := range peers {
 		handler.deviceManager.GetDeviceConfiger().GetPeersManager().AddPeer(peer.PublicKey, peer)
 		if err := handler.deviceManager.AddPeer(peer); err != nil {
 			return err
 		}
 	}
 
-	// apply policies
-	for _, policy := range msg.Network.Policies {
-		handler.logger.Verbosef("ApplyPolicy: %v", policy)
-	}
-
 	handler.logger.Verbosef("ApplyFullConfig done, message version: %v", msg.ConfigVersion)
 	return nil
+}
+
+// handlePeerFromPolicy when Network peers is not nil and also policy's peers  is not nil, should filter peers
+// return filtered peers added, removed
+func (handler *EventHandler) handlePeerFromPolicy(network *internal.Network, policies []*internal.Policy) []*internal.Peer {
+	networkPeers := network.Peers
+	if networkPeers == nil {
+		return nil
+	}
+
+	netPeerSet := peerToSet(networkPeers)
+	for _, policy := range policies {
+		ingresses := policy.Ingress
+		egresses := policy.Egress
+
+		for _, egress := range egresses {
+			for _, peer := range egress.Peers {
+				if _, ok := netPeerSet[peer.PublicKey]; !ok {
+					delete(netPeerSet, peer.PublicKey)
+				}
+			}
+		}
+
+		for _, ingress := range ingresses {
+			for _, peer := range ingress.Peers {
+				if _, ok := netPeerSet[peer.PublicKey]; !ok {
+					delete(netPeerSet, peer.PublicKey)
+				}
+			}
+		}
+
+	}
+
+	for _, peer := range networkPeers {
+		if _, ok := netPeerSet[peer.PublicKey]; !ok {
+			delete(netPeerSet, peer.PublicKey)
+		}
+	}
+
+	return networkPeers
+}
+
+func peerToSet(peers []*internal.Peer) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, peer := range peers {
+		m[peer.PublicKey] = struct{}{}
+	}
+
+	return m
 }

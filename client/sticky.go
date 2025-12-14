@@ -23,12 +23,12 @@ import (
 
 // getSrcFromControl parses the control for PKTINFO and if found updates ep with
 // the source information found.
-func getSrcFromControl(control []byte, wep *internal.WireflowEndpoint) {
+func getSrcFromControl(control []byte, wep *internal.MagicEndpoint) {
 }
 
 // setSrcControl parses the control for PKTINFO and if found updates ep with
 // the source information found.
-func setSrcControl(control *[]byte, ep *internal.WireflowEndpoint) {
+func setSrcControl(control *[]byte, ep *internal.MagicEndpoint) {
 }
 
 // srcControlSize returns the recommended buffer size for pooling sticky control
