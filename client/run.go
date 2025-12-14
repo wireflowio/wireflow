@@ -25,6 +25,7 @@ import (
 	"time"
 	"wireflow/dns"
 	"wireflow/internal"
+	"wireflow/internal/core/domain"
 	"wireflow/monitor"
 	"wireflow/monitor/collector"
 	"wireflow/pkg/config"
@@ -192,7 +193,7 @@ func Start(flags *config.Flags) error {
 		return err
 	}
 
-	engine.GetNetworkMap = func() (*internal.Message, error) {
+	engine.GetNetworkMap = func() (*domain.Message, error) {
 		// get network map from list
 		msg, err := engine.ctrClient.GetNetMap()
 		if err != nil {

@@ -12,31 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package infra
 
-type ConnectionState int
-
-const (
-	ConnectionStateNew ConnectionState = iota
-	ConnectionStateChecking
-	ConnectionStateFailed
-	ConnectionStateConnected
-	ConnectionStateDisconnected
+import (
+	"fmt"
+	"net"
+	"strings"
 )
 
-func (c ConnectionState) String() string {
-	switch c {
-	case ConnectionStateNew:
-		return "New"
-	case ConnectionStateChecking:
-		return "Checking"
-	case ConnectionStateConnected:
-		return "Connected"
-	case ConnectionStateFailed:
-		return "Failed"
-	case ConnectionStateDisconnected:
-		return "Disconnected"
-	default:
-		return "Invalid"
+func GetCidrFromIP(address string) string {
+
+	_, ipNet, err := net.ParseCIDR(fmt.Sprint(address, "/24"))
+	if err != nil {
+		return ""
 	}
+	return ipNet.String()
+
+}
+
+func GetGatewayFromIP(str string) string {
+	_, ipNet, err := net.ParseCIDR(str + "/24")
+	if err != nil {
+		return ""
+	}
+	return ipNet.IP.String()
+}
+
+func TrimCIDR(addr string) string {
+	if idx := strings.Index(addr, "/"); idx > 0 {
+		return addr[:idx]
+	}
+	return addr
 }

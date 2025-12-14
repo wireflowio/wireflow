@@ -12,11 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package domain
 
-import (
-	"os"
-	"syscall"
+type ConnectionState int
+
+const (
+	ConnectionStateNew ConnectionState = iota
+	ConnectionStateChecking
+	ConnectionStateFailed
+	ConnectionStateConnected
+	ConnectionStateDisconnected
 )
 
-var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}
+func (c ConnectionState) String() string {
+	switch c {
+	case ConnectionStateNew:
+		return "New"
+	case ConnectionStateChecking:
+		return "Checking"
+	case ConnectionStateConnected:
+		return "Connected"
+	case ConnectionStateFailed:
+		return "Failed"
+	case ConnectionStateDisconnected:
+		return "Disconnected"
+	default:
+		return "Invalid"
+	}
+}

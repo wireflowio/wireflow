@@ -17,7 +17,7 @@ package drp
 import (
 	"context"
 	"encoding/json"
-	"wireflow/internal"
+	"wireflow/internal/core/domain"
 	drpgrpc "wireflow/internal/grpc"
 
 	"golang.org/x/sync/errgroup"
@@ -45,14 +45,14 @@ type Client struct {
 		timeout           time.Duration
 	}
 	proxy      *Proxy
-	keyManager internal.KeyManager
+	keyManager domain.IKeyManager
 }
 
 type ClientConfig struct {
 	Logger       *log.Logger
 	Addr         string
 	ClientID     string
-	KeyManager   internal.KeyManager
+	KeyManager   domain.IKeyManager
 	SignalingUrl string
 }
 
@@ -122,14 +122,14 @@ func (c *Client) Configure(opts ...ClientOption) error {
 	return nil
 }
 
-func WithOfferHandler(offerHandler internal.OfferHandler) ClientOption {
+func WithOfferHandler(offerHandler domain.OfferHandler) ClientOption {
 	return func(c *Client) error {
 		c.proxy.offerHandler = offerHandler
 		return nil
 	}
 }
 
-func WithProbeManager(probeManager internal.ProbeManager) ClientOption {
+func WithProbeManager(probeManager domain.ProbeManager) ClientOption {
 	return func(c *Client) error {
 		c.proxy.manager.probeManager = probeManager
 		return nil

@@ -18,24 +18,26 @@ import (
 	"sync"
 	"wireflow/drp"
 	"wireflow/internal"
+	"wireflow/internal/core/domain"
+	manager2 "wireflow/internal/core/manager"
 	"wireflow/pkg/log"
 
 	"github.com/wireflowio/ice"
 )
 
 var (
-	_ internal.ProbeManager = (*manager)(nil)
+	_ domain.ProbeManager = (*manager)(nil)
 )
 
 type manager struct {
 	logger       *log.Logger
 	lock         sync.Mutex
-	probers      map[string]internal.Probe
+	probers      map[string]domain.Probe
 	wgLock       sync.Mutex
 	isForceRelay bool
-	agentManager internal.AgentManagerFactory
-	engine       internal.IClient
-	offerHandler internal.OfferHandler
+	agentManager domain.AgentManagerFactory
+	engine       domain.IClient
+	offerHandler domain.OfferHandler
 	//relayer internal.Relay
 
 	stunUrl         string
@@ -45,11 +47,11 @@ type manager struct {
 
 func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	universeUdpMux *ice.UniversalUDPMuxDefault,
-	engineManager internal.IClient,
-	stunUrl string) internal.ProbeManager {
+	engineManager domain.IClient,
+	stunUrl string) domain.ProbeManager {
 	return &manager{
-		agentManager:    drp.NewAgentManager(),
-		probers:         make(map[string]internal.Probe),
+		agentManager:    manager2.NewAgentManager(),
+		probers:         make(map[string]domain.Probe),
 		isForceRelay:    isForceRelay,
 		udpMux:          udpMux,
 		universalUdpMux: universeUdpMux,
@@ -59,12 +61,12 @@ func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	}
 }
 
-func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state internal.ConnectionState) error) (*internal.Agent, error) {
+func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state domain.ConnectionState) error) (*domain.IAgent, error) {
 	var (
 		err   error
-		agent *internal.Agent
+		agent domain.IAgent
 	)
-	if agent, err = internal.NewAgent(&internal.AgentConfig{
+	if agent, err = manager2.NewAgent(&manager2.AgentConfig{
 		StunUrl:         m.stunUrl,
 		UniversalUdpMux: m.universalUdpMux,
 	}); err != nil {
@@ -86,15 +88,15 @@ func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state internal.Con
 	if err = agent.OnConnectionStateChange(func(state ice.ConnectionState) {
 		switch state {
 		case ice.ConnectionStateFailed:
-			fn(internal.ConnectionStateFailed)
+			fn(domain.ConnectionStateFailed)
 		case ice.ConnectionStateConnected:
-			fn(internal.ConnectionStateConnected)
+			fn(domain.ConnectionStateConnected)
 		case ice.ConnectionStateChecking:
-			fn(internal.ConnectionStateChecking)
+			fn(domain.ConnectionStateChecking)
 		case ice.ConnectionStateDisconnected:
-			fn(internal.ConnectionStateDisconnected)
+			fn(domain.ConnectionStateDisconnected)
 		case ice.ConnectionStateNew:
-			fn(internal.ConnectionStateNew)
+			fn(domain.ConnectionStateNew)
 		}
 	}); err != nil {
 		return nil, err
@@ -104,7 +106,7 @@ func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state internal.Con
 }
 
 // NewProbe creates a new Probe, is a probe manager
-func (m *manager) NewProbe(cfg *internal.ProbeConfig) (internal.Probe, error) {
+func (m *manager) NewProbe(cfg *domain.ProbeConfig) (domain.Probe, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	p := m.probers[cfg.To] // check if probe already exists
@@ -118,7 +120,7 @@ func (m *manager) NewProbe(cfg *internal.ProbeConfig) (internal.Probe, error) {
 
 	newProbe := &probe{
 		logger:          log.NewLogger(log.Loglevel, "probe"),
-		connectionState: internal.ConnectionStateNew,
+		connectionState: domain.ConnectionStateNew,
 		gatherCh:        cfg.GatherChan,
 		directChecker:   cfg.DirectChecker,
 		relayChecker:    cfg.RelayChecker,

@@ -15,12 +15,12 @@
 package probe
 
 import (
-	"wireflow/internal"
+	"wireflow/internal/core/domain"
 
 	"github.com/wireflowio/ice"
 )
 
-func (p *probe) GetCandidates(agent *internal.Agent) string {
+func (p *probe) GetCandidates(agent domain.IAgent) string {
 	var (
 		err        error
 		candidates []ice.Candidate

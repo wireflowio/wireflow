@@ -12,48 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package internal
+package manager
 
 import (
 	"sync"
+	"wireflow/internal/core/domain"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// IClient is the interface for managing WireGuard devices.
-type IClient interface {
-	// Start the engine
-	Start() error
-
-	// Stop the engine
-	Stop() error
-
-	// GetDeviceConfiger  // Get the WireGuard configuration manager
-	GetDeviceConfiger() Configurer
-
-	Configure(conf *DeviceConfig) error
-
-	// AddPeer adds a peer to the WireGuard device, add peer from contrl client, then will start connect to peer
-	AddPeer(peer *Peer) error
-
-	// RemovePeer removes a peer from the WireGuard device
-	RemovePeer(peer *Peer) error
-
-	RemoveAllPeers()
-}
-
-// KeyManager manage the device keys
-type KeyManager interface {
-	// UpdateKey updates the private key used for encryption.
-	UpdateKey(privateKey string)
-	// GetKey retrieves the current private key.
-	GetKey() string
-	// GetPublicKey retrieves the public key derived from the current private key.
-	GetPublicKey() string
-}
-
 var (
-	_ KeyManager = (*keyManager)(nil)
+	_ domain.IKeyManager  = (*keyManager)(nil)
+	_ domain.IPeerManager = (*PeerManager)(nil)
 )
 
 type keyManager struct {
@@ -61,7 +31,7 @@ type keyManager struct {
 	privateKey string
 }
 
-func NewKeyManager(privateKey string) KeyManager {
+func NewKeyManager(privateKey string) domain.IKeyManager {
 	return &keyManager{privateKey: privateKey}
 }
 
@@ -90,28 +60,28 @@ func (km *keyManager) GetPublicKey() string {
 // PeerManager manager all peers connected or connecte to
 type PeerManager struct {
 	lock  sync.Mutex
-	peers map[string]*Peer
+	peers map[string]*domain.Peer
 }
 
 func NewPeerManager() *PeerManager {
 	return &PeerManager{
-		peers: make(map[string]*Peer),
+		peers: make(map[string]*domain.Peer),
 	}
 }
 
-func (pm *PeerManager) AddPeer(key string, peer *Peer) {
+func (pm *PeerManager) AddPeer(key string, peer *domain.Peer) {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 	pm.peers[key] = peer
 }
 
-func (pm *PeerManager) GetPeer(key string) *Peer {
+func (pm *PeerManager) GetPeer(key string) *domain.Peer {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 	return pm.peers[key]
 }
 
-func (pm *PeerManager) Remove(key string) {
+func (pm *PeerManager) RemovePeer(key string) {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 	delete(pm.peers, key)

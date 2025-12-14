@@ -20,7 +20,7 @@ import (
 	"net"
 	"net/netip"
 	"time"
-	"wireflow/internal"
+	"wireflow/internal/core/domain"
 	drpgrpc "wireflow/internal/grpc"
 	"wireflow/pkg/log"
 
@@ -34,24 +34,24 @@ type Proxy struct {
 	// Address is the address of the proxy server
 	Addr  netip.AddrPort
 	queue struct {
-		drpClient     internal.IDRPClient
+		drpClient     domain.IDRPClient
 		outBoundQueue chan *drpgrpc.DrpMessage
 		inBoundQueue  chan *drpgrpc.DrpMessage
 	}
 
 	drpAddr      string
-	offerHandler internal.OfferHandler
+	offerHandler domain.OfferHandler
 	manager      struct {
 		msgManager   *MessageManager
-		probeManager internal.ProbeManager
+		probeManager domain.ProbeManager
 	}
 
 	proxyDo func(ctx context.Context, msg *drpgrpc.DrpMessage) error
 }
 
 type ProxyConfig struct {
-	OfferHandler internal.OfferHandler
-	DrpClient    internal.IDRPClient
+	OfferHandler domain.OfferHandler
+	DrpClient    domain.IDRPClient
 	DrpAddr      string
 }
 
@@ -113,14 +113,14 @@ func (p *Proxy) MakeReceiveFromDrp() conn.ReceiveFunc {
 			for i := 0; i < len(bufs); i++ {
 				copy(bufs[i], msg.Body)
 				sizes[i] = len(msg.Body)
-				eps[i] = &internal.MagicEndpoint{
+				eps[i] = &domain.MagicEndpoint{
 					Relay: &struct {
-						FromType internal.EndpointType
+						FromType domain.EndpointType
 						Status   bool
 						From     string
 						To       string
 						Endpoint netip.AddrPort
-					}{FromType: internal.DRP, Status: true, From: msg.To, To: msg.From, Endpoint: p.Addr},
+					}{FromType: domain.DRP, Status: true, From: msg.To, To: msg.From, Endpoint: p.Addr},
 				}
 			}
 
@@ -142,7 +142,7 @@ func (p *Proxy) Send(ep conn.Endpoint, bufs [][]byte) (err error) {
 		return errors.New("endpoint is nil")
 	}
 
-	if v, ok := ep.(internal.RelayEndpoint); ok {
+	if v, ok := ep.(domain.RelayEndpoint); ok {
 		from = v.From()
 		to = v.To()
 	} else {

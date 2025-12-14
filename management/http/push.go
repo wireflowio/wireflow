@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-	"wireflow/internal"
+	"wireflow/internal/core/domain"
+	"wireflow/internal/core/manager"
 
 	"github.com/gin-gonic/gin"
 	"k8s.io/klog/v2"
@@ -28,7 +29,7 @@ type PushResponse struct {
 }
 
 type HttpServer struct {
-	wt *internal.WatchManager
+	wt domain.IWatchManager
 }
 
 func NewPush() {
@@ -53,7 +54,7 @@ func NewPush() {
 	})
 
 	s := &HttpServer{
-		wt: internal.NewWatchManager(),
+		wt: manager.NewWatchManager(),
 	}
 
 	// 推送 API 接口
@@ -194,7 +195,7 @@ func pushHistoryHandler(c *gin.Context) {
 
 // 实际发送推送的函数
 func (s *HttpServer) sendPush(clientId, content string) (string, error) {
-	var msg internal.Message
+	var msg domain.Message
 	// 创建请求数据
 	if err := json.Unmarshal([]byte(content), &msg); err != nil {
 		return "", fmt.Errorf("json unmarshal failed: %v", err)

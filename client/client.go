@@ -29,6 +29,8 @@ import (
 	"time"
 	"wireflow/drp"
 	"wireflow/internal"
+	"wireflow/internal/core/domain"
+	"wireflow/internal/core/manager"
 	ctrclient "wireflow/management/client"
 	mgtclient "wireflow/management/grpc/client"
 	"wireflow/pkg/config"
@@ -44,7 +46,7 @@ import (
 )
 
 var (
-	_ internal.IClient = (*Client)(nil)
+	_ domain.IClient = (*Client)(nil)
 )
 
 // Client act as wireflow data plane, wrappers around wireguard device
@@ -55,7 +57,7 @@ type Client struct {
 	iface  *wg.Device
 	bind   *DefaultBind
 
-	GetNetworkMap func() (*internal.Message, error)
+	GetNetworkMap func() (*domain.Message, error)
 
 	clients struct {
 		ctrClient     *ctrclient.Client
@@ -65,16 +67,16 @@ type Client struct {
 	}
 
 	managers struct {
-		agentManager internal.AgentManagerFactory
-		keyManager   internal.KeyManager
+		agentManager domain.AgentManagerFactory
+		keyManager   domain.IKeyManager
 		turnManager  *turnclient.TurnManager
-		peerManager  *internal.PeerManager
+		peerManager  domain.IPeerManager
 	}
 
-	wgConfigure internal.Configurer
-	current     *internal.Peer
+	wgConfigure domain.Configurer
+	current     *domain.Peer
 
-	callback     func(message *internal.Message) error
+	callback     func(message *domain.Message) error
 	eventHandler *EventHandler
 }
 
@@ -155,7 +157,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		iface        tun.Device
 		err          error
 		client       *Client
-		probeManager internal.ProbeManager
+		probeManager domain.ProbeManager
 		proxy        *drp.Proxy
 		turnClient   turnclient.Client
 		v4conn       *net.UDPConn
@@ -168,7 +170,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	client.clients.keepaliveChan = make(chan struct{}, 1)
 	client.clients.watchChan = make(chan struct{}, 1)
 	client.managers.turnManager = new(turnclient.TurnManager)
-	client.managers.peerManager = internal.NewPeerManager()
+	client.managers.peerManager = manager.NewPeerManager()
 	client.managers.agentManager = drp.NewAgentManager()
 	client.Name, iface, err = CreateTUN(internal.DefaultMTU, cfg.Logger)
 	if err != nil {
@@ -194,7 +196,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	privateKey = client.current.PrivateKey
 
 	//update key
-	client.managers.keyManager = internal.NewKeyManager(privateKey)
+	client.managers.keyManager = manager.NewKeyManager(privateKey)
 	client.managers.peerManager.AddPeer(client.managers.keyManager.GetPublicKey(), client.current)
 
 	if v4conn, _, err = ListenUDP("udp4", uint16(cfg.Port)); err != nil {
@@ -264,7 +266,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 
 	client.iface = wg.NewDevice(iface, client.bind, cfg.WgLogger)
 
-	wgConfigure := internal.NewConfigurer(&internal.Params{
+	wgConfigure := manager.NewConfigurer(&manager.Params{
 		Device:       client.iface,
 		IfaceName:    client.Name,
 		PeersManager: client.managers.peerManager,
