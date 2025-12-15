@@ -17,8 +17,8 @@ package client
 import (
 	"context"
 	"fmt"
-	"wireflow/internal"
 	"wireflow/internal/core/domain"
+	"wireflow/internal/core/infra"
 	mgtclient "wireflow/management/client"
 	"wireflow/pkg/log"
 )
@@ -59,13 +59,13 @@ func (handler *EventHandler) HandleEvent() HandlerFunc {
 				if msg.Current.Address == "" {
 					if len(msg.Changes.NetworkLeft) > 0 {
 						//删除IP
-						internal.SetDeviceIP()("remove", msg.Current.Address, handler.deviceManager.GetDeviceConfiger().GetIfaceName())
+						infra.SetDeviceIP()("remove", msg.Current.Address, handler.deviceManager.GetDeviceConfiger().GetIfaceName())
 						//移除所有peers
 						handler.deviceManager.RemoveAllPeers()
 					}
 
 				} else if msg.Current.Address != "" {
-					internal.SetDeviceIP()("add", msg.Current.Address, handler.deviceManager.GetDeviceConfiger().GetIfaceName())
+					infra.SetDeviceIP()("add", msg.Current.Address, handler.deviceManager.GetDeviceConfiger().GetIfaceName())
 				}
 				msg.Current.AllowedIPs = fmt.Sprintf("%s/%d", msg.Current.Address, 32)
 				handler.deviceManager.GetDeviceConfiger().GetPeersManager().AddPeer(msg.Current.PublicKey, msg.Current)

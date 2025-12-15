@@ -16,20 +16,18 @@ package probe
 
 import (
 	"sync"
-	"wireflow/drp"
-	"wireflow/internal"
 	"wireflow/internal/core/domain"
-	manager2 "wireflow/internal/core/manager"
+	"wireflow/internal/core/manager"
 	"wireflow/pkg/log"
 
 	"github.com/wireflowio/ice"
 )
 
 var (
-	_ domain.ProbeManager = (*manager)(nil)
+	_ domain.ProbeManager = (*probeInstance)(nil)
 )
 
-type manager struct {
+type probeInstance struct {
 	logger       *log.Logger
 	lock         sync.Mutex
 	probers      map[string]domain.Probe
@@ -38,7 +36,6 @@ type manager struct {
 	agentManager domain.AgentManagerFactory
 	engine       domain.IClient
 	offerHandler domain.OfferHandler
-	//relayer internal.Relay
 
 	stunUrl         string
 	udpMux          *ice.UDPMuxDefault
@@ -49,8 +46,8 @@ func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	universeUdpMux *ice.UniversalUDPMuxDefault,
 	engineManager domain.IClient,
 	stunUrl string) domain.ProbeManager {
-	return &manager{
-		agentManager:    manager2.NewAgentManager(),
+	return &probeInstance{
+		agentManager:    manager.NewAgentManagerFactory(),
 		probers:         make(map[string]domain.Probe),
 		isForceRelay:    isForceRelay,
 		udpMux:          udpMux,
@@ -61,12 +58,12 @@ func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	}
 }
 
-func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state domain.ConnectionState) error) (*domain.IAgent, error) {
+func (m *probeInstance) NewAgent(gatherCh chan interface{}, fn func(state domain.ConnectionState) error) (domain.IAgent, error) {
 	var (
 		err   error
 		agent domain.IAgent
 	)
-	if agent, err = manager2.NewAgent(&manager2.AgentConfig{
+	if agent, err = manager.NewAgent(&manager.AgentConfig{
 		StunUrl:         m.stunUrl,
 		UniversalUdpMux: m.universalUdpMux,
 	}); err != nil {
@@ -106,7 +103,7 @@ func (m *manager) NewAgent(gatherCh chan interface{}, fn func(state domain.Conne
 }
 
 // NewProbe creates a new Probe, is a probe manager
-func (m *manager) NewProbe(cfg *domain.ProbeConfig) (domain.Probe, error) {
+func (m *probeInstance) NewProbe(cfg *domain.ProbeConfig) (domain.Probe, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	p := m.probers[cfg.To] // check if probe already exists
@@ -137,7 +134,7 @@ func (m *manager) NewProbe(cfg *domain.ProbeConfig) (domain.Probe, error) {
 	}
 
 	switch newProbe.connectType {
-	case internal.DirectType:
+	case domain.DirectType:
 		if newProbe.agent, err = m.NewAgent(newProbe.gatherCh, newProbe.OnConnectionStateChange); err != nil {
 			return nil, err
 		}
@@ -152,19 +149,19 @@ func (m *manager) NewProbe(cfg *domain.ProbeConfig) (domain.Probe, error) {
 	return newProbe, nil
 }
 
-func (m *manager) AddProbe(key string, prober internal.Probe) {
+func (m *probeInstance) AddProbe(key string, prober domain.Probe) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.probers[key] = prober
 }
 
-func (m *manager) GetProbe(key string) internal.Probe {
+func (m *probeInstance) GetProbe(key string) domain.Probe {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return m.probers[key]
 }
 
-func (m *manager) RemoveProbe(key string) {
+func (m *probeInstance) RemoveProbe(key string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.probers, key)

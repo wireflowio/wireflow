@@ -78,7 +78,7 @@ func NewPush() {
 	logger.Info("推送服务启动在 http://localhost:8081")
 	logger.Info("访问 http://localhost:8081 使用推送功能")
 
-	if err := router.Run(":8081"); err != nil {
+	if err := router.Run(":8082"); err != nil {
 		panic(fmt.Sprintf("服务启动失败: %v", err))
 	}
 }

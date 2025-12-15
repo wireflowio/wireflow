@@ -28,8 +28,8 @@ import (
 	"syscall"
 	"time"
 	"wireflow/drp"
-	"wireflow/internal"
 	"wireflow/internal/core/domain"
+	"wireflow/internal/core/infra"
 	"wireflow/internal/core/manager"
 	ctrclient "wireflow/management/client"
 	mgtclient "wireflow/management/grpc/client"
@@ -171,8 +171,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	client.clients.watchChan = make(chan struct{}, 1)
 	client.managers.turnManager = new(turnclient.TurnManager)
 	client.managers.peerManager = manager.NewPeerManager()
-	client.managers.agentManager = drp.NewAgentManager()
-	client.Name, iface, err = CreateTUN(internal.DefaultMTU, cfg.Logger)
+	client.managers.agentManager = manager.NewAgentManagerFactory()
+	client.Name, iface, err = CreateTUN(domain.DefaultMTU, cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -296,11 +296,11 @@ func (c *Client) Start() error {
 
 	if c.current.Address != "" {
 		// 设置Device
-		internal.SetDeviceIP()("add", c.current.Address, c.wgConfigure.GetIfaceName())
+		infra.SetDeviceIP()("add", c.current.Address, c.wgConfigure.GetIfaceName())
 	}
 
 	if c.managers.keyManager.GetKey() != "" {
-		if err := c.Configure(&internal.DeviceConfig{
+		if err := c.Configure(&domain.DeviceConfig{
 			PrivateKey: c.current.PrivateKey,
 		}); err != nil {
 			return err
@@ -359,7 +359,7 @@ func (c *Client) Stop() error {
 }
 
 // SetConfig updates the configuration of the given interface.
-func (c *Client) SetConfig(conf *internal.DeviceConf) error {
+func (c *Client) SetConfig(conf *domain.DeviceConf) error {
 	nowConf, err := c.iface.IpcGet()
 	if err != nil {
 		return err
@@ -375,7 +375,7 @@ func (c *Client) SetConfig(conf *internal.DeviceConf) error {
 	return c.iface.IpcSetOperation(reader)
 }
 
-func (c *Client) Configure(conf *internal.DeviceConfig) error {
+func (c *Client) Configure(conf *domain.DeviceConfig) error {
 	return c.iface.IpcSet(conf.String())
 }
 
@@ -386,16 +386,16 @@ func (c *Client) close() {
 	c.logger.Verbosef("deviceManager closed")
 }
 
-func (c *Client) GetDeviceConfiger() internal.Configurer {
+func (c *Client) GetDeviceConfiger() domain.Configurer {
 	return c.wgConfigure
 }
 
-func (c *Client) AddPeer(peer *internal.Peer) error {
+func (c *Client) AddPeer(peer *domain.Peer) error {
 	return c.clients.ctrClient.AddPeer(peer)
 }
 
-func (c *Client) RemovePeer(peer *internal.Peer) error {
-	return c.wgConfigure.RemovePeer(&internal.SetPeer{
+func (c *Client) RemovePeer(peer *domain.Peer) error {
+	return c.wgConfigure.RemovePeer(&domain.SetPeer{
 		Remove:    true,
 		PublicKey: peer.PublicKey,
 	})

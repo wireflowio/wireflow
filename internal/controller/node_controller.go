@@ -729,3 +729,58 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alph
 
 	return result, nil
 }
+
+func (r *NodeReconciler) getNodeContext(ctx context.Context, node *v1alpha1.Node, req ctrl.Request) *NodeContext {
+	if node == nil {
+		return &NodeContext{}
+	}
+
+	var (
+		err error
+	)
+	nodeCtx := &NodeContext{
+		Node: node,
+	}
+
+	// 获取网络信息
+	if len(node.Spec.Networks) > 0 {
+		networkName := node.Spec.Networks[0]
+		var network v1alpha1.Network
+		if err = r.Get(ctx, types.NamespacedName{
+			Namespace: req.Namespace, Name: networkName,
+		}, &network); err != nil {
+			return nodeCtx
+		}
+		if err == nil {
+			nodeCtx.Network = &network
+
+			// 获取 peers
+			for _, nodeName := range network.Spec.Nodes {
+				if nodeName == node.Name {
+					continue
+				}
+				var tmpNode v1alpha1.Node
+				if err = r.Get(ctx, types.NamespacedName{
+					Namespace: req.Namespace, Name: nodeName,
+				}, &tmpNode); err != nil {
+					return nodeCtx
+				}
+
+				nodeCtx.Nodes = append(nodeCtx.Nodes, &tmpNode)
+
+			}
+		}
+	}
+
+	//获取网络策略
+	var policyList v1alpha1.NetworkPolicyList
+	if err = r.List(ctx, &policyList); err != nil {
+		return nil
+	}
+
+	for _, policy := range policyList.Items {
+		nodeCtx.Policies = append(nodeCtx.Policies, &policy)
+	}
+
+	return nodeCtx
+}
