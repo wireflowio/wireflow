@@ -148,17 +148,13 @@ func (handler *EventHandler) filterPeersFromPolicy(ctx context.Context, peers []
 	})
 }
 
-func (handler *EventHandler) handleFullNetworkWithPolicy(ctx context.Context, msg *domain.Message) []*domain.Peer {
+// handleFullNetworkWithPolicy handle full network with policy
+func (handler *EventHandler) handleFullNetworkWithPolicy(ctx context.Context, network *domain.Network, policies []*domain.Policy) []*domain.Peer {
 	log := logf.FromContext(ctx)
-	log.Info("handleFullNetworkWithPolicy", "msg", msg)
-	peers := msg.Network.Peers
+	log.Info("handleFullNetworkWithPolicy", "network", network, "policies", policies, "peers", network.Peers, "separator", "")
+	peers := network.Peers
 
-	if len(msg.Changes.PoliciesAdded) == 0 && len(msg.Changes.PoliciesRemoved) == 0 && len(msg.Changes.PoliciesUpdated) == 0 {
-		return peers
-	}
-
-	if len(msg.Changes.PoliciesAdded) > 0 {
-		policies := msg.Changes.PoliciesAdded
+	if len(policies) > 0 {
 		var ingressPeers []*domain.Peer
 		for _, policy := range policies {
 			ingreses := policy.Ingress
@@ -197,7 +193,7 @@ func (handler *EventHandler) handleFullNetworkWithPolicy(ctx context.Context, ms
 func (handler *EventHandler) ApplyFullConfig(ctx context.Context, msg *domain.Message) error {
 	handler.logger.Verbosef("ApplyFullConfig start: %v", msg)
 
-	peers := handler.handleFullNetworkWithPolicy(ctx, msg)
+	peers := handler.handleFullNetworkWithPolicy(ctx, msg.Network, msg.Policies)
 	for _, peer := range peers {
 		handler.deviceManager.GetDeviceConfiger().GetPeersManager().AddPeer(peer.PublicKey, peer)
 		if err := handler.deviceManager.AddPeer(peer); err != nil {
