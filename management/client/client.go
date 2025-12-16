@@ -30,15 +30,15 @@ type NodeMap struct {
 }
 
 var (
-	_ domain.IManagementClient = (*Client)(nil)
+	_ domain.ManagementClient = (*Client)(nil)
 )
 
 // Client is control client of wireflow, will fetch config from origin server interval
 type Client struct {
 	as           domain.AgentManagerFactory
 	logger       *log.Logger
-	keyManager   domain.IKeyManager
-	nodeManager  domain.IPeerManager
+	keyManager   domain.KeyManager
+	nodeManager  domain.PeerManager
 	conf         *config.LocalConfig
 	grpcClient   *grpclient.Client
 	conn4        net.PacketConn
@@ -46,7 +46,7 @@ type Client struct {
 	offerHandler domain.OfferHandler
 	probeManager domain.ProbeManager
 	turnManager  *turnclient.TurnManager
-	client       domain.IClient
+	client       domain.Client
 
 	//channel for close for keepalive
 	keepaliveChan chan struct{}
@@ -88,12 +88,12 @@ func NewClient(cfg *ClientConfig) *Client {
 	return client
 }
 
-func (c *Client) SetKeyManager(manager domain.IKeyManager) *Client {
+func (c *Client) SetKeyManager(manager domain.KeyManager) *Client {
 	c.keyManager = manager
 	return c
 }
 
-func (c *Client) SetNodeManager(manager domain.IPeerManager) *Client {
+func (c *Client) SetNodeManager(manager domain.PeerManager) *Client {
 	c.nodeManager = manager
 	return c
 }
@@ -124,7 +124,7 @@ func NewClientWithOption(cfg *ClientConfig, opts ...ClientOption) (*Client, erro
 	return client, nil
 }
 
-func WithNodeManager(manager domain.IPeerManager) ClientOption {
+func WithNodeManager(manager domain.PeerManager) ClientOption {
 	return func(c *Client) error {
 		c.nodeManager = manager
 		return nil
@@ -145,7 +145,7 @@ func WithOfferHandler(handler domain.OfferHandler) ClientOption {
 	}
 }
 
-func WithKeyManager(manager domain.IKeyManager) ClientOption {
+func WithKeyManager(manager domain.KeyManager) ClientOption {
 	return func(c *Client) error {
 		c.keyManager = manager
 		return nil
@@ -159,7 +159,7 @@ func WithTurnManager(manager *turnclient.TurnManager) ClientOption {
 	}
 }
 
-func WithIClient(iclient domain.IClient) ClientOption {
+func WithIClient(iclient domain.Client) ClientOption {
 	return func(c *Client) error {
 		c.client = iclient
 		return nil

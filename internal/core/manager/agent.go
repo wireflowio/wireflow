@@ -32,7 +32,7 @@ import (
 )
 
 var (
-	_ domain.IAgent              = (*agent)(nil)
+	_ domain.AgentManager        = (*agent)(nil)
 	_ domain.AgentManagerFactory = (*agentFactory)(nil)
 )
 
@@ -51,16 +51,16 @@ var (
 
 type agentFactory struct {
 	lock   sync.Locker
-	agents map[string]domain.IAgent
+	agents map[string]domain.AgentManager
 }
 
 func NewAgentManagerFactory() domain.AgentManagerFactory {
 	return &agentFactory{
-		agents: make(map[string]domain.IAgent, 1),
+		agents: make(map[string]domain.AgentManager, 1),
 	}
 }
 
-func (i *agentFactory) Get(pubKey string) (domain.IAgent, error) {
+func (i *agentFactory) Get(pubKey string) (domain.AgentManager, error) {
 	if agent, ok := i.agents[pubKey]; ok {
 		return agent, nil
 	}

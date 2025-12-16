@@ -43,7 +43,7 @@ type directChecker struct {
 	addr         *net.UDPAddr
 	addPeer      func(key string, addr *net.UDPAddr) error
 	offerManager domain.OfferHandler
-	km           domain.IKeyManager
+	km           domain.KeyManager
 	localKey     uint64
 	wgConfiger   domain.Configurer
 	prober       domain.Probe
@@ -54,7 +54,7 @@ type DirectCheckerConfig struct {
 	Ufrag         string // local
 	Pwd           string
 	IsControlling bool
-	Agent         domain.IAgent
+	Agent         domain.AgentManager
 	Key           string
 	WgConfiger    domain.Configurer
 	LocalKey      uint64

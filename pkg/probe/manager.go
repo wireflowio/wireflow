@@ -34,7 +34,7 @@ type probeInstance struct {
 	wgLock       sync.Mutex
 	isForceRelay bool
 	agentManager domain.AgentManagerFactory
-	engine       domain.IClient
+	engine       domain.Client
 	offerHandler domain.OfferHandler
 
 	stunUrl         string
@@ -44,7 +44,7 @@ type probeInstance struct {
 
 func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	universeUdpMux *ice.UniversalUDPMuxDefault,
-	engineManager domain.IClient,
+	engineManager domain.Client,
 	stunUrl string) domain.ProbeManager {
 	return &probeInstance{
 		agentManager:    manager.NewAgentManagerFactory(),
@@ -58,10 +58,10 @@ func NewManager(isForceRelay bool, udpMux *ice.UDPMuxDefault,
 	}
 }
 
-func (m *probeInstance) NewAgent(gatherCh chan interface{}, fn func(state domain.ConnectionState) error) (domain.IAgent, error) {
+func (m *probeInstance) NewAgent(gatherCh chan interface{}, fn func(state domain.ConnectionState) error) (domain.AgentManager, error) {
 	var (
 		err   error
-		agent domain.IAgent
+		agent domain.AgentManager
 	)
 	if agent, err = manager.NewAgent(&manager.AgentConfig{
 		StunUrl:         m.stunUrl,

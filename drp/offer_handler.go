@@ -38,12 +38,12 @@ type offerHandler struct {
 	client *Client
 	node   *Node
 
-	keyManager   domain.IKeyManager
+	keyManager   domain.KeyManager
 	stunUri      string
 	fn           func(key string, addr *net.UDPAddr) error
 	agentManager domain.AgentManagerFactory
 	probeManager domain.ProbeManager
-	nodeManager  domain.IPeerManager
+	nodeManager  domain.PeerManager
 
 	proxy       *Proxy
 	relay       bool
@@ -55,14 +55,14 @@ type OfferHandlerConfig struct {
 	Node    *Node
 	StunUri string
 
-	KeyManager      domain.IKeyManager
+	KeyManager      domain.KeyManager
 	UdpMux          *ice.UDPMuxDefault
 	UniversalUdpMux *ice.UniversalUDPMuxDefault
 	AgentManager    domain.AgentManagerFactory
 	OfferManager    domain.OfferHandler
 	ProbeManager    domain.ProbeManager
 	Proxy           *Proxy
-	NodeManager     domain.IPeerManager
+	NodeManager     domain.PeerManager
 	TurnManager     *turnclient.TurnManager
 }
 

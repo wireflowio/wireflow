@@ -42,13 +42,13 @@ var (
 type probe struct {
 	logger          *log.Logger
 	closeMux        sync.Mutex
-	agent           domain.IAgent
+	agent           domain.AgentManager
 	done            chan interface{}
 	connectionState domain.ConnectionState
 	isStarted       atomic.Bool
 	isForceRelay    bool
 	probeManager    domain.ProbeManager
-	nodeManager     domain.IPeerManager
+	nodeManager     domain.PeerManager
 	agentManager    domain.AgentManagerFactory
 
 	lastCheck time.Time
@@ -121,7 +121,7 @@ func (p *probe) Restart() error {
 	return nil
 }
 
-func (p *probe) GetProbeAgent() domain.IAgent {
+func (p *probe) GetProbeAgent() domain.AgentManager {
 	return p.agent
 }
 
@@ -280,7 +280,9 @@ func (p *probe) ProbeSuccess(ctx context.Context, publicKey, addr string) error 
 		return err
 	}
 
-	infra.SetRoute(p.logger)("add", peer.Address, p.wgConfiger.GetIfaceName())
+	if err = infra.NewRouteApplier().ApplyRoute("add", peer.Address, p.wgConfiger.GetIfaceName()); err != nil {
+		return err
+	}
 	p.logger.Infof("peer connect to %s success", addr)
 
 	return nil
@@ -400,7 +402,7 @@ func (p *probe) UpdateLastCheck() {
 	p.lastCheck = time.Now()
 }
 
-func (p *probe) GetCandidates(agent domain.IAgent) string {
+func (p *probe) GetCandidates(agent domain.AgentManager) string {
 	var (
 		err        error
 		candidates []ice.Candidate

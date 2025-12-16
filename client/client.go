@@ -46,16 +46,17 @@ import (
 )
 
 var (
-	_ domain.IClient = (*Client)(nil)
+	_ domain.Client = (*Client)(nil)
 )
 
 // Client act as wireflow data plane, wrappers around wireguard device
 type Client struct {
-	ctx    context.Context
-	logger *log.Logger
-	Name   string
-	iface  *wg.Device
-	bind   *DefaultBind
+	ctx          context.Context
+	logger       *log.Logger
+	Name         string
+	iface        *wg.Device
+	bind         *DefaultBind
+	routeApplier infra.RouteApplier
 
 	GetNetworkMap func() (*domain.Message, error)
 
@@ -68,9 +69,9 @@ type Client struct {
 
 	managers struct {
 		agentManager domain.AgentManagerFactory
-		keyManager   domain.IKeyManager
+		keyManager   domain.KeyManager
 		turnManager  *turnclient.TurnManager
-		peerManager  domain.IPeerManager
+		peerManager  domain.PeerManager
 	}
 
 	wgConfigure domain.Configurer
@@ -176,6 +177,8 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	client.routeApplier = infra.NewRouteApplier()
 
 	client.clients.ctrClient = ctrclient.NewClient(&ctrclient.ClientConfig{
 		Logger:        log.NewLogger(log.Loglevel, "control-ctrClient"),
@@ -296,7 +299,9 @@ func (c *Client) Start() error {
 
 	if c.current.Address != "" {
 		// 设置Device
-		infra.SetDeviceIP()("add", c.current.Address, c.wgConfigure.GetIfaceName())
+		if err := c.routeApplier.ApplyIP("add", c.current.Address, c.wgConfigure.GetIfaceName()); err != nil {
+			return err
+		}
 	}
 
 	if c.managers.keyManager.GetKey() != "" {

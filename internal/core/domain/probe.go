@@ -45,7 +45,7 @@ type Probe interface {
 	ProbeDone() chan interface{}
 
 	//GetProbeAgent once agent closed, should recreate a new one
-	GetProbeAgent() IAgent
+	GetProbeAgent() AgentManager
 
 	//Restart when disconnected, restart the probe
 	Restart() error
@@ -62,7 +62,7 @@ type Probe interface {
 }
 
 type ProbeManager interface {
-	NewAgent(gatherCh chan interface{}, fn func(state ConnectionState) error) (IAgent, error)
+	NewAgent(gatherCh chan interface{}, fn func(state ConnectionState) error) (AgentManager, error)
 	NewProbe(cfg *ProbeConfig) (Probe, error)
 	AddProbe(key string, probe Probe)
 	GetProbe(key string) Probe
@@ -81,7 +81,7 @@ type ProbeConfig struct {
 	WGConfiger              Configurer
 	OfferHandler            OfferHandler
 	ProberManager           ProbeManager
-	NodeManager             IPeerManager
+	NodeManager             PeerManager
 	From                    string
 	To                      string
 	TurnManager             *turn.TurnManager

@@ -23,12 +23,12 @@ import (
 
 // AgentManagerFactory is an interface for managing ICE agents.
 type AgentManagerFactory interface {
-	Get(pubKey string) (IAgent, error)
+	Get(pubKey string) (AgentManager, error)
 	Remove(pubKey string) error
 	NewUdpMux(conn net.PacketConn) *ice.UniversalUDPMuxDefault
 }
 
-type IAgent interface {
+type AgentManager interface {
 	GetStatus() bool
 	GetLocalUserCredentials() (string, string, error)
 	GetUniversalUDPMuxDefault() *ice.UniversalUDPMuxDefault
@@ -43,7 +43,3 @@ type IAgent interface {
 	Accept(ctx context.Context, remoteUfrag, remotePwd string) (*ice.Conn, error)
 	GetTieBreaker() uint64
 }
-
-//type AgentManager interface {
-//	Get(pubKey string) *ice.Agent
-//}
