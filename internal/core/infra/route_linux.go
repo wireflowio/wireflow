@@ -1,5 +1,7 @@
 package infra
 
+import "fmt"
+
 func (r *applier) ApplyRoute(action, address, name string) error {
 	cidr := GetCidrFromIP(address)
 	switch action {

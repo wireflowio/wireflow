@@ -80,7 +80,7 @@ func (executor *macExecutor) ExecCommand(args ...string) error {
 const (
 	PlatformLinux   = "linux"
 	PlatformWindows = "windows"
-	PlatformMacOS   = "macos"
+	PlatformMacOS   = "darwin"
 	// 可以在此添加更多平台，如 FreeBSD, Android等
 )
 

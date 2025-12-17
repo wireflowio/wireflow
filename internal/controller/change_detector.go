@@ -189,6 +189,9 @@ const (
 )
 
 func (d *ChangeDetector) detectNetworkUpdateType(oldNetwork, newNetwork *wireflowv1alpha1.Network) changeType {
+	if oldNetwork == nil && newNetwork == nil {
+		return typeNone
+	}
 	if oldNetwork == nil && newNetwork != nil {
 		return typeAdd
 	}

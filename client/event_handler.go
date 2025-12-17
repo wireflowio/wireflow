@@ -174,12 +174,3 @@ func (h *EventHandler) applyFirewallRules(ctx context.Context, msg *domain.Messa
 	}
 	return nil
 }
-
-func peerToSet(peers []*domain.Peer) map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, peer := range peers {
-		m[peer.PublicKey] = struct{}{}
-	}
-
-	return m
-}
