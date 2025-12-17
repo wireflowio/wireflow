@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"os"
 	"time"
+	"wireflow/internal/core/domain"
 	"wireflow/internal/grpc"
 	grpcclient "wireflow/management/grpc/client"
 	"wireflow/pkg/config"
@@ -42,6 +43,9 @@ type networkManager struct {
 }
 
 func NewNetworkManager(managementUrl string) (NetworkManager, error) {
+	if managementUrl == "" {
+		managementUrl = fmt.Sprintf("%s:%d", domain.ManagementDomain, domain.DefaultManagementPort)
+	}
 	grpcClient, err := grpcclient.NewClient(&grpcclient.GrpcConfig{
 		Addr: managementUrl,
 	})
@@ -73,7 +77,7 @@ func (n *networkManager) CreateNetwork(ctx context.Context, opts *config.Network
 		return err
 	}
 
-	fmt.Fprintln(os.Stdout, string(resp.Body))
+	//fmt.Fprintln(os.Stdout, string(resp.Body))
 	return nil
 }
 

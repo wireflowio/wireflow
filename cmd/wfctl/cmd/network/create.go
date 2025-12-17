@@ -16,6 +16,7 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"wireflow/pkg/cli/network"
 	"wireflow/pkg/config"
 
@@ -53,5 +54,9 @@ func runCreate(opts *config.NetworkOptions) error {
 	if err != nil {
 		return err
 	}
-	return manager.CreateNetwork(context.Background(), opts)
+	if err = manager.CreateNetwork(context.Background(), opts); err != nil {
+		return err
+	}
+	fmt.Printf("Created network %s success\n", opts.Name)
+	return nil
 }
