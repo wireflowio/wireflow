@@ -43,7 +43,7 @@ type Proxy struct {
 	offerHandler domain.OfferHandler
 	manager      struct {
 		msgManager   *MessageManager
-		probeManager domain.ProbeManager
+		probeManager domain.ProberManager
 	}
 
 	proxyDo func(ctx context.Context, msg *drpgrpc.DrpMessage) error

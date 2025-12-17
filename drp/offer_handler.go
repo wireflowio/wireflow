@@ -41,8 +41,7 @@ type offerHandler struct {
 	keyManager   domain.KeyManager
 	stunUri      string
 	fn           func(key string, addr *net.UDPAddr) error
-	agentManager domain.AgentManagerFactory
-	probeManager domain.ProbeManager
+	probeManager domain.ProberManager
 	nodeManager  domain.PeerManager
 
 	proxy       *Proxy
@@ -58,9 +57,8 @@ type OfferHandlerConfig struct {
 	KeyManager      domain.KeyManager
 	UdpMux          *ice.UDPMuxDefault
 	UniversalUdpMux *ice.UniversalUDPMuxDefault
-	AgentManager    domain.AgentManagerFactory
 	OfferManager    domain.OfferHandler
-	ProbeManager    domain.ProbeManager
+	ProbeManager    domain.ProberManager
 	Proxy           *Proxy
 	NodeManager     domain.PeerManager
 	TurnManager     *turnclient.TurnManager
@@ -74,7 +72,6 @@ func NewOfferHandler(cfg *OfferHandlerConfig) domain.OfferHandler {
 		node:         cfg.Node,
 		stunUri:      cfg.StunUri,
 		keyManager:   cfg.KeyManager,
-		agentManager: cfg.AgentManager,
 		probeManager: cfg.ProbeManager,
 		proxy:        cfg.Proxy,
 		turnManager:  cfg.TurnManager,

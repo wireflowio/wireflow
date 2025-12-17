@@ -35,16 +35,16 @@ var (
 
 // Client is control client of wireflow, will fetch config from origin server interval
 type Client struct {
-	as           domain.AgentManagerFactory
+	//as           domain.AgentManagerFactory
 	logger       *log.Logger
 	keyManager   domain.KeyManager
 	nodeManager  domain.PeerManager
 	conf         *config.LocalConfig
 	grpcClient   *grpclient.Client
 	conn4        net.PacketConn
-	agentManager domain.AgentManagerFactory
+	agentManager domain.AgentManager
 	offerHandler domain.OfferHandler
-	probeManager domain.ProbeManager
+	probeManager domain.ProberManager
 	turnManager  *turnclient.TurnManager
 	client       domain.Client
 
@@ -100,12 +100,12 @@ func (c *Client) SetNodeManager(manager domain.PeerManager) *Client {
 
 type ClientOption func(*Client) error
 
-func WithAgentManagerFactory(factory domain.AgentManagerFactory) ClientOption {
-	return func(c *Client) error {
-		c.agentManager = factory
-		return nil
-	}
-}
+//func WithAgentManagerFactory(factory domain.AgentManagerFactory) ClientOption {
+//	return func(c *Client) error {
+//		c.agentManager = factory
+//		return nil
+//	}
+//}
 
 func WithGrpcClient(client *grpclient.Client) ClientOption {
 	return func(c *Client) error {
@@ -131,7 +131,7 @@ func WithNodeManager(manager domain.PeerManager) ClientOption {
 	}
 }
 
-func WithProbeManager(manager domain.ProbeManager) ClientOption {
+func WithProbeManager(manager domain.ProberManager) ClientOption {
 	return func(c *Client) error {
 		c.probeManager = manager
 		return nil
@@ -299,7 +299,7 @@ func (c *Client) ToConfigPeer(peer *domain.Peer) *domain.Peer {
 func (c *Client) AddPeer(p *domain.Peer) error {
 	var (
 		err   error
-		probe domain.Probe
+		probe domain.Prober
 	)
 	if p.PublicKey == c.keyManager.GetPublicKey() {
 		c.logger.Verbosef("current node, skipping...")
@@ -354,7 +354,7 @@ func (c *Client) AddPeer(p *domain.Peer) error {
 }
 
 // doProbe will start a direct check to the node, if the peer is not connected, it will send drp offer to remote
-func (c *Client) doProbe(probe domain.Probe, node *domain.Peer) {
+func (c *Client) doProbe(probe domain.Prober, node *domain.Peer) {
 	errChan := make(chan error, 10)
 	limitRetries := 7
 	retries := 0
@@ -474,7 +474,7 @@ func (c *Client) Keepalive(ctx context.Context) error {
 }
 
 // Register will register device to wireflow center
-func (c *Client) Register(ctx context.Context, appId string) (*domain.Peer, error) {
+func (c *Client) Register(ctx context.Context, interfaceName string) (*domain.Peer, error) {
 	var err error
 
 	hostname, err := os.Hostname()
@@ -489,7 +489,7 @@ func (c *Client) Register(ctx context.Context, appId string) (*domain.Peer, erro
 	}
 	registryRequest := &dto.NodeDto{
 		Hostname:            hostname,
-		InterfaceName:       c.client.GetDeviceName(),
+		InterfaceName:       interfaceName,
 		Platform:            runtime.GOOS,
 		AppID:               local.AppId,
 		PersistentKeepalive: 25,

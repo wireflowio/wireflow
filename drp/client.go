@@ -129,7 +129,7 @@ func WithOfferHandler(offerHandler domain.OfferHandler) ClientOption {
 	}
 }
 
-func WithProbeManager(probeManager domain.ProbeManager) ClientOption {
+func WithProbeManager(probeManager domain.ProberManager) ClientOption {
 	return func(c *Client) error {
 		c.proxy.manager.probeManager = probeManager
 		return nil
