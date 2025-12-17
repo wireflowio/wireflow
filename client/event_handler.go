@@ -149,6 +149,9 @@ func (h *EventHandler) applyRemotePeers(ctx context.Context, msg *domain.Message
 }
 
 func (h *EventHandler) applyFirewallRules(ctx context.Context, msg *domain.Message) error {
+	if msg.ComputedRules == nil {
+		return nil
+	}
 	var err error
 	ingress := msg.ComputedRules.IngressRules
 	egress := msg.ComputedRules.EgressRules

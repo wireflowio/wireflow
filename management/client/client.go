@@ -42,7 +42,6 @@ type Client struct {
 	conf         *config.LocalConfig
 	grpcClient   *grpclient.Client
 	conn4        net.PacketConn
-	agentManager domain.AgentManager
 	offerHandler domain.OfferHandler
 	probeManager domain.ProberManager
 	turnManager  *turnclient.TurnManager

@@ -282,7 +282,6 @@ func NewEngine(cfg *EngineConfig) (*Engine, error) {
 	offerHandler := drp2.NewOfferHandler(&drp2.OfferHandlerConfig{
 		Logger:       log.NewLogger(log.Loglevel, "offer-handler"),
 		ProbeManager: probeManager,
-		AgentManager: engine.agentManager,
 		StunUri:      cfg.TurnServerUrl,
 		KeyManager:   engine.keyManager,
 		NodeManager:  engine.nodeManager,
