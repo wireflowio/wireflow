@@ -32,6 +32,7 @@ type NetworkManager interface {
 	CreateNetwork(ctx context.Context, opts *config.NetworkOptions) error
 	JoinNetwork(ctx context.Context, opts *config.NetworkOptions) error
 	LeaveNetwork(ctx context.Context, opts *config.NetworkOptions) error
+	AddOrRmNode(ctx context.Context, networkId, action string, nodeIds []string) error
 }
 
 var (
@@ -72,7 +73,7 @@ func (n *networkManager) CreateNetwork(ctx context.Context, opts *config.Network
 		Body: bs,
 		Type: grpc.Type_MessageTypeCreateNetwork,
 	}
-	resp, err := n.client.Request(ctx, message)
+	_, err = n.client.Request(ctx, message)
 	if err != nil {
 		return err
 	}
@@ -88,10 +89,11 @@ func (n *networkManager) JoinNetwork(ctx context.Context, opts *config.NetworkOp
 	}
 
 	params := &NetworkParams{
-		Name:  opts.Name,
-		CIDR:  opts.CIDR,
-		AppId: cfg.AppId,
+		Name: opts.Name,
+		CIDR: opts.CIDR,
 	}
+
+	params.AppIds = append(params.AppIds, cfg.AppId)
 
 	bs, err := json.Marshal(params)
 	if err != nil {
@@ -118,10 +120,10 @@ func (n *networkManager) LeaveNetwork(ctx context.Context, opts *config.NetworkO
 	}
 
 	params := &NetworkParams{
-		Name:  opts.Name,
-		CIDR:  opts.CIDR,
-		AppId: cfg.AppId,
+		Name: opts.Name,
+		CIDR: opts.CIDR,
 	}
+	params.AppIds = append(params.AppIds, cfg.AppId)
 
 	bs, err := json.Marshal(params)
 	if err != nil {
@@ -142,9 +144,9 @@ func (n *networkManager) LeaveNetwork(ctx context.Context, opts *config.NetworkO
 }
 
 type NetworkParams struct {
-	Name  string
-	CIDR  string
-	AppId string
+	Name   string
+	CIDR   string
+	AppIds []string
 }
 
 // 定义 ID 的字符集：大写字母 (A-Z) 和数字 (0-9)

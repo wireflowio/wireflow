@@ -17,6 +17,7 @@ package network
 import (
 	"context"
 	"fmt"
+	"wireflow/internal/core/domain"
 	"wireflow/pkg/cli/network"
 	"wireflow/pkg/config"
 
@@ -45,12 +46,11 @@ func newCreateCmd() *cobra.Command {
 	fs := cmd.Flags()
 	fs.StringVarP(&opts.Name, "name", "n", "", "network name")
 	fs.StringVarP(&opts.CIDR, "cidr", "", "", "network cidr used to allocate IP address for wireflow peers")
-	fs.StringVarP(&opts.ServerUrl, "server-url", "", "", "management server url")
 	return cmd
 }
 
 func runCreate(opts *config.NetworkOptions) error {
-	manager, err := network.NewNetworkManager(opts.ServerUrl)
+	manager, err := network.NewNetworkManager(domain.ServerUrl)
 	if err != nil {
 		return err
 	}
