@@ -1,3 +1,17 @@
+// Copyright 2025 The Wireflow Authors, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package node
 
 import (
@@ -49,7 +63,9 @@ func newNodeAddCommand() *cobra.Command {
 			// 参数获取
 			networkID := args[0]
 			nodeIDs := args[1:]
-
+			defer func() {
+				fmt.Printf(" >> 处理完成: %s\n", nodeIDs)
+			}()
 			fmt.Printf("目标网络: %s\n", networkID)
 			fmt.Printf("准备添加 %d 个节点...\n", len(nodeIDs))
 
@@ -93,9 +109,11 @@ func newNodeRemoveCommand() *cobra.Command {
 			// 参数获取
 			networkID := args[0]
 			nodeIDs := args[1:]
-
+			defer func() {
+				fmt.Printf(" >> 处理完成: %s\n", nodeIDs)
+			}()
 			fmt.Printf("目标网络: %s\n", networkID)
-			fmt.Printf("准备添加 %d 个节点...\n", len(nodeIDs))
+			fmt.Printf("准备移除 %d 个节点...\n", len(nodeIDs))
 
 			fmt.Printf(" >> 正在处理节点: %s\n", nodeIDs)
 

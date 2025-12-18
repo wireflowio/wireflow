@@ -110,11 +110,10 @@ func (d *ChangeDetector) detectNodeConfigChanges(ctx context.Context, changes *d
 		}
 
 		// 网络归属变化
-		oldNetworks := stringSet(oldNode.Spec.Networks)
-		newNetworks := stringSet(newNode.Spec.Networks)
+		oldNetworks, newNetworks := oldNode.Spec.Network, newNode.Spec.Network
 
-		changes.NetworkJoined = setDifference(newNetworks, oldNetworks)
-		changes.NetworkLeft = setDifference(oldNetworks, newNetworks)
+		changes.NetworkJoined = append(changes.NetworkJoined, newNetworks)
+		changes.NetworkLeft = append(changes.NetworkLeft, oldNetworks)
 
 		if len(changes.NetworkJoined) > 0 || len(changes.NetworkLeft) > 0 {
 			changes.TotalChanges++

@@ -57,6 +57,6 @@ func runCreate(opts *config.NetworkOptions) error {
 	if err = manager.CreateNetwork(context.Background(), opts); err != nil {
 		return err
 	}
-	fmt.Printf("Created network %s success\n", opts.Name)
+	fmt.Printf("Created network %s successfully!\n", opts.Name)
 	return nil
 }

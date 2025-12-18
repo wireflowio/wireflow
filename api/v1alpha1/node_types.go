@@ -44,7 +44,7 @@ type NodeSpec struct {
 
 	MTU int `json:"mtu,omitempty"`
 
-	Networks []string `json:"networks,omitempty"`
+	Network string `json:"network,omitempty"`
 
 	NetworkPolicies []string `json:"networkPolicies,omitempty"`
 }
@@ -65,7 +65,7 @@ type NodeStatus struct {
 	ActiveKey string `json:"activeKey,omitempty"`
 
 	// Active networks, record the network the node joined
-	ActiveNetworks []string `json:"activeNetworks,omitempty"`
+	ActiveNetworks string `json:"activeNetworks,omitempty"`
 
 	ActiveNetworkPolicies []string `json:"activeNetworkPolicies,omitempty"`
 
