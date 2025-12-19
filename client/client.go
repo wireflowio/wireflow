@@ -290,9 +290,9 @@ func (c *Client) Start() error {
 		return err
 	}
 
-	if c.current.Address != "" {
+	if c.current.Address != nil {
 		// 设置Device
-		if err := c.routeApplier.ApplyIP("add", c.current.Address, c.wgConfigure.GetIfaceName()); err != nil {
+		if err := c.routeApplier.ApplyIP("add", *c.current.Address, c.wgConfigure.GetIfaceName()); err != nil {
 			return err
 		}
 	}

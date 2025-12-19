@@ -455,6 +455,11 @@ func (in *NodeSpec) DeepCopyInto(out *NodeSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Network != nil {
+		in, out := &in.Network, &out.Network
+		*out = new(string)
+		**out = **in
+	}
 	if in.NetworkPolicies != nil {
 		in, out := &in.NetworkPolicies, &out.NetworkPolicies
 		*out = make([]string, len(*in))
@@ -482,10 +487,20 @@ func (in *NodeStatus) DeepCopyInto(out *NodeStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.ActiveNetwork != nil {
+		in, out := &in.ActiveNetwork, &out.ActiveNetwork
+		*out = new(string)
+		**out = **in
+	}
 	if in.ActiveNetworkPolicies != nil {
 		in, out := &in.ActiveNetworkPolicies, &out.ActiveNetworkPolicies
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.AllocatedAddress != nil {
+		in, out := &in.AllocatedAddress, &out.AllocatedAddress
+		*out = new(string)
+		**out = **in
 	}
 	out.ConnectionSummary = in.ConnectionSummary
 	if in.LastSyncTime != nil {

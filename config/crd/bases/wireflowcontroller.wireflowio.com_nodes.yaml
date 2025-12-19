@@ -77,13 +77,13 @@ spec:
               activeKey:
                 description: Active key
                 type: string
+              activeNetwork:
+                description: Active networks, record the network the node joined
+                type: string
               activeNetworkPolicies:
                 items:
                   type: string
                 type: array
-              activeNetworks:
-                description: Active networks, record the network the node joined
-                type: string
               allocatedAddress:
                 description: Allocated IP address, auto allocated by controller
                 type: string

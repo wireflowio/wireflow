@@ -267,7 +267,9 @@ func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.O
 
 	var networkToUpdate []string
 	//// 1. 获取node的spec包含network
-	networkToUpdate = append(networkToUpdate, node.Spec.Network)
+	if node.Spec.Network != nil {
+		networkToUpdate = append(networkToUpdate, *node.Spec.Network)
+	}
 	//通过node的label获取
 	labels := node.GetLabels()
 	for key, value := range labels {
@@ -299,19 +301,21 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alph
 	var err error
 	primaryNetwork := node.Spec.Network
 
-	// 获取 Network 资源
 	var network v1alpha1.Network
-	if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, primaryNetwork)}, &network); err != nil {
-		return "", err
+	if primaryNetwork != nil {
+		// 获取 Network 资源
+		if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, *primaryNetwork)}, &network); err != nil {
+			return "", err
+		}
 	}
 
 	// 如果节点已经有 IP 地址,跳过
 	currentAddress := node.Status.AllocatedAddress
-	if currentAddress != "" {
+	if currentAddress != nil {
 		//校验ip是否是network合法ip
-		if err = r.Allocator.ValidateIP(network.Spec.CIDR, currentAddress); err == nil {
+		if err = r.Allocator.ValidateIP(network.Spec.CIDR, *currentAddress); err == nil {
 			log.Info("Node already has IP address", "address", currentAddress)
-			return currentAddress, nil
+			return *currentAddress, nil
 		}
 	}
 
