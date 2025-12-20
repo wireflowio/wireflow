@@ -21,25 +21,30 @@ import (
 	"wireflow/pkg/cli/network"
 	"wireflow/pkg/config"
 
+	_ "wireflow/pkg/config"
+
 	"github.com/spf13/cobra"
 )
 
 func newCreateCmd() *cobra.Command {
 	var opts config.NetworkOptions
 	var cmd = &cobra.Command{
-		Use:          "create [command]",
+		Use:          "create <network-name>",
 		SilenceUsage: true,
-		Short:        "create into a network",
-		Long:         `create into a network you created`,
+		Short:        "create a network",
+		Long:         `create a network for nodes ip allocation`,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
+			if len(args) != 0 {
+				opts.Name = args[0]
+			} else {
 				opts.Name = network.GenerateNetworkID()
 			}
+
 			return runCreate(&opts)
 		},
 	}

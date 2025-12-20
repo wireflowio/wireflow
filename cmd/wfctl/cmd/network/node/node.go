@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"wireflow/internal/core/domain"
 	"wireflow/pkg/cli/network"
+	"wireflow/pkg/config"
+
+	_ "wireflow/pkg/config"
 
 	"github.com/spf13/cobra"
 )
@@ -80,6 +83,9 @@ func newNodeAddCommand() *cobra.Command {
 }
 
 func addNodeToNetwork(networkId string, nodeIds []string) error {
+	if domain.ServerUrl == "" {
+		domain.ServerUrl = config.GlobalConfig.ServerUrl
+	}
 	manager, err := network.NewNetworkManager(domain.ServerUrl)
 	if err != nil {
 		return err
@@ -126,6 +132,9 @@ func newNodeRemoveCommand() *cobra.Command {
 }
 
 func rmNodeToNetwork(networkId string, nodeIds []string) error {
+	if domain.ServerUrl == "" {
+		domain.ServerUrl = config.GlobalConfig.ServerUrl
+	}
 	manager, err := network.NewNetworkManager(domain.ServerUrl)
 	if err != nil {
 		return err

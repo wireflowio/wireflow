@@ -16,7 +16,6 @@ package controller
 
 import (
 	"crypto/tls"
-	"flag"
 	"path/filepath"
 	"wireflow/api/v1alpha1"
 	"wireflow/internal/controller"
@@ -110,8 +109,8 @@ func runController(flags *ControllerFlags) error {
 	opts := zap.Options{
 		Development: true,
 	}
-	opts.BindFlags(flag.CommandLine)
-	flag.Parse()
+	//opts.BindFlags(flag.CommandLine)
+	//flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	logs.InitLogs()
 	ctrl.SetLogger(klog.Background()) // 使用 klog 的 Background logr 实例

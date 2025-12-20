@@ -25,6 +25,8 @@ import (
 	"wireflow/internal/grpc"
 	grpcclient "wireflow/management/grpc/client"
 	"wireflow/pkg/config"
+
+	"github.com/spf13/viper"
 )
 
 // NetworkManager operations for network
@@ -83,17 +85,12 @@ func (n *networkManager) CreateNetwork(ctx context.Context, opts *config.Network
 }
 
 func (n *networkManager) JoinNetwork(ctx context.Context, opts *config.NetworkOptions) error {
-	cfg, err := config.GetLocalConfig()
-	if err != nil {
-		return err
-	}
-
 	params := &NetworkParams{
 		Name: opts.Name,
 		CIDR: opts.CIDR,
 	}
 
-	params.AppIds = append(params.AppIds, cfg.AppId)
+	params.AppIds = append(params.AppIds, viper.GetString(config.APP_ID))
 
 	bs, err := json.Marshal(params)
 	if err != nil {
@@ -114,16 +111,11 @@ func (n *networkManager) JoinNetwork(ctx context.Context, opts *config.NetworkOp
 }
 
 func (n *networkManager) LeaveNetwork(ctx context.Context, opts *config.NetworkOptions) error {
-	cfg, err := config.GetLocalConfig()
-	if err != nil {
-		return err
-	}
-
 	params := &NetworkParams{
 		Name: opts.Name,
 		CIDR: opts.CIDR,
 	}
-	params.AppIds = append(params.AppIds, cfg.AppId)
+	params.AppIds = append(params.AppIds, viper.GetString(config.APP_ID))
 
 	bs, err := json.Marshal(params)
 	if err != nil {

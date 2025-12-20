@@ -41,4 +41,5 @@ func init() {
 	fs := rootCmd.PersistentFlags()
 	fs.StringVarP(&domain.ServerUrl, "server-url", "", "", "management server url")
 	rootCmd.AddCommand(network.NewNetworkCommand())
+	rootCmd.AddCommand(configCmd)
 }

@@ -142,6 +142,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 
 		network.Status = *statusCopy
+		network.Status.Phase = v1alpha1.NetworkPhaseReady
 
 		for _, node := range nodeList.Items {
 			// check ip valid
