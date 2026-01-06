@@ -232,7 +232,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 
 	stunUrl := config.GlobalConfig.StunUrl
 	if stunUrl == "" {
-		stunUrl = "stun.wireflowio.com"
+		stunUrl = "stun.wireflow.run"
 		config.WriteConfig("stun-url", stunUrl)
 	}
 

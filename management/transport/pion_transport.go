@@ -201,6 +201,9 @@ func (t *PionTransport) Close() error {
 		if t.onClose != nil {
 			t.onClose(t.remoteId)
 		}
+
+		//remove peer
+		t.Remove(t.remoteId, "")
 	})
 
 	return nil
@@ -270,6 +273,25 @@ func (t *PionTransport) AddPeer(remoteId, addr string) error {
 	}
 
 	if err = t.provisioner.ApplyRoute("add", *peer.Address, t.provisioner.GetIfaceName()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *PionTransport) Remove(remoteId, addr string) error {
+	var err error
+	peer := t.peers.GetPeer(remoteId)
+	if err = t.provisioner.RemovePeer(&infra.SetPeer{
+		Endpoint:             addr,
+		PublicKey:            remoteId,
+		AllowedIPs:           peer.AllowedIPs,
+		PersistentKeepalived: 25,
+		Remove:               true,
+	}); err != nil {
+		return err
+	}
+
+	if err = t.provisioner.ApplyRoute("delete", *peer.Address, t.provisioner.GetIfaceName()); err != nil {
 		return err
 	}
 	return nil

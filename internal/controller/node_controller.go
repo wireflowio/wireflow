@@ -51,9 +51,9 @@ type NodeReconciler struct {
 }
 
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflowio.com,resources=nodes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflowio.com,resources=nodes/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflowio.com,resources=nodes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=nodes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=nodes/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=nodes/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -141,7 +141,7 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *v1alpha
 			labels = make(map[string]string)
 		}
 		for _, network := range associatedNetworks {
-			labels[fmt.Sprintf("wireflowio.com/network-%s", network.Name)] = "true"
+			labels[fmt.Sprintf("wireflow.run/network-%s", network.Name)] = "true"
 		}
 		node.SetLabels(labels)
 
@@ -350,7 +350,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *v1alph
 
 		labels := node.GetLabels()
 		for label, _ := range labels {
-			if strings.HasPrefix(label, "wireflowio.com/network-") {
+			if strings.HasPrefix(label, "wireflow.run/network-") {
 				delete(labels, label)
 			}
 			// 删除network in spec
