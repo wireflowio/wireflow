@@ -280,11 +280,10 @@ func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, node *v1alpha1.
 			if !currentMessage.Equal(message) {
 				logger.Info("Updating configmap data", "name", configMapName)
 
-				foundConfigMapCopy := foundConfigMap.DeepCopy()
-				// 复制最新的 Data 到已存在的对象上 (保持 ResourceVersion 和其他字段)
-				foundConfigMapCopy.Data = desiredConfigMap.Data
-
-				if err = r.Patch(ctx, foundConfigMapCopy, client.MergeFrom(foundConfigMap)); err != nil {
+				// 使用SSA模式
+				// 使用SSA模式
+				manager := client.FieldOwner("wireflow-controller-manager")
+				if err = r.Patch(ctx, desiredConfigMap, client.Apply, manager); err != nil {
 					logger.Error(err, "Failed to update configmap")
 					return ctrl.Result{}, err
 				}
@@ -616,8 +615,8 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 
 	// 1. 获取所有 Node (或只获取匹配 Network.Spec.NodeSelector 的 Node)
 	var node v1alpha1.Node
-	names := strings.Split(cm.Name, "-")
-	if err := r.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: names[0]}, &node); err != nil {
+	name := strings.TrimSuffix(cm.Name, "-config")
+	if err := r.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: name}, &node); err != nil {
 		return nil
 	}
 

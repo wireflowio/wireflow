@@ -108,7 +108,7 @@ func (c *Client) GetRelayInfo(allocated bool) (*internal.RelayInfo, error) {
 		return nil, err
 	}
 
-	c.logger.Verbosef("get from turn relayed-address=%s", mappedAddr.String())
+	c.logger.Info("get from turn", "relayed-info", mappedAddr.String())
 
 	mapAddr, _ := internal.AddrToUdpAddr(mappedAddr)
 	c.relayInfo.MappedAddr = *mapAddr

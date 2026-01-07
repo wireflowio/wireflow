@@ -15,7 +15,6 @@
 package turn
 
 import (
-	"fmt"
 	"testing"
 	"wireflow/internal/log"
 )
@@ -25,7 +24,7 @@ func TestClient_GetRelayInfo(t *testing.T) {
 
 		client, err := NewClient(&ClientConfig{
 			ServerUrl: "stun.wireflow.run:3478",
-			Logger:    log.NewLogger(log.Loglevel, fmt.Sprintf("[%s] ", "turnclient")),
+			Logger:    log.GetLogger("turn-client"),
 		})
 
 		if err != nil {

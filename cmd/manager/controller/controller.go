@@ -196,7 +196,7 @@ func runController(flags *ControllerFlags) error {
 			filepath.Join(flags.metricsCertPath, flags.metricsCertKey),
 		)
 		if err != nil {
-			setupLog.Error(err, "to initialize metrics certificate watcher", "error", err)
+			setupLog.Error(err, "to initialize metrics certificate watcher", err)
 			return err
 		}
 
