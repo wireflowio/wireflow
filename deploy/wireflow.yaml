@@ -1132,6 +1132,22 @@ spec:
     app.kubernetes.io/name: wireflow-controller
     control-plane: controller-manager
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireflow-nats-service
+  namespace: wireflow-system
+spec:
+  ports:
+  - name: client
+    port: 4222
+    targetPort: 4222
+  - name: monitor
+    port: 8222
+    targetPort: 8222
+  selector:
+    app: nats
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -1151,7 +1167,6 @@ spec:
     spec:
       containers:
       - args:
-        - --metrics-bind-address=:8443
         - start
         - manager
         - --log-level=INFO
@@ -1166,6 +1181,17 @@ spec:
       - hostnames:
         - signaling.wireflow.run
         ip: 81.68.109.143
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          until curl -f http://wireflow-nats-service:8222/varz; do
+            echo "Waiting for nats server..."
+            sleep 2
+          done
+        image: curlimages/curl:latest
+        name: wait-for-nats
       serviceAccountName: wireflow-wireflow-controller-admin
       volumes:
       - configMap:
@@ -1244,6 +1270,36 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: wireflow-nats
+  namespace: wireflow-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+      - args:
+        - -js
+        - --sd
+        - /data/jetstream
+        - -m
+        - "8222"
+        image: nats:latest
+        name: nats
+        ports:
+        - containerPort: 4222
+          hostPort: 4222
+        - containerPort: 8222
+          hostPort: 8222
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
   labels:
     k8s-app: wireflow-turn
   name: wireflow-wireflow-turn
@@ -1260,7 +1316,6 @@ spec:
     spec:
       containers:
       - args:
-        - --metrics-bind-address=:8443
         - start
         - turn
         - --log-level=verbose
@@ -1276,3 +1331,14 @@ spec:
       - hostnames:
         - signaling.wireflow.run
         ip: 81.68.109.143
+      initContainers:
+      - command:
+        - /bin/sh
+        - -c
+        - |
+          until curl -f http://wireflow-nats-service:8222/varz; do
+            echo "Waiting for nats server..."
+            sleep 2
+          done
+        image: curlimages/curl:latest
+        name: wait-for-nats
