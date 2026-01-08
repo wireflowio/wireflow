@@ -21,13 +21,13 @@ spec:
       serviceAccountName: wireflow-controller-admin
       initContainers:
         - name: wait-for-nats
-          image: natsio/nats-box:latest
+          image: curlimages/curl:latest
           command:
             - '/bin/sh'
             - '-c'
             - |
-              until nats server info -s nats://nats-service:4222; do
-                echo "waiting for NATS..."
+              until curl -f http://wireflow-nats-service:8222/varz; do
+                echo "Waiting for nats server..."
                 sleep 2
               done
       containers:
@@ -72,13 +72,13 @@ spec:
             - "signaling.wireflow.run"
       initContainers:
         - name: wait-for-nats
-          image: natsio/nats-box:latest
+          image: curlimages/curl:latest
           command:
             - '/bin/sh'
             - '-c'
             - |
-              until nats server info -s nats://nats-service:4222; do
-                echo "waiting for NATS..."
+              until curl -f http://wireflow-nats-service:8222/varz; do
+                echo "Waiting for nats server..."
                 sleep 2
               done
       containers:
