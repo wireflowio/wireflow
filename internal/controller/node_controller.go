@@ -179,11 +179,11 @@ func (r *NodeReconciler) reconcileJoinNetwork(ctx context.Context, node *v1alpha
 
 	//查询primary network 分配的ip
 	if node.Spec.Network == nil {
-		return ctrl.Result{}, fmt.Errorf("Network field is missing")
+		return ctrl.Result{}, fmt.Errorf("WireflowNetwork field is missing")
 
 	}
 	primaryNetwork := *node.Spec.Network
-	var network v1alpha1.Network
+	var network v1alpha1.WireflowNetwork
 	if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, primaryNetwork)}, &network); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -342,7 +342,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *v1alph
 
 	//2. 查询要更新的network
 	//leavingNetworks := r.getLeavingNetwork(ctx, node)
-	//specNetworks := stringSet(node.Spec.Network)
+	//specNetworks := stringSet(node.Spec.WireflowNetwork)
 
 	// 2.修改Spec
 	ok, err = r.updateSpec(ctx, node, func(node *v1alpha1.Node) error {
@@ -398,7 +398,7 @@ func (r *NodeReconciler) reconcileLeaveNetwork(ctx context.Context, node *v1alph
 
 	} else {
 		primaryNetwork := node.Spec.Network
-		var network v1alpha1.Network
+		var network v1alpha1.WireflowNetwork
 		if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, *primaryNetwork)}, &network); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -510,12 +510,12 @@ func (r *NodeReconciler) reconcileNetworkChanged(ctx context.Context, node *v1al
 	log := logf.FromContext(ctx)
 	var (
 		err         error
-		networkList v1alpha1.NetworkList
+		networkList v1alpha1.WireflowNetworkList
 	)
 	// 查询监控的所有Networks
 	if err = r.List(ctx, &networkList, client.InNamespace(req.Namespace)); err != nil {
 		if !errors.IsNotFound(err) {
-			log.Error(err, "Failed to list Network")
+			log.Error(err, "Failed to list WireflowNetwork")
 			return ctrl.Result{}, err
 		}
 	}
@@ -575,7 +575,7 @@ func (r *NodeReconciler) determineAction(ctx context.Context, node *v1alpha1.Nod
 func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Node{}).
-		Watches(&v1alpha1.Network{},
+		Watches(&v1alpha1.WireflowNetwork{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNetworkForNodes),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Watches(&corev1.ConfigMap{},
@@ -586,12 +586,12 @@ func (r *NodeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).Named("node").Complete(r)
 }
 
-// mapNetworkForNodes returns a list of Reconcile Requests for Nodes that should be updated based on the given Network.
+// mapNetworkForNodes returns a list of Reconcile Requests for Nodes that should be updated based on the given WireflowNetwork.
 func (r *NodeReconciler) mapNetworkForNodes(ctx context.Context, obj client.Object) []reconcile.Request {
-	network := obj.(*v1alpha1.Network)
+	network := obj.(*v1alpha1.WireflowNetwork)
 	var requests []reconcile.Request
 
-	// 1. 获取所有 Node (或只获取匹配 Network.Spec.NodeSelector 的 Node)
+	// 1. 获取所有 Node (或只获取匹配 WireflowNetwork.Spec.NodeSelector 的 Node)
 	nodeList := &v1alpha1.NodeList{}
 	if err := r.List(ctx, nodeList, client.MatchingLabels(network.Spec.NodeSelector)); err != nil {
 		return nil
@@ -613,7 +613,7 @@ func (r *NodeReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 	cm := obj.(*corev1.ConfigMap)
 	var requests []reconcile.Request
 
-	// 1. 获取所有 Node (或只获取匹配 Network.Spec.NodeSelector 的 Node)
+	// 1. 获取所有 Node (或只获取匹配 WireflowNetwork.Spec.NodeSelector 的 Node)
 	var node v1alpha1.Node
 	name := strings.TrimSuffix(cm.Name, "-config")
 	if err := r.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: name}, &node); err != nil {
@@ -661,17 +661,17 @@ func (r *NodeReconciler) mapPolicyForNodes(ctx context.Context, obj client.Objec
 }
 
 // getAssociatedNetworks 会获取所有的Networks，正向声明的或者反向声明的都包含
-func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alpha1.Node) ([]v1alpha1.Network, error) {
+func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alpha1.Node) ([]v1alpha1.WireflowNetwork, error) {
 
-	// 1. 获取所有 Network 资源 (用于反向检查)
-	allNetworks := &v1alpha1.NetworkList{}
+	// 1. 获取所有 WireflowNetwork 资源 (用于反向检查)
+	allNetworks := &v1alpha1.WireflowNetworkList{}
 	if err := r.List(ctx, allNetworks); err != nil {
 		return nil, fmt.Errorf("failed to list all networks: %w", err)
 	}
 
-	associatedNetworks := make(map[string]v1alpha1.Network) // 用 map 避免重复
+	associatedNetworks := make(map[string]v1alpha1.WireflowNetwork) // 用 map 避免重复
 
-	// 检查 Node 自己 Spec 中声明加入的 Network
+	// 检查 Node 自己 Spec 中声明加入的 WireflowNetwork
 	if node.Spec.Network != nil { // 假设您扩展了 Node.Spec
 		for _, net := range allNetworks.Items {
 			if net.Name == *node.Spec.Network {
@@ -681,7 +681,7 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alph
 		}
 	}
 
-	// 检查 Network Spec 中声明包含该 Node 的 Network
+	// 检查 WireflowNetwork Spec 中声明包含该 Node 的 WireflowNetwork
 	for _, net := range allNetworks.Items {
 		// 检查 NodeSelector (Label 方式)
 		if len(net.Spec.NodeSelector) > 0 {
@@ -703,7 +703,7 @@ func (r *NodeReconciler) getAssociatedNetworks(ctx context.Context, node *v1alph
 	}
 
 	// 将 map 转换为 slice
-	result := make([]v1alpha1.Network, 0, len(associatedNetworks))
+	result := make([]v1alpha1.WireflowNetwork, 0, len(associatedNetworks))
 	for _, net := range associatedNetworks {
 		result = append(result, net)
 	}
@@ -726,7 +726,7 @@ func (r *NodeReconciler) getNodeContext(ctx context.Context, node *v1alpha1.Node
 	// 获取网络信息
 	if node.Spec.Network != nil {
 		networkName := *node.Spec.Network
-		var network v1alpha1.Network
+		var network v1alpha1.WireflowNetwork
 		if err = r.Get(ctx, types.NamespacedName{
 			Namespace: req.Namespace, Name: networkName,
 		}, &network); err != nil {

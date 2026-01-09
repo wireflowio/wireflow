@@ -42,7 +42,7 @@ type ChangeDetector struct {
 // NodeContext
 type NodeContext struct {
 	Node     *wireflowv1alpha1.Node
-	Network  *wireflowv1alpha1.Network
+	Network  *wireflowv1alpha1.WireflowNetwork
 	Policies []*wireflowv1alpha1.NetworkPolicy
 	Nodes    []*wireflowv1alpha1.Node
 }
@@ -60,7 +60,7 @@ func (d *ChangeDetector) DetectNodeChanges(
 	ctx context.Context,
 	oldNodeCtx *NodeContext,
 	oldNode, newNode *wireflowv1alpha1.Node,
-	oldNetwork, newNetwork *wireflowv1alpha1.Network,
+	oldNetwork, newNetwork *wireflowv1alpha1.WireflowNetwork,
 	oldPolicies, newPolicies []*wireflowv1alpha1.NetworkPolicy,
 	req ctrl.Request,
 ) *infra.ChangeDetails {
@@ -133,7 +133,7 @@ func (d *ChangeDetector) detectNodeConfigChanges(ctx context.Context, changes *i
 	return changes
 }
 
-func (d *ChangeDetector) detectNetworkChanges(ctx context.Context, changes *infra.ChangeDetails, oldNodeCtx *NodeContext, oldNetwork, newNetwork *wireflowv1alpha1.Network, req ctrl.Request) *infra.ChangeDetails {
+func (d *ChangeDetector) detectNetworkChanges(ctx context.Context, changes *infra.ChangeDetails, oldNodeCtx *NodeContext, oldNetwork, newNetwork *wireflowv1alpha1.WireflowNetwork, req ctrl.Request) *infra.ChangeDetails {
 	networkUpdateType := d.detectNetworkUpdateType(oldNetwork, newNetwork)
 
 	switch networkUpdateType {
@@ -164,12 +164,12 @@ func (d *ChangeDetector) detectNetworkChanges(ctx context.Context, changes *infr
 			return changes
 		}
 		changes.PeersAdded = peers
-		changes.Reason = "Network new created"
+		changes.Reason = "WireflowNetwork new created"
 		changes.TotalChanges++
 		return changes
 	case typeDel:
 		changes.NetworkLeft = []string{oldNetwork.Name}
-		changes.Reason = "Network deleted"
+		changes.Reason = "WireflowNetwork deleted"
 		peers, err := d.findNodes(ctx, oldNetwork.Spec.Nodes, req)
 		if err != nil {
 			return changes
@@ -191,7 +191,7 @@ const (
 	typeUpdate
 )
 
-func (d *ChangeDetector) detectNetworkUpdateType(oldNetwork, newNetwork *wireflowv1alpha1.Network) changeType {
+func (d *ChangeDetector) detectNetworkUpdateType(oldNetwork, newNetwork *wireflowv1alpha1.WireflowNetwork) changeType {
 	if oldNetwork == nil && newNetwork == nil {
 		return typeNone
 	}

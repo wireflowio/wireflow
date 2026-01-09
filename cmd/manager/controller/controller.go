@@ -243,7 +243,7 @@ func runController(flags *ControllerFlags) error {
 		Scheme:    mgr.GetScheme(),
 		Allocator: controller.NewIPAllocator(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Network")
+		setupLog.Error(err, "unable to create controller", "controller", "WireflowNetwork")
 		return err
 	}
 	if err := (&controller.NetworkPolicyReconciler{

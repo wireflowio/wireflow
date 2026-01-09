@@ -159,10 +159,10 @@ func (c *Client) GetByAppId(ctx context.Context, appId string) (*entity.Node, er
 }
 
 // CreateNetwork create a network
-func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wireflowv1alpha1.Network, error) {
+func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wireflowv1alpha1.WireflowNetwork, error) {
 	var (
 		err     error
-		network wireflowv1alpha1.Network
+		network wireflowv1alpha1.WireflowNetwork
 	)
 	err = c.client.Get(ctx, types.NamespacedName{
 		Namespace: "default",
@@ -173,16 +173,16 @@ func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wi
 		// 使用SSA模式
 		manager := client.FieldOwner("wireflow-controller-manager")
 
-		if err = c.client.Patch(ctx, &wireflowv1alpha1.Network{
+		if err = c.client.Patch(ctx, &wireflowv1alpha1.WireflowNetwork{
 			TypeMeta: v1.TypeMeta{
-				Kind:       "Network",
+				Kind:       "WireflowNetwork",
 				APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
 			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: "default",
 				Name:      networkId,
 			},
-			Spec: wireflowv1alpha1.NetworkSpec{
+			Spec: wireflowv1alpha1.WireflowNetworkSpec{
 				Name: networkId,
 				CIDR: cidr,
 			},

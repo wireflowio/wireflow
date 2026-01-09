@@ -71,7 +71,7 @@ func setsToSlice(set map[string]struct{}) []string {
 //	if old.Address != new.Address {
 //		return false
 //	}
-//	if !stringSliceEqual(old.Network, new.Network) {
+//	if !stringSliceEqual(old.WireflowNetwork, new.WireflowNetwork) {
 //		return false
 //	}
 //	// 根据需要添加其他字段比较
