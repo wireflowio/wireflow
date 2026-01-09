@@ -42,8 +42,8 @@ type AllocatedIP struct {
 }
 
 // AllocateIP 为节点分配 IP 地址
-// 从 Network 的 CIDR 中分配一个未使用的 IP
-func (a *IPAllocator) AllocateIP(network *v1alpha1.Network, nodeName string) (string, error) {
+// 从 WireflowNetwork 的 CIDR 中分配一个未使用的 IP
+func (a *IPAllocator) AllocateIP(network *v1alpha1.WireflowNetwork, nodeName string) (string, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (a *IPAllocator) AllocateIP(network *v1alpha1.Network, nodeName string) (st
 }
 
 // ReleaseIP 释放 IP 地址
-func (a *IPAllocator) ReleaseIP(status *v1alpha1.NetworkStatus, ip string) {
+func (a *IPAllocator) ReleaseIP(status *v1alpha1.WireflowNetworkStatus, ip string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -98,7 +98,7 @@ func (a *IPAllocator) ReleaseIP(status *v1alpha1.NetworkStatus, ip string) {
 }
 
 // GetNodeIP 获取节点在指定网络中的 IP
-func (a *IPAllocator) GetNodeIP(network *v1alpha1.Network, nodeName string) string {
+func (a *IPAllocator) GetNodeIP(network *v1alpha1.WireflowNetwork, nodeName string) string {
 	for _, allocated := range network.Status.AllocatedIPs {
 		if allocated.Node == nodeName {
 			return allocated.IP
@@ -108,7 +108,7 @@ func (a *IPAllocator) GetNodeIP(network *v1alpha1.Network, nodeName string) stri
 }
 
 // IsIPAllocated 检查 IP 是否已被分配
-func (a *IPAllocator) IsIPAllocated(network *v1alpha1.Network, ip string) bool {
+func (a *IPAllocator) IsIPAllocated(network *v1alpha1.WireflowNetwork, ip string) bool {
 	for _, allocated := range network.Status.AllocatedIPs {
 		if allocated.IP == ip {
 			return true
@@ -118,7 +118,7 @@ func (a *IPAllocator) IsIPAllocated(network *v1alpha1.Network, ip string) bool {
 }
 
 // CountAvailableIPs 计算可用 IP 数量
-func (a *IPAllocator) CountAvailableIPs(network *v1alpha1.Network) (int, error) {
+func (a *IPAllocator) CountAvailableIPs(network *v1alpha1.WireflowNetwork) (int, error) {
 	_, ipNet, err := net.ParseCIDR(network.Spec.CIDR)
 	if err != nil {
 		return 0, err
