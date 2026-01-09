@@ -92,7 +92,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	//获取node的变化，更新network spec
-	var nodeList v1alpha1.NodeList
+	var nodeList v1alpha1.WireflowPeerList
 	nodeList, err = r.findNodesByLabels(ctx, &network)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -167,7 +167,7 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
-func (r *NetworkReconciler) generateNodesMap(ctx context.Context, nodeList *v1alpha1.NodeList) map[string]struct{} {
+func (r *NetworkReconciler) generateNodesMap(ctx context.Context, nodeList *v1alpha1.WireflowPeerList) map[string]struct{} {
 	currentNodes := make(map[string]struct{})
 	for _, node := range nodeList.Items {
 		currentNodes[node.Name] = struct{}{}
@@ -243,9 +243,9 @@ func (r *NetworkReconciler) updateStatus(ctx context.Context, network *v1alpha1.
 }
 
 // 查询所有的node， 然后更新Network的Spec
-func (r *NetworkReconciler) findNodesByLabels(ctx context.Context, network *v1alpha1.WireflowNetwork) (v1alpha1.NodeList, error) {
+func (r *NetworkReconciler) findNodesByLabels(ctx context.Context, network *v1alpha1.WireflowNetwork) (v1alpha1.WireflowPeerList, error) {
 	labels := fmt.Sprintf("wireflow.run/network-%s", network.Name)
-	var nodes v1alpha1.NodeList
+	var nodes v1alpha1.WireflowPeerList
 	if err := r.List(ctx, &nodes, client.InNamespace(network.Namespace), client.MatchingLabels(map[string]string{labels: "true"})); err != nil {
 		return nodes, err
 	}
@@ -256,7 +256,7 @@ func (r *NetworkReconciler) findNodesByLabels(ctx context.Context, network *v1al
 func (r *NetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.WireflowNetwork{}).
-		Watches(&v1alpha1.Node{},
+		Watches(&v1alpha1.WireflowPeer{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNodeForNetworks),
 			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{})).
 		Named("network").
@@ -264,7 +264,7 @@ func (r *NetworkReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.Object) []reconcile.Request {
-	node := obj.(*v1alpha1.Node)
+	node := obj.(*v1alpha1.WireflowPeer)
 
 	var networkToUpdate []string
 	//// 1. 获取node的spec包含network
@@ -297,7 +297,7 @@ func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.O
 }
 
 // allocateIPsForNode 为节点在其所属的网络中分配 IP
-func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alpha1.Node) (string, error) {
+func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alpha1.WireflowPeer) (string, error) {
 	log := logf.FromContext(ctx)
 	var err error
 	primaryNetwork := node.Spec.Network
@@ -315,7 +315,7 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alph
 	if currentAddress != nil {
 		//校验ip是否是network合法ip
 		if err = r.Allocator.ValidateIP(network.Spec.CIDR, *currentAddress); err == nil {
-			log.Info("Node already has IP address", "address", currentAddress)
+			log.Info("WireflowPeer already has IP address", "address", currentAddress)
 			return *currentAddress, nil
 		}
 	}
@@ -324,7 +324,7 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alph
 	existingIP := r.Allocator.GetNodeIP(&network, node.Name)
 	if existingIP != "" {
 		//校验ip是否是network合法ip
-		klog.Infof("Node %s already has IP %s in network %s", node.Name, existingIP, network.Name)
+		klog.Infof("WireflowPeer %s already has IP %s in network %s", node.Name, existingIP, network.Name)
 		return existingIP, nil
 	}
 
@@ -332,7 +332,7 @@ func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alph
 	return r.allocate(ctx, &network, node)
 }
 
-func (r *NetworkReconciler) allocate(ctx context.Context, network *v1alpha1.WireflowNetwork, node *v1alpha1.Node) (string, error) {
+func (r *NetworkReconciler) allocate(ctx context.Context, network *v1alpha1.WireflowNetwork, node *v1alpha1.WireflowPeer) (string, error) {
 	log := logf.FromContext(ctx)
 	var (
 		err         error

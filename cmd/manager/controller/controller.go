@@ -235,7 +235,7 @@ func runController(flags *ControllerFlags) error {
 		Detector:     controller.NewChangeDetector(mgr.GetClient()),
 		NodeCtxCache: make(map[types.NamespacedName]*controller.NodeContext),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Node")
+		setupLog.Error(err, "unable to create controller", "controller", "WireflowPeer")
 		return err
 	}
 	if err := (&controller.NetworkReconciler{

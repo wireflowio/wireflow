@@ -92,6 +92,7 @@ type DNSConfig struct {
 // +kubebuilder:subresource:status
 
 // WireflowNetwork is the Schema for the networks API.
+// +kubebuilder:resource:scope=Cluster
 // +kubebuilder:resource:shortName=wfnet;wfnetwork
 // +kubebuilder:printcolumn:name="PHASE",type="string",JSONPath=".status.phase",description="The current phase of the network"
 // +kubebuilder:printcolumn:name="CIDR",type="string",JSONPath=".spec.cidr",description="The CIDR block of the network"

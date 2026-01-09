@@ -13,7 +13,6 @@ spec:
     plural: networkpolicies
     shortNames:
     - wfpolicy
-    - wfp
     singular: networkpolicy
   scope: Namespaced
   versions:
@@ -60,9 +59,12 @@ spec:
           metadata:
             type: object
           spec:
-            description: NetworkPolicySpec defines the desired state of NetworkPolicy.
+            description: WireflowPolicySpec defines the desired state of NetworkPolicy.
               which used to control the wireflow's traffic flow.
             properties:
+              action:
+                description: default DENY
+                type: string
               egressRule:
                 items:
                   properties:
@@ -213,8 +215,10 @@ spec:
                       type: array
                   type: object
                 type: array
-              nodeSelector:
-                description: NodeSelector is a label query over node that should be
+              network:
+                type: string
+              peerSelector:
+                description: PeerSelector is a label query over node that should be
                   applied to the wireflow policy.
                 properties:
                   matchExpressions:
@@ -262,6 +266,8 @@ spec:
                 x-kubernetes-map-type: atomic
               policyType:
                 type: string
+            required:
+            - network
             type: object
           status:
             description: NetworkPolicyStatus defines the observed state of NetworkPolicy.

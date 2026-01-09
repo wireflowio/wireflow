@@ -67,7 +67,7 @@ func setsToSlice(set map[string]struct{}) []string {
 }
 
 // SpecEqual 比较两个 Spec 是否相等
-//func SpecEqual(old, new *wireflowcontrollerv1alpha1.NodeSpec) bool {
+//func SpecEqual(old, new *wireflowcontrollerv1alpha1.WireflowPeerSpec) bool {
 //	if old.Address != new.Address {
 //		return false
 //	}
@@ -90,7 +90,7 @@ func stringSliceEqual(a, b []string) bool {
 	return true
 }
 
-func transferToPeer(peer *wireflowv1alpha1.Node) *infra.Peer {
+func transferToPeer(peer *wireflowv1alpha1.WireflowPeer) *infra.Peer {
 	p := &infra.Peer{
 		Name:          peer.Name,
 		AppID:         peer.Spec.AppId,

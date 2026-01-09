@@ -41,10 +41,10 @@ type ChangeDetector struct {
 
 // NodeContext
 type NodeContext struct {
-	Node     *wireflowv1alpha1.Node
+	Node     *wireflowv1alpha1.WireflowPeer
 	Network  *wireflowv1alpha1.WireflowNetwork
 	Policies []*wireflowv1alpha1.NetworkPolicy
-	Nodes    []*wireflowv1alpha1.Node
+	Nodes    []*wireflowv1alpha1.WireflowPeer
 }
 
 func NewChangeDetector(client client.Client) *ChangeDetector {
@@ -59,7 +59,7 @@ func NewChangeDetector(client client.Client) *ChangeDetector {
 func (d *ChangeDetector) DetectNodeChanges(
 	ctx context.Context,
 	oldNodeCtx *NodeContext,
-	oldNode, newNode *wireflowv1alpha1.Node,
+	oldNode, newNode *wireflowv1alpha1.WireflowPeer,
 	oldNetwork, newNetwork *wireflowv1alpha1.WireflowNetwork,
 	oldPolicies, newPolicies []*wireflowv1alpha1.NetworkPolicy,
 	req ctrl.Request,
@@ -85,7 +85,7 @@ func (d *ChangeDetector) DetectNodeChanges(
 	return changes
 }
 
-func (d *ChangeDetector) detectNodeConfigChanges(ctx context.Context, changes *infra.ChangeDetails, oldNodeCtx *NodeContext, oldNode, newNode *wireflowv1alpha1.Node, req ctrl.Request) *infra.ChangeDetails {
+func (d *ChangeDetector) detectNodeConfigChanges(ctx context.Context, changes *infra.ChangeDetails, oldNodeCtx *NodeContext, oldNode, newNode *wireflowv1alpha1.WireflowPeer, req ctrl.Request) *infra.ChangeDetails {
 	var newCreated bool
 	if oldNode == nil {
 		newCreated = true
@@ -310,7 +310,7 @@ func (d *ChangeDetector) detectPolicyChanges(ctx context.Context, changes *infra
 	return changes
 }
 
-func (d *ChangeDetector) findPolicy(ctx context.Context, node *wireflowv1alpha1.Node, req ctrl.Request) ([]*infra.Policy, error) {
+func (d *ChangeDetector) findPolicy(ctx context.Context, node *wireflowv1alpha1.WireflowPeer, req ctrl.Request) ([]*infra.Policy, error) {
 	var policyList wireflowv1alpha1.NetworkPolicyList
 	if err := d.client.List(ctx, &policyList, client.InNamespace(req.Namespace)); err != nil {
 		return nil, err
@@ -319,7 +319,7 @@ func (d *ChangeDetector) findPolicy(ctx context.Context, node *wireflowv1alpha1.
 	var policies []*infra.Policy
 
 	for _, policy := range policyList.Items {
-		selector, _ := metav1.LabelSelectorAsSelector(&policy.Spec.NodeSelector)
+		selector, _ := metav1.LabelSelectorAsSelector(&policy.Spec.PeerSelector)
 		matched := selector.Matches(labels.Set(node.Labels))
 		if matched {
 			p := d.transferToPolicy(ctx, &policy)
@@ -345,7 +345,7 @@ func (d *ChangeDetector) findChangedNodes(ctx context.Context, oldNodeCtx *NodeC
 	}
 
 	for _, name := range added {
-		var node wireflowv1alpha1.Node
+		var node wireflowv1alpha1.WireflowPeer
 		if err := d.client.Get(ctx, types.NamespacedName{
 			Namespace: req.Namespace,
 			Name:      name,
@@ -366,7 +366,7 @@ func (d *ChangeDetector) findNodes(ctx context.Context, names []string, req ctrl
 	log.Info("findNodes from", "names", names)
 	var addedPeers []*infra.Peer
 	for _, name := range names {
-		var node wireflowv1alpha1.Node
+		var node wireflowv1alpha1.WireflowPeer
 		if err := d.client.Get(ctx, types.NamespacedName{
 			Namespace: req.Namespace,
 			Name:      name,
@@ -394,7 +394,7 @@ func setDifference(a, b map[string]struct{}) []string {
 	return diff
 }
 
-func (d *ChangeDetector) buildFullConfig(ctx context.Context, node *wireflowv1alpha1.Node, context *NodeContext, changes *infra.ChangeDetails, version string) (*infra.Message, error) {
+func (d *ChangeDetector) buildFullConfig(ctx context.Context, node *wireflowv1alpha1.WireflowPeer, context *NodeContext, changes *infra.ChangeDetails, version string) (*infra.Message, error) {
 	var err error
 	// 生成配置版本号
 	msg := &infra.Message{
@@ -513,7 +513,7 @@ func (d *ChangeDetector) transferToPolicy(ctx context.Context, src *wireflowv1al
 func (d *ChangeDetector) getNodeFromLabels(ctx context.Context, rules []wireflowv1alpha1.PeerSelection) ([]*infra.Peer, error) {
 	// 使用 map 来存储已找到的节点，以确保结果不重复
 	// key: 节点的 UID，value: 节点对象本身
-	foundNodes := make(map[types.UID]wireflowv1alpha1.Node)
+	foundNodes := make(map[types.UID]wireflowv1alpha1.WireflowPeer)
 
 	for _, rule := range rules {
 		// 1. 将 metav1.LabelSelector 转换为 labels.Selector 接口
@@ -523,7 +523,7 @@ func (d *ChangeDetector) getNodeFromLabels(ctx context.Context, rules []wireflow
 			return nil, fmt.Errorf("failed to parse label selector %v: %w", rule.PeerSelector, err)
 		}
 
-		var nodeList wireflowv1alpha1.NodeList
+		var nodeList wireflowv1alpha1.WireflowPeerList
 
 		// 2. 针对每一个选择器执行一次独立的 List API 调用
 		// 这实现了 OR 逻辑（匹配选择器 A 的节点集合 + 匹配选择器 B 的节点集合）
