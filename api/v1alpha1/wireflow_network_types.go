@@ -23,9 +23,6 @@ import (
 
 // WireflowNetworkSpec defines the desired state of WireflowNetwork.
 type WireflowNetworkSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// name of network
 	Name string `json:"name,omitempty"`
 
@@ -33,17 +30,15 @@ type WireflowNetworkSpec struct {
 
 	Owner string `json:"owner,omitempty"`
 
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Pattern=`^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$`
 	CIDR string `json:"cidr,omitempty"`
 
 	Mtu int `json:"mtu,omitempty"`
 
 	Dns DNSConfig `json:"dns,omitempty"`
 
-	Nodes []string `json:"nodes,omitempty"`
+	//Peers []string `json:"nodes,omitempty"`
 
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	PeerSelector map[string]string `json:"peerSelector,omitempty"`
 
 	Policies []string `json:"policies,omitempty"`
 }
@@ -57,13 +52,10 @@ type WireflowNetworkStatus struct {
 	ActiveCIDR string `json:"activeCIDR,omitempty"`
 
 	// 已分配的 IP 列表
-	AllocatedIPs []IPAllocation `json:"allocatedIPs,omitempty"`
+	AllocatedCount int `json:"allocatedCount,omitempty"`
 
 	// 可用 IP 数量
 	AvailableIPs int `json:"availableIPs,omitempty"`
-
-	//加入的节点数量
-	AddedNodes int `json:"addedNodes,omitempty"`
 
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
@@ -92,7 +84,6 @@ type DNSConfig struct {
 // +kubebuilder:subresource:status
 
 // WireflowNetwork is the Schema for the networks API.
-// +kubebuilder:resource:scope=Cluster
 // +kubebuilder:resource:shortName=wfnet;wfnetwork
 // +kubebuilder:printcolumn:name="PHASE",type="string",JSONPath=".status.phase",description="The current phase of the network"
 // +kubebuilder:printcolumn:name="CIDR",type="string",JSONPath=".spec.cidr",description="The CIDR block of the network"

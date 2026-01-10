@@ -4,24 +4,21 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: wireflowsubnetallocations.wireflowcontroller.wireflow.run
+  name: wireflownetworkpeerings.wireflowcontroller.wireflow.run
 spec:
   group: wireflowcontroller.wireflow.run
   names:
-    kind: WireflowSubnetAllocation
-    listKind: WireflowSubnetAllocationList
-    plural: wireflowsubnetallocations
-    shortNames:
-    - wfsubnet
-    singular: wireflowsubnetallocation
-  scope: Cluster
+    kind: WireflowNetworkPeering
+    listKind: WireflowNetworkPeeringList
+    plural: wireflownetworkpeerings
+    singular: wireflownetworkpeering
+  scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: |-
-          WireflowSubnetAllocation for store / search a network's cidr
-          它的 Name 格式定为: subnet-<hex-ip> (例如 subnet-0a0a0100)
+        description: Using for peering network, two networks will be connected together
+          when they have same ip and different namespace
         properties:
           apiVersion:
             description: |-
@@ -42,16 +39,17 @@ spec:
             type: object
           spec:
             properties:
-              cidr:
+              address:
                 type: string
-              networkName:
+              networkRef:
+                type: string
+              peerRef:
                 type: string
             required:
-            - cidr
-            - networkName
+            - address
+            - networkRef
+            - peerRef
             type: object
-        required:
-        - spec
         type: object
     served: true
     storage: true

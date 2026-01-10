@@ -14,6 +14,8 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 type WireflowInvitation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Spec              WireflowInvitationSpec   `json:"spec"`
+	Status            WireflowInvitationStatus `json:"status,omitempty"`
 }
 
 type WireflowInvitationSpec struct {

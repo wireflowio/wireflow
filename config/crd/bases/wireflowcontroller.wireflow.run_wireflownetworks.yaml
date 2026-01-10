@@ -63,7 +63,6 @@ spec:
             description: WireflowNetworkSpec defines the desired state of WireflowNetwork.
             properties:
               cidr:
-                pattern: ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$
                 type: string
               dns:
                 properties:
@@ -83,49 +82,25 @@ spec:
                 type: string
               networkId:
                 type: string
-              nodeSelector:
+              owner:
+                type: string
+              peerSelector:
                 additionalProperties:
                   type: string
                 type: object
-              nodes:
-                items:
-                  type: string
-                type: array
-              owner:
-                type: string
               policies:
                 items:
                   type: string
                 type: array
-            required:
-            - cidr
             type: object
           status:
             description: WireflowNetworkStatus defines the observed state of WireflowNetwork.
             properties:
               activeCIDR:
                 type: string
-              addedNodes:
-                description: 加入的节点数量
-                type: integer
-              allocatedIPs:
+              allocatedCount:
                 description: 已分配的 IP 列表
-                items:
-                  description: IPAllocation IP 分配记录
-                  properties:
-                    allocatedAt:
-                      format: date-time
-                      type: string
-                    ip:
-                      type: string
-                    node:
-                      type: string
-                  required:
-                  - allocatedAt
-                  - ip
-                  - node
-                  type: object
-                type: array
+                type: integer
               availableIPs:
                 description: 可用 IP 数量
                 type: integer

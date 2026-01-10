@@ -4,16 +4,16 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: networkpolicies.wireflowcontroller.wireflow.run
+  name: wireflowpolicies.wireflowcontroller.wireflow.run
 spec:
   group: wireflowcontroller.wireflow.run
   names:
-    kind: NetworkPolicy
-    listKind: NetworkPolicyList
-    plural: networkpolicies
+    kind: WireflowPolicy
+    listKind: WireflowPolicyList
+    plural: wireflowpolicies
     shortNames:
     - wfpolicy
-    singular: networkpolicy
+    singular: wireflowpolicy
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -39,7 +39,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: NetworkPolicy is the Schema for the networkpolicies API.
+        description: WireflowPolicy is the Schema for the networkpolicies API.
         properties:
           apiVersion:
             description: |-
@@ -59,7 +59,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: WireflowPolicySpec defines the desired state of NetworkPolicy.
+            description: WireflowPolicySpec defines the desired state of WireflowPolicy.
               which used to control the wireflow's traffic flow.
             properties:
               action:
@@ -270,7 +270,7 @@ spec:
             - network
             type: object
           status:
-            description: NetworkPolicyStatus defines the observed state of NetworkPolicy.
+            description: NetworkPolicyStatus defines the observed state of WireflowPolicy.
             properties:
               ruleCount:
                 description: 规则条数（Ingress + Egress）

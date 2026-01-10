@@ -28,7 +28,7 @@ const (
 	PolicyTypeEgress  PolicyType = "egress"
 )
 
-// WireflowPolicySpec defines the desired state of NetworkPolicy. which used to control the wireflow's traffic flow.
+// WireflowPolicySpec defines the desired state of WireflowPolicy. which used to control the wireflow's traffic flow.
 type WireflowPolicySpec struct {
 	Network string `json:"network"`
 	// PeerSelector is a label query over node that should be applied to the wireflow policy.
@@ -67,7 +67,7 @@ type NetworkPolicyPort struct {
 	Protocol string `json:"protocol,omitempty"`
 }
 
-// NetworkPolicyStatus defines the observed state of NetworkPolicy.
+// NetworkPolicyStatus defines the observed state of WireflowPolicy.
 type NetworkPolicyStatus struct {
 	// 策略当前匹配到的节点数量
 	TargetNodes int `json:"targetNodes"`
@@ -78,14 +78,14 @@ type NetworkPolicyStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// NetworkPolicy is the Schema for the networkpolicies API.
+// WireflowPolicy is the Schema for the networkpolicies API.
 // +kubebuilder:resource:shortName=wfpolicy
 // +kubebuilder:printcolumn:name="TYPE",type="string",JSONPath=".spec.policyType",description="The type of the network policy (ingress or egress)"
 // +kubebuilder:printcolumn:name="NODE-SELECTOR",type="string",JSONPath=".spec.nodeSelector",description="The selector to identify nodes this policy applies to"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="TARGETS",type="integer",JSONPath=".status.targetNodes",description="Number of nodes targeted by this policy"
 // +kubebuilder:printcolumn:name="RULES",type="integer",JSONPath=".status.ruleCount",description="Number of rules defined in this policy"
-type NetworkPolicy struct {
+type WireflowPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -95,13 +95,13 @@ type NetworkPolicy struct {
 
 // +kubebuilder:object:root=true
 
-// NetworkPolicyList contains a list of NetworkPolicy.
-type NetworkPolicyList struct {
+// WireflowPolicyList contains a list of WireflowPolicy.
+type WireflowPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []NetworkPolicy `json:"items"`
+	Items           []WireflowPolicy `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&NetworkPolicy{}, &NetworkPolicyList{})
+	SchemeBuilder.Register(&WireflowPolicy{}, &WireflowPolicyList{})
 }

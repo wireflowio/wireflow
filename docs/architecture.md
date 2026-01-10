@@ -17,12 +17,14 @@ Networking topology is defined via Kubernetes CRDs, eliminating manual tunnel co
 No peer is trusted by default. Access is granted based on **identity (Labels)** rather than IP addresses.
 
 ## Core Objects
-| Object (CRD) | Scope | Relationship | Core Responsibility |
-| :--- | :--- | :--- | :--- |
-| **WireflowNetwork** | Cluster | 1 : N (Namespaces) | Defines the Overlay CIDR, Global Routing ID, and MTU settings. |
-| **Namespace** | Namespace | 1 : 1 (Network) | Logical grouping. Linked to a Network via the label `wireflow.io/network`. |
-| **WireflowPeer** | Namespaced | N : 1 (Namespace) | Represents an endpoint (Pod, IoT, PC). Holds PublicKeys and VIPs. |
-| **WireflowPolicy** | Namespaced | N : 1 (Network) | The "Security Group." Defines Ingress/Egress rules between Peers. |
+| Object (CRD)               | Scope      | Relationship | Core Responsibility                                                        |
+|:---------------------------|:-----------| :--- |:---------------------------------------------------------------------------|
+| **WireflowGlobalIPool**    | Cluster    | 1 : N (Namespaces) | Defines the cluster IP Pool, All WireflowNetwork get CIDR from here.       |
+| **WireflowNetwork**        | Namespaced | 1 : N (Namespaces) | Defines then namespace Overlay CIDR, Global Routing ID, and MTU settings   |
+| **Namespace**              | Namespaced | 1 : 1 (Network) | Logical grouping. Linked to a Network via the label `wireflow.io/network`. |
+| **WireflowNetworkPeering** | CLuster    | 1 : N (Namespaces) | Defines two networks connected each other, using NetworkPeering            |
+| **WireflowPeer**           | Namespaced | N : 1 (Namespace) | Represents an endpoint (Pod, IoT, PC). Holds PublicKeys and VIPs.          |
+| **WireflowPolicy**         | Namespaced | N : 1 (Network) | The "Security Group." Defines Ingress/Egress rules between Peers.          |
 
 ##  Data Plane Implementation
 

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"wireflow/api/v1alpha1"
 	"wireflow/internal/controller"
+	"wireflow/internal/ipam"
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/types"
@@ -234,14 +235,15 @@ func runController(flags *ControllerFlags) error {
 		Scheme:       mgr.GetScheme(),
 		Detector:     controller.NewChangeDetector(mgr.GetClient()),
 		NodeCtxCache: make(map[types.NamespacedName]*controller.NodeContext),
+		IPAM:         ipam.NewIPAM(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "WireflowPeer")
 		return err
 	}
 	if err := (&controller.NetworkReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Allocator: controller.NewIPAllocator(),
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		IPAM:   ipam.NewIPAM(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "WireflowNetwork")
 		return err
@@ -250,7 +252,7 @@ func runController(flags *ControllerFlags) error {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "NetworkPolicy")
+		setupLog.Error(err, "unable to create controller", "controller", "WireflowPolicy")
 		return err
 	}
 	// +kubebuilder:scaffold:builder

@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
+	"wireflow/internal/ipam"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,7 +41,7 @@ type NetworkReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	Allocator *IPAllocator
+	IPAM *ipam.IPAM
 }
 
 // +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=networks,verbs=get;list;watch;create;update;patch;delete
@@ -54,14 +54,12 @@ type NetworkReconciler struct {
 // the WireflowNetwork object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var (
 		network v1alpha1.WireflowNetwork
 		err     error
 		updated bool
+		cidr    string
 	)
 
 	log := logf.FromContext(ctx)
@@ -87,76 +85,40 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	if network.Spec.CIDR == "" {
-		return ctrl.Result{}, fmt.Errorf("cidr must not be empty!")
+	if network.Status.ActiveCIDR == "" {
+		//get subnet
+		var pool v1alpha1.WireflowGlobalIPPool
+		poolKey := client.ObjectKey{Name: "wireflow-ip-pool"}
+		if err = r.Get(ctx, poolKey, &pool); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		cidr, err = r.IPAM.AllocateSubnet(ctx, network.Name, &pool)
+		if err != nil {
+			log.Error(err, "Failed to allocate subnet from ippool")
+			return ctrl.Result{RequeueAfter: time.Second * 10}, err
+		}
+
+		//更新status
+		updated, err = r.updateStatus(ctx, &network, func(network *v1alpha1.WireflowNetwork) error {
+			network.Status.ActiveCIDR = cidr
+			network.Status.Phase = v1alpha1.NetworkPhaseReady
+			return nil
+		})
+
+		if updated {
+			return ctrl.Result{}, nil
+		}
 	}
 
-	//获取node的变化，更新network spec
-	var nodeList v1alpha1.WireflowPeerList
-	nodeList, err = r.findNodesByLabels(ctx, &network)
+	//get all wireflowpeer, one peer one endpoint
+	var peers v1alpha1.WireflowPeerList
+	peers, err = r.findNodesByLabels(ctx, &network)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	currentNodes := r.generateNodesMap(ctx, &nodeList)
-	//update nodes to current Nodes
-	updated, err = r.updateSpec(ctx, &network, func(network *v1alpha1.WireflowNetwork) {
-		network.Spec.Nodes = setsToSlice(currentNodes)
-	})
-
-	if updated {
-		return ctrl.Result{}, nil
-	}
-
-	//重新获取network用来更新status, 避免冲突
-	if err = r.Get(ctx, req.NamespacedName, &network); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("WireflowNetwork resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-
-		log.Error(err, "Failed to get WireflowNetwork")
-		return ctrl.Result{}, err
-	}
-
-	updated, err = r.updateStatus(ctx, &network, func(network *v1alpha1.WireflowNetwork) error {
-		log := logf.FromContext(ctx)
-		log.Info("Updating WireflowNetwork", "namespace", network.Namespace, "name", network.Name)
-
-		activeNodeAllocations := network.Status.AllocatedIPs
-		statusNodes := make(map[string]v1alpha1.IPAllocation)
-		for _, allocation := range activeNodeAllocations {
-			statusNodes[allocation.Node] = allocation
-		}
-
-		statusCopy := network.Status.DeepCopy()
-
-		//删除一些Node
-		for k, _ := range statusNodes {
-			//不存在 则删除
-			if _, ok := currentNodes[k]; !ok {
-				delete(statusNodes, k)
-				//删除node逻辑
-				r.Allocator.ReleaseIP(statusCopy, k)
-			}
-		}
-
-		network.Status = *statusCopy
-		network.Status.Phase = v1alpha1.NetworkPhaseReady
-
-		for _, node := range nodeList.Items {
-			// check ip valid
-			var allocatedIP string
-			if allocatedIP, err = r.allocateIPsForNode(ctx, &node); err != nil {
-				return err
-			}
-
-			// 更新 WireflowNetwork 资源,记录 IP 分配
-			if err = r.updateNetworkIPAllocation(ctx, network, allocatedIP, node.Name); err != nil {
-				return err
-			}
-		}
-
+	_, err = r.updateStatus(ctx, &network, func(network *v1alpha1.WireflowNetwork) error {
+		network.Status.AllocatedCount = len(peers.Items)
 		return nil
 	})
 
@@ -167,13 +129,13 @@ func (r *NetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{}, nil
 }
 
-func (r *NetworkReconciler) generateNodesMap(ctx context.Context, nodeList *v1alpha1.WireflowPeerList) map[string]struct{} {
-	currentNodes := make(map[string]struct{})
-	for _, node := range nodeList.Items {
-		currentNodes[node.Name] = struct{}{}
-	}
-	return currentNodes
-}
+//func (r *NetworkReconciler) generateNodesMap(ctx context.Context, nodeList *v1alpha1.WireflowPeerList) map[string]struct{} {
+//	currentNodes := make(map[string]struct{})
+//	for _, node := range nodeList.Items {
+//		currentNodes[node.Name] = struct{}{}
+//	}
+//	return currentNodes
+//}
 
 // reconcileSpec 检查并修正 WireflowNetwork.Spec 字段。
 // 如果 Spec 被修改并成功写入，返回 (true, nil)，调用者应立即退出 Reconcile。
@@ -296,85 +258,86 @@ func (r *NetworkReconciler) mapNodeForNetworks(ctx context.Context, obj client.O
 	return requests
 }
 
-// allocateIPsForNode 为节点在其所属的网络中分配 IP
-func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alpha1.WireflowPeer) (string, error) {
-	log := logf.FromContext(ctx)
-	var err error
-	primaryNetwork := node.Spec.Network
-
-	var network v1alpha1.WireflowNetwork
-	if primaryNetwork != nil {
-		// 获取 WireflowNetwork 资源
-		if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, *primaryNetwork)}, &network); err != nil {
-			return "", err
-		}
-	}
-
-	// 如果节点已经有 IP 地址,跳过
-	currentAddress := node.Status.AllocatedAddress
-	if currentAddress != nil {
-		//校验ip是否是network合法ip
-		if err = r.Allocator.ValidateIP(network.Spec.CIDR, *currentAddress); err == nil {
-			log.Info("WireflowPeer already has IP address", "address", currentAddress)
-			return *currentAddress, nil
-		}
-	}
-
-	// 检查节点是否已经在该网络中有 IP 分配
-	existingIP := r.Allocator.GetNodeIP(&network, node.Name)
-	if existingIP != "" {
-		//校验ip是否是network合法ip
-		klog.Infof("WireflowPeer %s already has IP %s in network %s", node.Name, existingIP, network.Name)
-		return existingIP, nil
-	}
-
-	// 分配新的 IP
-	return r.allocate(ctx, &network, node)
-}
-
-func (r *NetworkReconciler) allocate(ctx context.Context, network *v1alpha1.WireflowNetwork, node *v1alpha1.WireflowPeer) (string, error) {
-	log := logf.FromContext(ctx)
-	var (
-		err         error
-		allocatedIP string
-	)
-	allocatedIP, err = r.Allocator.AllocateIP(network, node.Name)
-	if err != nil {
-		return "", fmt.Errorf("failed to allocate IP: %v", err)
-	}
-
-	log.Info("Allocated IP", "ip", allocatedIP, "nodeName", node.Name)
-
-	return allocatedIP, nil
-}
-
-// updateNetworkIPAllocation 更新网络的 IP 分配记录
-func (r *NetworkReconciler) updateNetworkIPAllocation(ctx context.Context, network *v1alpha1.WireflowNetwork, ip, nodeName string) error {
-
-	allocations := make(map[string]v1alpha1.IPAllocation)
-	for _, allocation := range network.Status.AllocatedIPs {
-		allocations[allocation.Node] = allocation
-	}
-
-	if _, ok := allocations[nodeName]; ok {
-		return nil
-	}
-	// 添加 IP 分配记录
-	allocation := v1alpha1.IPAllocation{
-		IP:          ip,
-		Node:        nodeName,
-		AllocatedAt: metav1.Now(),
-	}
-
-	network.Status.AllocatedIPs = append(network.Status.AllocatedIPs, allocation)
-
-	// 更新可用 IP 数量
-	availableIPs, err := r.Allocator.CountAvailableIPs(network)
-	if err != nil {
-		klog.Errorf("Failed to count available IPs: %v", err)
-	} else {
-		network.Status.AvailableIPs = availableIPs
-	}
-
-	return nil
-}
+//
+//// allocateIPsForNode 为节点在其所属的网络中分配 IP
+//func (r *NetworkReconciler) allocateIPsForNode(ctx context.Context, node *v1alpha1.WireflowPeer) (string, error) {
+//	log := logf.FromContext(ctx)
+//	var err error
+//	primaryNetwork := node.Spec.Network
+//
+//	var network v1alpha1.WireflowNetwork
+//	if primaryNetwork != nil {
+//		// 获取 WireflowNetwork 资源
+//		if err = r.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s/%s", node.Namespace, *primaryNetwork)}, &network); err != nil {
+//			return "", err
+//		}
+//	}
+//
+//	// 如果节点已经有 IP 地址,跳过
+//	currentAddress := node.Status.AllocatedAddress
+//	if currentAddress != nil {
+//		//校验ip是否是network合法ip
+//		if err = r.Allocator.ValidateIP(network.Spec.CIDR, *currentAddress); err == nil {
+//			log.Info("WireflowPeer already has IP address", "address", currentAddress)
+//			return *currentAddress, nil
+//		}
+//	}
+//
+//	// 检查节点是否已经在该网络中有 IP 分配
+//	existingIP := r.Allocator.GetNodeIP(&network, node.Name)
+//	if existingIP != "" {
+//		//校验ip是否是network合法ip
+//		klog.Infof("WireflowPeer %s already has IP %s in network %s", node.Name, existingIP, network.Name)
+//		return existingIP, nil
+//	}
+//
+//	// 分配新的 IP
+//	return r.allocate(ctx, &network, node)
+//}
+//
+//func (r *NetworkReconciler) allocate(ctx context.Context, network *v1alpha1.WireflowNetwork, node *v1alpha1.WireflowPeer) (string, error) {
+//	log := logf.FromContext(ctx)
+//	var (
+//		err         error
+//		allocatedIP string
+//	)
+//	allocatedIP, err = r.Allocator.AllocateIP(network, node.Name)
+//	if err != nil {
+//		return "", fmt.Errorf("failed to allocate IP: %v", err)
+//	}
+//
+//	log.Info("Allocated IP", "ip", allocatedIP, "nodeName", node.Name)
+//
+//	return allocatedIP, nil
+//}
+//
+//// updateNetworkIPAllocation 更新网络的 IP 分配记录
+//func (r *NetworkReconciler) updateNetworkIPAllocation(ctx context.Context, network *v1alpha1.WireflowNetwork, ip, nodeName string) error {
+//
+//	allocations := make(map[string]v1alpha1.IPAllocation)
+//	for _, allocation := range network.Status.AllocatedIPs {
+//		allocations[allocation.Peer] = allocation
+//	}
+//
+//	if _, ok := allocations[nodeName]; ok {
+//		return nil
+//	}
+//	// 添加 IP 分配记录
+//	allocation := v1alpha1.IPAllocation{
+//		IP:          ip,
+//		Peer:        nodeName,
+//		AllocatedAt: metav1.Now(),
+//	}
+//
+//	network.Status.AllocatedIPs = append(network.Status.AllocatedIPs, allocation)
+//
+//	// 更新可用 IP 数量
+//	availableIPs, err := r.Allocator.CountAvailableIPs(network)
+//	if err != nil {
+//		klog.Errorf("Failed to count available IPs: %v", err)
+//	} else {
+//		network.Status.AvailableIPs = availableIPs
+//	}
+//
+//	return nil
+//}

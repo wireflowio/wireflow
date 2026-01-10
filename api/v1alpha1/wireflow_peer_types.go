@@ -44,7 +44,6 @@ type WireflowPeerSpec struct {
 
 	MTU int `json:"mtu,omitempty"`
 
-	// +optional
 	Network *string `json:"network,omitempty"`
 
 	NetworkPolicies []string `json:"networkPolicies,omitempty"`
