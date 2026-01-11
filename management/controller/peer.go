@@ -49,8 +49,14 @@ type peerController struct {
 }
 
 func (p *peerController) Join(ctx context.Context, request []byte) ([]byte, error) {
-	//TODO implement me
-	panic("implement me")
+	var req dto.PeerDto
+	if err := json.Unmarshal(request, &req); err != nil {
+		return nil, err
+	}
+
+	p.peerService.Join(ctx, &req)
+
+	return nil, nil
 }
 
 func (p *peerController) UpdateStatus(ctx context.Context, status int) error {

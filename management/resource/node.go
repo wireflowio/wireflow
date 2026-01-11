@@ -33,7 +33,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (c *Client) Register(ctx context.Context, e *dto.PeerDto) (*infra.Peer, error) {
+func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto) (*infra.Peer, error) {
 	log := logf.FromContext(ctx)
 	log.Info("Register node", "node", e)
 	var (
@@ -42,8 +42,8 @@ func (c *Client) Register(ctx context.Context, e *dto.PeerDto) (*infra.Peer, err
 		key  wgtypes.Key
 	)
 
-	err = c.client.Get(ctx, types.NamespacedName{
-		Namespace: "default",
+	err = c.Get(ctx, types.NamespacedName{
+		Namespace: namespace,
 		Name:      e.AppID,
 	}, &node)
 
@@ -59,7 +59,7 @@ func (c *Client) Register(ctx context.Context, e *dto.PeerDto) (*infra.Peer, err
 	// 使用SSA模式
 	manager := client.FieldOwner("wireflow-controller-manager")
 
-	if err = c.client.Patch(ctx, &wireflowv1alpha1.WireflowPeer{
+	if err = c.Patch(ctx, &wireflowv1alpha1.WireflowPeer{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "WireflowPeer",
 			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
@@ -83,7 +83,7 @@ func (c *Client) Register(ctx context.Context, e *dto.PeerDto) (*infra.Peer, err
 		return nil, err
 	}
 
-	if err = c.client.Get(ctx, types.NamespacedName{
+	if err = c.Get(ctx, types.NamespacedName{
 		Namespace: "default",
 		Name:      e.AppID,
 	}, &node); err != nil {
@@ -104,24 +104,24 @@ func (c *Client) UpdateNodeStatus(ctx context.Context, namespace, name string, u
 	logger.Info("Update node status", "namespace", namespace, "name", name)
 
 	var node wireflowv1alpha1.WireflowPeer
-	if err := c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
 		return err
 	}
 
 	updateFunc(&node.Status)
 
-	return c.client.Status().Update(ctx, &node)
+	return c.Status().Update(ctx, &node)
 }
 
 func (c *Client) UpdateNodeSepc(ctx context.Context, namespace, name string, updateFunc func(node *wireflowv1alpha1.WireflowPeer)) error {
 	logger := logf.FromContext(ctx)
 	logger.Info("Update node spec", "namespace", namespace, "name", name)
 	var node wireflowv1alpha1.WireflowPeer
-	if err := c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
 		return err
 	}
 	updateFunc(&node)
-	return c.client.Update(ctx, &node)
+	return c.Update(ctx, &node)
 }
 
 // GetNetworkMap get network map when node init
@@ -130,13 +130,13 @@ func (c *Client) GetNetworkMap(ctx context.Context, namespace, name string) (*in
 	logger.Info("Get node", "namespace", namespace, "name", name)
 
 	var node wireflowv1alpha1.WireflowPeer
-	if err := c.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
 		return nil, err
 	}
 
 	//从network获取
 	var nodeConfig corev1.ConfigMap
-	if err := c.client.Get(ctx, types.NamespacedName{
+	if err := c.Get(ctx, types.NamespacedName{
 		Namespace: node.Namespace,
 		Name:      fmt.Sprintf("%s-config", node.Name),
 	}, &nodeConfig); err != nil {
@@ -164,7 +164,7 @@ func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wi
 		err     error
 		network wireflowv1alpha1.WireflowNetwork
 	)
-	err = c.client.Get(ctx, types.NamespacedName{
+	err = c.Get(ctx, types.NamespacedName{
 		Namespace: "default",
 		Name:      networkId,
 	}, &network)
@@ -173,7 +173,7 @@ func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*wi
 		// 使用SSA模式
 		manager := client.FieldOwner("wireflow-controller-manager")
 
-		if err = c.client.Patch(ctx, &wireflowv1alpha1.WireflowNetwork{
+		if err = c.Patch(ctx, &wireflowv1alpha1.WireflowNetwork{
 			TypeMeta: v1.TypeMeta{
 				Kind:       "WireflowNetwork",
 				APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",

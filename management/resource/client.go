@@ -45,7 +45,7 @@ import (
 )
 
 type Client struct {
-	client  client.Client
+	client.Client
 	manager manager.Manager
 
 	log *log.Logger
@@ -92,19 +92,19 @@ func NewClient(signal infra.SignalService, mgr manager.Manager) (*Client, error)
 	logf.SetLogger(zapLogger)
 
 	// 2. 获取 Kubernetes 配置
-	config, err := loadKubeConfig()
-	if err != nil {
-		return nil, err
-	}
+	//config, err := loadKubeConfig()
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// 3. 创建 client-runtime 的通用 Client
-	crdClient, err := client.New(config, client.Options{Scheme: scheme})
-	if err != nil {
-		logger.Error("Error creating client", err)
-	}
+	//crdClient, err := client.New(config, client.Options{Scheme: scheme})
+	//if err != nil {
+	//	logger.Error("Error creating client", err)
+	//}
 
 	client := &Client{
-		client:         crdClient,
+		Client:         mgr.GetClient(),
 		lastPushedHash: make(map[string]string),
 		log:            logger,
 		sender:         signal,
