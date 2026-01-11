@@ -103,14 +103,21 @@ func (p *peerService) bootstrap(ctx context.Context, providedToken string) (stri
 
 	// 1. 获取或创建 Namespace
 	var ns corev1.Namespace
-	if err = p.client.Get(ctx, client.ObjectKey{Name: nsName}, &ns); err != nil {
-		return "", "", err
-	}
+	err = p.client.GetAPIReader().Get(ctx, client.ObjectKey{Name: nsName}, &ns)
 
 	if errors.IsNotFound(err) {
 
 		// 创建 Namespace
-		p.client.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: nsName}})
+		if err = p.client.Create(ctx, &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: nsName,
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "wireflow-controller",
+				},
+			},
+		}); err != nil {
+			return "", "", err
+		}
 
 		// 创建 Secret 存储 Token
 		secret := &corev1.Secret{
@@ -132,7 +139,7 @@ func (p *peerService) bootstrap(ctx context.Context, providedToken string) (stri
 
 	// --- 房客模式：验证已有空间 ---
 	var authSecret corev1.Secret
-	if err = p.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: secretName}, &authSecret); err != nil {
+	if err = p.client.GetAPIReader().Get(ctx, client.ObjectKey{Namespace: nsName, Name: secretName}, &authSecret); err != nil {
 		return "", "", err
 	}
 
@@ -150,8 +157,11 @@ func (p *peerService) ensureDefaultNetwork(ctx context.Context, nsName string) (
 
 	defaultNet := &v1alpha1.WireflowNetwork{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
+			Name:      "wireflow-default-net",
 			Namespace: nsName,
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "wireflow-controller", // 必须对应
+			},
 		},
 		Spec: v1alpha1.WireflowNetworkSpec{
 			Name: fmt.Sprintf("%s-net", nsName),

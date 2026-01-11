@@ -90,7 +90,6 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 	routes := map[string]Handler{
 		"wireflow.signals.peer.register":  s.Register,
 		"wireflow.signals.peer.GetNetMap": s.GetNetMap,
-		"wireflow.signals.peer.join":      s.Join,
 	}
 
 	for route, handler := range routes {
@@ -110,8 +109,4 @@ func (s *Server) Register(content []byte) ([]byte, error) {
 
 func (s *Server) GetNetMap(content []byte) ([]byte, error) {
 	return s.peerController.GetNetmap(context.Background(), content)
-}
-
-func (s *Server) Join(content []byte) ([]byte, error) {
-	return s.peerController.Join(context.Background(), content)
 }

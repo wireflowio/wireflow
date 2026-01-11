@@ -270,6 +270,9 @@ func (r *NodeReconciler) reconcileConfigMap(ctx context.Context, peer *v1alpha1.
 				return ctrl.Result{}, err
 			}
 			message, err = r.Detector.buildFullConfig(ctx, peer, newNodeCtx, changes, r.Detector.generateConfigVersion())
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 			desiredConfigMap = r.buildConfigMap(peer.Namespace, configMapName, message.String())
 
 			// --- B. 已存在：执行更新操作 (保证幂等性) ---

@@ -59,16 +59,18 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 	// 使用SSA模式
 	manager := client.FieldOwner("wireflow-controller-manager")
 
-	if err = c.Patch(ctx, &wireflowv1alpha1.WireflowPeer{
+	defaultNet := "wireflow-default-net"
+	node = wireflowv1alpha1.WireflowPeer{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "WireflowPeer",
 			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Namespace: "default",
+			Namespace: namespace,
 			Name:      e.AppID,
 		},
 		Spec: wireflowv1alpha1.WireflowPeerSpec{
+			Network:       &defaultNet,
 			AppId:         e.AppID,
 			Platform:      e.Platform,
 			InterfaceName: e.InterfaceName,
@@ -79,14 +81,9 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 		Status: wireflowv1alpha1.WireflowPeerStatus{
 			Status: "Inactive",
 		},
-	}, client.Apply, manager); err != nil {
-		return nil, err
 	}
 
-	if err = c.Get(ctx, types.NamespacedName{
-		Namespace: "default",
-		Name:      e.AppID,
-	}, &node); err != nil {
+	if err = c.Patch(ctx, &node, client.Apply, manager); err != nil {
 		return nil, err
 	}
 

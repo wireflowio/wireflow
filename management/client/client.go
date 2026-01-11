@@ -89,7 +89,7 @@ func (c *Client) GetNetMap() (*infra.Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err = c.RequestNats(ctx, "wireflow.signals.register", "GetNetMap", data)
+	data, err = c.RequestNats(ctx, "wireflow.signals.peer", "GetNetMap", data)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +120,7 @@ func (c *Client) Register(ctx context.Context, interfaceName string) (*infra.Pee
 		AppID:               config.GlobalConfig.AppId,
 		PersistentKeepalive: 25,
 		Port:                51820,
+		Token:               config.GlobalConfig.Token,
 	}
 
 	data, err := json.Marshal(registryRequest)
@@ -127,7 +128,7 @@ func (c *Client) Register(ctx context.Context, interfaceName string) (*infra.Pee
 		return nil, err
 	}
 
-	data, err = c.RequestNats(ctx, "wireflow.signals.register", "register", data)
+	data, err = c.RequestNats(ctx, "wireflow.signals.peer", "register", data)
 
 	if err != nil {
 		return nil, fmt.Errorf("register failed. %v", err)

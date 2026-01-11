@@ -6,3 +6,4 @@ metadata:
 spec:
   appId: 30a589e950
   network: network-sample
+  platform: linux
