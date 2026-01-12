@@ -21,7 +21,7 @@ import (
 	"wireflow/internal/core/infra"
 	"wireflow/management/dto"
 	"wireflow/management/entity"
-	"wireflow/management/utils"
+	"wireflow/pkg/utils"
 
 	wireflowv1alpha1 "wireflow/api/v1alpha1"
 

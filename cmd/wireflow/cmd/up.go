@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newUpCmd() *cobra.Command {
+func upCmd() *cobra.Command {
 	var flags config.Flags
 	// upCmd 代表 config 顶层命令
 	var upCmd = &cobra.Command{

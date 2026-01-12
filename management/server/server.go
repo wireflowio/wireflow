@@ -16,6 +16,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"wireflow/internal/config"
 	"wireflow/internal/core/infra"
@@ -23,6 +24,7 @@ import (
 	"wireflow/management/controller"
 	"wireflow/management/nats"
 	"wireflow/management/resource"
+	"wireflow/pkg/version"
 
 	"gorm.io/gorm"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -90,6 +92,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 	routes := map[string]Handler{
 		"wireflow.signals.peer.register":  s.Register,
 		"wireflow.signals.peer.GetNetMap": s.GetNetMap,
+		"wireflow.signals.service.info":   s.Info,
 	}
 
 	for route, handler := range routes {
@@ -109,4 +112,10 @@ func (s *Server) Register(content []byte) ([]byte, error) {
 
 func (s *Server) GetNetMap(content []byte) ([]byte, error) {
 	return s.peerController.GetNetmap(context.Background(), content)
+}
+
+func (s *Server) Info(content []byte) ([]byte, error) {
+	serverInfo := version.Get()
+	data, err := json.Marshal(serverInfo)
+	return data, err
 }

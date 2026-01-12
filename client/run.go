@@ -24,12 +24,12 @@ import (
 	"runtime"
 	"time"
 	"wireflow/dns"
-	"wireflow/internal"
 	"wireflow/internal/config"
 	"wireflow/internal/core/infra"
 	"wireflow/internal/log"
 	"wireflow/monitor"
 	"wireflow/monitor/collector"
+	"wireflow/pkg/utils"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
@@ -69,7 +69,7 @@ func Start(flags *config.Flags) error {
 		if err != nil {
 			return err
 		}
-		config.GlobalConfig.AppId = internal.StringFormatter(hostName)
+		config.GlobalConfig.AppId = utils.StringFormatter(hostName)
 		//更新到.wireflow.yaml
 		config.WriteConfig("app-id", config.GlobalConfig.AppId)
 	}
@@ -85,8 +85,8 @@ func Start(flags *config.Flags) error {
 	if flags.DaemonGround {
 		fmt.Println("Run wireflow in daemon mode")
 		env := os.Environ()
-		env = append(env, "LINKANY_DAEMON=true")
-		if os.Getenv("LINKANY_DAEMON") == "" {
+		env = append(env, "WIREFLOW_DAEMON=true")
+		if os.Getenv("WIREFLOW_DAEMON") == "" {
 			// 确保日志目录存在
 			var logDir string
 			switch runtime.GOOS {

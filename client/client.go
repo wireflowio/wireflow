@@ -185,6 +185,11 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 		return nil, err
 	}
 
+	// write token
+	if err = config.WriteConfig("token", client.current.Token); err != nil {
+		return nil, err
+	}
+
 	privateKey = client.current.PrivateKey
 	client.manager.keyManager = infra.NewKeyManager(privateKey)
 

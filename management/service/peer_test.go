@@ -3,6 +3,7 @@ package service
 import (
 	"testing"
 	"wireflow/internal/config"
+	"wireflow/pkg/utils"
 )
 
 func TestToken(t *testing.T) {
@@ -16,7 +17,7 @@ func TestToken(t *testing.T) {
 		encoded := config.StringToBase64(token)
 		t.Log(encoded)
 
-		nsName := DeriveNamespace(token)
+		nsName := utils.DeriveNamespace(token)
 		t.Log(nsName)
 
 		res := string([]byte(token))
@@ -30,7 +31,7 @@ func TestToken(t *testing.T) {
 
 		t.Log(string(decoded))
 
-		nsName = DeriveNamespace(string(decoded))
+		nsName = utils.DeriveNamespace(string(decoded))
 		t.Log(nsName)
 
 	})

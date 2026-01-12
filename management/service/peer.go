@@ -23,7 +23,7 @@ import (
 	"wireflow/internal/log"
 	"wireflow/management/dto"
 	"wireflow/management/resource"
-	"wireflow/management/utils"
+	"wireflow/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

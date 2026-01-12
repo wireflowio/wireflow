@@ -25,6 +25,13 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "wireflow",
 	Short: "wireflow: High-performance WireGuard proxy tunneling\n A tool for creating fast and secure network proxies using WireGuard protocol.",
+	Run: func(cmd *cobra.Command, args []string) {
+		isVersion, _ := cmd.Flags().GetBool("version")
+		if isVersion {
+			runVersion() // 在这里调用你联网获取 Server 版本的逻辑
+			return
+		}
+	},
 }
 
 func Execute() {
@@ -38,5 +45,7 @@ func init() {
 	fs := rootCmd.PersistentFlags()
 	fs.StringVarP(&infra.ServerUrl, "server-url", "", "", "management server url")
 	fs.StringVarP(&infra.SignalUrl, "signal-url", "", "", "signaling server url")
-	rootCmd.AddCommand(newUpCmd())
+	fs.BoolP("version", "v", false, "Print version information")
+	rootCmd.AddCommand(upCmd())
+	rootCmd.AddCommand(configCmd)
 }
