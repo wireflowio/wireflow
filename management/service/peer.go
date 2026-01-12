@@ -106,7 +106,7 @@ func (p *peerService) bootstrap(ctx context.Context, providedToken string) (stri
 	err = p.client.GetAPIReader().Get(ctx, client.ObjectKey{Name: nsName}, &ns)
 
 	if errors.IsNotFound(err) {
-
+		p.logger.Info("Creating namespace", "name", nsName, "token", providedToken)
 		// 创建 Namespace
 		if err = p.client.Create(ctx, &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -128,11 +128,18 @@ func (p *peerService) bootstrap(ctx context.Context, providedToken string) (stri
 			return "", "", err
 		}
 
+		p.logger.Info("Namespace created", "name", nsName, "secret", secretName, "token", providedToken, "separator", "")
+
 		// 初始化网络资源 (WireflowNetwork)
-		if _, err := p.ensureDefaultNetwork(ctx, nsName); err != nil {
+		var defaultNet string
+		if defaultNet, err = p.ensureDefaultNetwork(ctx, nsName); err != nil {
+			p.logger.Error("ensure default network failed", err)
 			return "", "", err
+		} else {
+			p.logger.Info("default network created", "defaultNetwork", defaultNet, "separator", "")
 		}
 
+		p.logger.Info("Bootstrap success", "name", nsName, "secret", secretName, "token", providedToken, "defaultNet", defaultNet, "separator", "")
 		// 返回给 Agent：你是创建者，这是你的新 Token
 		return nsName, providedToken, nil
 	}
@@ -172,7 +179,7 @@ func (p *peerService) ensureDefaultNetwork(ctx context.Context, nsName string) (
 		return "", fmt.Errorf("failed to create default network: %v", err)
 	}
 
-	return nsName, nil
+	return defaultNet.Name, nil
 }
 
 func GenerateSecureToken() (string, error) {

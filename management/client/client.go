@@ -103,13 +103,17 @@ func (c *Client) GetNetMap() (*infra.Message, error) {
 }
 
 // Register will register device to wireflow center
-func (c *Client) Register(ctx context.Context, interfaceName string) (*infra.Peer, error) {
+func (c *Client) Register(ctx context.Context, token, interfaceName string) (*infra.Peer, error) {
 	var err error
 
 	hostname, err := os.Hostname()
 	if err != nil {
 		c.logger.Error("get hostname failed", err)
 		return nil, err
+	}
+
+	if token == "" {
+		token = config.GlobalConfig.Token
 	}
 
 	registryRequest := &dto.PeerDto{
@@ -120,7 +124,7 @@ func (c *Client) Register(ctx context.Context, interfaceName string) (*infra.Pee
 		AppID:               config.GlobalConfig.AppId,
 		PersistentKeepalive: 25,
 		Port:                51820,
-		Token:               config.GlobalConfig.Token,
+		Token:               token,
 	}
 
 	data, err := json.Marshal(registryRequest)

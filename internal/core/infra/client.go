@@ -54,7 +54,7 @@ type KeyManager interface {
 
 type ManagementClient interface {
 	GetNetMap() (*Message, error)
-	Register(ctx context.Context, interfaceName string) (*Peer, error)
+	Register(ctx context.Context, token, interfaceName string) (*Peer, error)
 	AddPeer(p *Peer) error
 }
 

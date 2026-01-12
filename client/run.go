@@ -60,6 +60,7 @@ func Start(flags *config.Flags) error {
 			fmt.Sprintf("(%s) ", flags.InterfaceName),
 		),
 		ForceRelay: flags.ForceRelay,
+		Token:      flags.Token,
 	}
 
 	// set appId

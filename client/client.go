@@ -80,6 +80,7 @@ type ClientConfig struct {
 	ManagementUrl string
 	SignalingUrl  string
 	ShowWgLog     bool
+	Token         string
 }
 
 func (c *Client) IpcHandle(socket net.Conn) {
@@ -179,7 +180,7 @@ func NewClient(cfg *ClientConfig) (*Client, error) {
 	}
 
 	var privateKey string
-	client.current, err = client.ctrClient.Register(context.Background(), client.Name)
+	client.current, err = client.ctrClient.Register(context.Background(), cfg.Token, client.Name)
 	if err != nil {
 		return nil, err
 	}
