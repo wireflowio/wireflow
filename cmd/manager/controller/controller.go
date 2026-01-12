@@ -230,11 +230,11 @@ func runController(flags *ControllerFlags) error {
 		return err
 	}
 
-	if err := (&controller.NodeReconciler{
+	if err := (&controller.PeerReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		Detector:     controller.NewChangeDetector(mgr.GetClient()),
-		NodeCtxCache: make(map[types.NamespacedName]*controller.NodeContext),
+		NodeCtxCache: make(map[types.NamespacedName]*controller.PeerStateSnapshot),
 		IPAM:         ipam.NewIPAM(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "WireflowPeer")
