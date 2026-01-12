@@ -17,13 +17,13 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"fmt"
 	"math/big"
 	"wireflow/internal/core/infra"
 	"wireflow/internal/log"
 	"wireflow/management/dto"
 	"wireflow/management/resource"
+	"wireflow/management/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,8 +60,8 @@ func NewPeerService(client *resource.Client) PeerService {
 	}
 }
 
-func (p *peerService) GetNetmap(ctx context.Context, namespace string, appId string) (*infra.Message, error) {
-	return p.client.GetNetworkMap(ctx, namespace, appId)
+func (p *peerService) GetNetmap(ctx context.Context, token string, appId string) (*infra.Message, error) {
+	return p.client.GetNetworkMap(ctx, token, appId)
 }
 
 func (p *peerService) UpdateStatus(ctx context.Context, status int) error {
@@ -98,7 +98,7 @@ func (p *peerService) bootstrap(ctx context.Context, providedToken string) (stri
 		}
 	}
 
-	nsName := DeriveNamespace(providedToken)
+	nsName := utils.DeriveNamespace(providedToken)
 	secretName := "wireflow-auth"
 
 	// 1. 获取或创建 Namespace
@@ -198,11 +198,4 @@ func GenerateSecureToken() (string, error) {
 	}
 
 	return string(result), nil
-}
-
-// 示例：通过 Token 派生 Namespace 名称
-func DeriveNamespace(token string) string {
-	h := sha256.Sum256([]byte(token))
-	// 取哈希的前 12 位，生成类似 wf-a1b2c3d4e5f6 的名字
-	return fmt.Sprintf("wf-%x", h[:6])
 }

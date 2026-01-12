@@ -47,9 +47,9 @@ type PeerReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	IPAM         *ipam.IPAM
-	Detector     *ChangeDetector
-	NodeCtxCache map[types.NamespacedName]*PeerStateSnapshot
+	IPAM          *ipam.IPAM
+	Detector      *ChangeDetector
+	SnapshotCache map[types.NamespacedName]*PeerStateSnapshot
 }
 
 // +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -222,8 +222,8 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 	)
 	logger := logf.FromContext(ctx)
 
-	oldNodeCtx := r.NodeCtxCache[request.NamespacedName]
-	newNodeCtx := r.getNodeContext(ctx, peer, request)
+	oldNodeCtx := r.SnapshotCache[request.NamespacedName]
+	snapshot := r.getNodeContext(ctx, peer, request)
 	// 1. 定义期望状态 (Desired State)
 	configMapName := fmt.Sprintf("%s-config", peer.Name)
 	// 2. 获取当前状态 (Current State)
@@ -233,7 +233,7 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 		if errors.IsNotFound(err) {
 			logger.Info("Creating configmap", "name", configMapName)
 			// first time create cm
-			message, err = r.Detector.generateConfigmap(ctx, peer, newNodeCtx, changes, "init")
+			message, err = r.Detector.generateConfigmap(ctx, peer, snapshot, changes, "init")
 			desiredConfigMap = r.newConfigmap(peer.Namespace, configMapName, message.String())
 			// 关键步骤：设置 OwnerReference
 			// 这确保了当主资源 (peer) 被删除时，这个 reconcileConfigmap 也会被 K8s 垃圾回收器自动删除。
@@ -242,7 +242,7 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 				return ctrl.Result{}, err
 			}
 			// --- A. 不存在：执行创建操作 ---
-			r.NodeCtxCache[request.NamespacedName] = newNodeCtx
+			r.SnapshotCache[request.NamespacedName] = snapshot
 			// 使用SSA模式
 			manager := client.FieldOwner("wireflow-controller-manager")
 			if err = r.Patch(ctx, desiredConfigMap, client.Apply, manager); err != nil {
@@ -254,21 +254,21 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 		}
 		return ctrl.Result{}, err
 	} else {
-		r.NodeCtxCache[request.NamespacedName] = newNodeCtx
+		r.SnapshotCache[request.NamespacedName] = snapshot
 		if oldNodeCtx == nil {
 			//maybe controller restart
-			oldNodeCtx = newNodeCtx
+			oldNodeCtx = snapshot
 			// reconcile next time
 			return ctrl.Result{}, nil
 		}
-		changes = r.Detector.DetectNodeChanges(ctx, oldNodeCtx, oldNodeCtx.Peer, newNodeCtx.Peer, oldNodeCtx.Network, newNodeCtx.Network, oldNodeCtx.Policies, newNodeCtx.Policies, request)
+		changes = r.Detector.DetectNodeChanges(ctx, oldNodeCtx, oldNodeCtx.Peer, snapshot.Peer, oldNodeCtx.Network, snapshot.Network, oldNodeCtx.Policies, snapshot.Policies, request)
 		if changes.HasChanges() {
 			var currentMessage infra.Message
 			err = json.Unmarshal([]byte(foundConfigMap.Data["config.json"]), &currentMessage)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			message, err = r.Detector.generateConfigmap(ctx, peer, newNodeCtx, changes, r.Detector.generateConfigVersion())
+			message, err = r.Detector.generateConfigmap(ctx, peer, snapshot, changes, r.Detector.generateConfigVersion())
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -612,52 +612,52 @@ func (r *PeerReconciler) getNetwork(ctx context.Context, peer *v1alpha1.Wireflow
 	return &network, nil
 }
 
-func (r *PeerReconciler) getNodeContext(ctx context.Context, node *v1alpha1.WireflowPeer, req ctrl.Request) *PeerStateSnapshot {
-	if node == nil {
+func (r *PeerReconciler) getNodeContext(ctx context.Context, current *v1alpha1.WireflowPeer, req ctrl.Request) *PeerStateSnapshot {
+	if current == nil {
 		return &PeerStateSnapshot{}
 	}
 
 	var (
 		err error
 	)
-	nodeCtx := &PeerStateSnapshot{
-		Peer: node,
+	snapshot := &PeerStateSnapshot{
+		Peer: current,
 	}
 
 	// 获取网络信息
-	if node.Spec.Network != nil {
-		networkName := *node.Spec.Network
+	if current.Spec.Network != nil {
+		networkName := *current.Spec.Network
 		var network v1alpha1.WireflowNetwork
 		if err = r.Get(ctx, types.NamespacedName{
 			Namespace: req.Namespace, Name: networkName,
 		}, &network); err != nil {
-			return nodeCtx
+			return snapshot
 		}
-		nodeCtx.Network = &network
+		snapshot.Network = &network
 
 		peerList, err := r.findPeersByNetwork(ctx, &network)
 		if err != nil {
-			return nodeCtx
+			return snapshot
 		}
 		for _, item := range peerList.Items {
-			nodeCtx.Peers = append(nodeCtx.Peers, &item)
+			snapshot.Peers = append(snapshot.Peers, &item)
 		}
 	}
 
 	//获取网络策略
-	policyList, err := r.filterPoliciesForNode(ctx, nodeCtx.Peer)
+	policyList, err := r.filterPoliciesForNode(ctx, snapshot.Peer)
 	if err != nil {
-		return nodeCtx
+		return snapshot
 	}
 
-	nodeCtx.Policies = policyList
+	snapshot.Policies = policyList
 
-	return nodeCtx
+	return snapshot
 }
 
 func (r *PeerReconciler) findPeersByNetwork(ctx context.Context, network *v1alpha1.WireflowNetwork) (*v1alpha1.WireflowPeerList, error) {
 	labels := map[string]string{
-		"wireflow.run/network-": network.Name,
+		fmt.Sprintf("wireflow.run/network-%s", network.Name): "true",
 	}
 
 	var peers v1alpha1.WireflowPeerList

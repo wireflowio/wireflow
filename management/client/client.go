@@ -76,13 +76,17 @@ func (c *Client) Configure(opts ...ClientOptions) {
 	}
 }
 
-func (c *Client) GetNetMap() (*infra.Message, error) {
+func (c *Client) GetNetMap(token string) (*infra.Message, error) {
 	ctx := context.Background()
 	var err error
 
+	if token == "" {
+		token = config.GlobalConfig.Token
+	}
 	request := &dto.PeerDto{
 		AppID:     config.GlobalConfig.AppId,
 		PublicKey: c.keyManager.GetPublicKey(),
+		Token:     token,
 	}
 
 	data, err := json.Marshal(request)

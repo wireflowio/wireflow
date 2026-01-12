@@ -21,6 +21,7 @@ import (
 	"wireflow/internal/core/infra"
 	"wireflow/management/dto"
 	"wireflow/management/entity"
+	"wireflow/management/utils"
 
 	wireflowv1alpha1 "wireflow/api/v1alpha1"
 
@@ -122,12 +123,13 @@ func (c *Client) UpdateNodeSepc(ctx context.Context, namespace, name string, upd
 }
 
 // GetNetworkMap get network map when node init
-func (c *Client) GetNetworkMap(ctx context.Context, namespace, name string) (*infra.Message, error) {
+func (c *Client) GetNetworkMap(ctx context.Context, token, name string) (*infra.Message, error) {
 	logger := c.log
-	logger.Info("Get node", "namespace", namespace, "name", name)
+	logger.Info("Get node", "token", token, "name", name)
 
+	nsName := utils.DeriveNamespace(token)
 	var node wireflowv1alpha1.WireflowPeer
-	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
+	if err := c.GetAPIReader().Get(ctx, types.NamespacedName{Namespace: nsName, Name: name}, &node); err != nil {
 		return nil, err
 	}
 
@@ -147,7 +149,7 @@ func (c *Client) GetNetworkMap(ctx context.Context, namespace, name string) (*in
 		return nil, err
 	}
 
-	logger.Info("Get network map success", "namespace", namespace, "name", name, "message", message)
+	logger.Info("Get network map success", "namespace", nsName, "name", name, "message", message)
 	return message, nil
 }
 

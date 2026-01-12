@@ -268,7 +268,7 @@ func (d *ChangeDetector) findNodes(ctx context.Context, networkName string) ([]*
 	return addedPeers, nil
 }
 
-func (d *ChangeDetector) generateConfigmap(ctx context.Context, node *v1alpha1.WireflowPeer, context *PeerStateSnapshot, changes *infra.ChangeDetails, version string) (*infra.Message, error) {
+func (d *ChangeDetector) generateConfigmap(ctx context.Context, current *v1alpha1.WireflowPeer, snapshot *PeerStateSnapshot, changes *infra.ChangeDetails, version string) (*infra.Message, error) {
 	var err error
 	// 生成配置版本号
 	msg := &infra.Message{
@@ -276,30 +276,30 @@ func (d *ChangeDetector) generateConfigmap(ctx context.Context, node *v1alpha1.W
 		ConfigVersion: version,
 		Timestamp:     time.Now().Unix(),
 		Changes:       changes, // ← 携带变更详情
-		Current:       transferToPeer(node),
+		Current:       transferToPeer(current),
 		Network: &infra.Network{
 			Peers: make([]*infra.Peer, 0),
 		},
 	}
 
 	// 填充网络信息
-	if context.Network != nil {
-		msg.Network.NetworkId = context.Network.Name
-		msg.Network.NetworkName = context.Network.Spec.Name
+	if snapshot.Network != nil {
+		msg.Network.NetworkId = snapshot.Network.Name
+		msg.Network.NetworkName = snapshot.Network.Spec.Name
 
 		// 填充 peers
-		for _, peer := range context.Peers {
-			if peer.Status.AllocatedAddress == nil {
+		for _, p := range snapshot.Peers {
+			if p.Status.AllocatedAddress == nil {
 				continue
 			}
 
-			msg.Network.Peers = append(msg.Network.Peers, transferToPeer(peer))
+			msg.Network.Peers = append(msg.Network.Peers, transferToPeer(p))
 		}
 	}
 
-	if len(context.Policies) > 0 {
+	if len(snapshot.Policies) > 0 {
 		// 填充策略
-		for _, policy := range context.Policies {
+		for _, policy := range snapshot.Policies {
 			msg.Policies = append(msg.Policies, d.transferToPolicy(ctx, policy))
 		}
 	}

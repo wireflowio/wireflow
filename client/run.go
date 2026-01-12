@@ -198,7 +198,7 @@ func Start(flags *config.Flags) error {
 
 	c.GetNetworkMap = func() (*infra.Message, error) {
 		// get network map from list
-		msg, err := c.ctrClient.GetNetMap()
+		msg, err := c.ctrClient.GetNetMap(flags.Token)
 		if err != nil {
 			logger.Error("Get network map failed", err)
 			return nil, err

@@ -74,7 +74,7 @@ func (p *peerController) GetNetmap(ctx context.Context, request []byte) ([]byte,
 	if err = json.Unmarshal(request, &peer); err != nil {
 		return nil, err
 	}
-	networkMap, err := p.peerService.GetNetmap(ctx, "default", peer.AppID)
+	networkMap, err := p.peerService.GetNetmap(ctx, peer.Token, peer.AppID)
 	if err != nil {
 		return nil, err
 	}
