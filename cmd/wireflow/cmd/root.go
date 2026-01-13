@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"wireflow/cmd/wireflow/cmd/token"
 	"wireflow/internal/core/infra"
 
 	"github.com/spf13/cobra"
@@ -48,4 +49,5 @@ func init() {
 	fs.BoolP("version", "v", false, "Print version information")
 	rootCmd.AddCommand(upCmd())
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(token.NewTokenCommand())
 }
