@@ -59,7 +59,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 	logger := log.GetLogger("management")
 	if config.GlobalConfig.SignalUrl == "" {
 		config.GlobalConfig.SignalUrl = fmt.Sprintf("nats://%s:%d", infra.SignalingDomain, infra.DefaultSignalingPort)
-		config.WriteConfig("signal-url", config.GlobalConfig.SignalUrl)
+		config.WriteConfig("signaling-url", config.GlobalConfig.SignalUrl)
 	}
 
 	signal, err := nats.NewNatsService(config.GlobalConfig.SignalUrl)

@@ -92,6 +92,13 @@ using wireflow-cli to check whether both components have installed successfuly:
 wireflow --version
 ```
 
+> - Note: After installation, you can also use 'wireflow' command to check the version. before check, you should set the signal server address, default is 'nats://signaling.wireflow.run:4222'
+> - As **your-nats-ip** is your k8s server ip
+> ```bash
+> wireflow --signaling-url=nats://your-nats-ip:4222 --version
+> ```
+> you can persist the signaling server address by using 'wireflow config set signaling-url nats://signaling.wireflow.run:4222'
+
 ### Start The Wireflow Agent
 
 Run the following command to start the Wireflow agent on your local machine.
@@ -182,7 +189,7 @@ These features represent the foundational, working architecture of Wireflow, foc
 - [x] IPAM Support: Wireflow Create an IPAM to automatically allocate network for tenant and allocate IP addresses for each peer.
 
 
-**1. Future Milestones (Planned) **
+**2. Future Milestones (Planned)**
 
 - [] Multi-Cloud Support: Wireflow supports hybrid cloud deployments, allowing users to connect to their devices from
   multiple cloud providers.
