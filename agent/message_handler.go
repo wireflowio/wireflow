@@ -33,7 +33,7 @@ type MessageHandler struct {
 	provisioner   infra.Provisioner
 }
 
-func NewEventHandler(e infra.AgentInterface, logger *log.Logger, provisioner infra.Provisioner) *MessageHandler {
+func NewMessageHandler(e infra.AgentInterface, logger *log.Logger, provisioner infra.Provisioner) *MessageHandler {
 	return &MessageHandler{
 		deviceManager: e,
 		logger:        logger,

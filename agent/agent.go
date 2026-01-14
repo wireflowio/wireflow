@@ -83,18 +83,18 @@ type AgentConfig struct {
 // NewAgent create a new Agent instance
 func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 	var (
-		iface  tun.Device
-		err    error
-		client *Agent
+		iface tun.Device
+		err   error
+		agent *Agent
 		//turnClient internal.Agent
 		v4conn *net.UDPConn
 		v6conn *net.UDPConn
 	)
-	client = new(Agent)
-	client.manager.peerManager = infra.NewPeerManager()
-	client.logger = cfg.Logger
-	client.manager.turnManager = new(internal.TurnManager)
-	client.Name, iface, err = infra.CreateTUN(infra.DefaultMTU, cfg.Logger)
+	agent = new(Agent)
+	agent.manager.peerManager = infra.NewPeerManager()
+	agent.logger = cfg.Logger
+	agent.manager.turnManager = new(internal.TurnManager)
+	agent.Name, iface, err = infra.CreateTUN(infra.DefaultMTU, cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -116,28 +116,28 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 
 	factory := transport.NewTransportFactory(natsSignalService, universalUdpMuxDefault)
 
-	client.ctrClient, err = ctrclient.NewClient(natsSignalService, factory)
+	agent.ctrClient, err = ctrclient.NewClient(natsSignalService, factory)
 	if err != nil {
 		return nil, err
 	}
 
 	var privateKey string
-	client.current, err = client.ctrClient.Register(context.Background(), cfg.Token, client.Name)
+	agent.current, err = agent.ctrClient.Register(context.Background(), cfg.Token, agent.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	// write token
-	if err = config.WriteConfig("token", client.current.Token); err != nil {
+	if err = config.WriteConfig("token", agent.current.Token); err != nil {
 		return nil, err
 	}
 
-	privateKey = client.current.PrivateKey
-	client.manager.keyManager = infra.NewKeyManager(privateKey)
+	privateKey = agent.current.PrivateKey
+	agent.manager.keyManager = infra.NewKeyManager(privateKey)
 
-	factory.Configure(transport.WithPeerManager(client.manager.peerManager), transport.WithKeyManager(client.manager.keyManager))
+	factory.Configure(transport.WithPeerManager(agent.manager.peerManager), transport.WithKeyManager(agent.manager.keyManager))
 
-	localId := client.manager.keyManager.GetPublicKey()
+	localId := agent.manager.keyManager.GetPublicKey()
 	probeFactory := transport.NewProbeFactory(&transport.ProbeFactoryConfig{
 		Factory: factory,
 		LocalId: localId,
@@ -147,17 +147,17 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 	//subscribe
 	natsSignalService.Subscribe(fmt.Sprintf("%s.%s", "wireflow.signals.peers", localId), probeFactory.HandleSignal)
 
-	client.ctrClient.Configure(
+	agent.ctrClient.Configure(
 		ctrclient.WithSignalHandler(natsSignalService),
-		ctrclient.WithKeyManager(client.manager.keyManager),
+		ctrclient.WithKeyManager(agent.manager.keyManager),
 		ctrclient.WithProbeFactory(probeFactory))
 
-	client.bind = infra.NewBind(&infra.BindConfig{
+	agent.bind = infra.NewBind(&infra.BindConfig{
 		Logger:          cfg.Logger,
 		UniversalUDPMux: universalUdpMuxDefault,
 		V4Conn:          v4conn,
 		V6Conn:          v6conn,
-		KeyManager:      client.manager.keyManager,
+		KeyManager:      agent.manager.keyManager,
 	})
 
 	stunUrl := config.GlobalConfig.StunUrl
@@ -166,22 +166,22 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		config.WriteConfig("stun-url", stunUrl)
 	}
 
-	client.iface = wg.NewDevice(iface, client.bind, cfg.WgLogger)
+	agent.iface = wg.NewDevice(iface, agent.bind, cfg.WgLogger)
 
-	client.provisioner = infra.NewProvisioner(infra.NewRouteProvisioner(cfg.Logger),
+	agent.provisioner = infra.NewProvisioner(infra.NewRouteProvisioner(cfg.Logger),
 		infra.NewRuleProvisioner(cfg.Logger), &infra.Params{
-			Device:    client.iface,
-			IfaceName: client.Name,
+			Device:    agent.iface,
+			IfaceName: agent.Name,
 		})
 	// init event handler
-	client.eventHandler = NewEventHandler(client, log.GetLogger("event-handler"), client.provisioner)
+	agent.eventHandler = NewMessageHandler(agent, log.GetLogger("event-handler"), agent.provisioner)
 	// set configurer
-	factory.Configure(transport.WithProvisioner(client.provisioner))
+	factory.Configure(transport.WithProvisioner(agent.provisioner))
 
-	probeFactory.Configure(transport.WithOnMessage(client.eventHandler.HandleEvent))
+	probeFactory.Configure(transport.WithOnMessage(agent.eventHandler.HandleEvent))
 
-	client.DeviceManager = NewDeviceManager(log.GetLogger("device-manager"), client.iface)
-	return client, err
+	agent.DeviceManager = NewDeviceManager(log.GetLogger("device-manager"), agent.iface)
+	return agent, err
 }
 
 // Start will get networkmap

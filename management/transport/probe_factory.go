@@ -112,6 +112,8 @@ func (p *ProbeFactory) NewProbe(remoteId string) (*Probe, error) {
 		transport:       transport,
 	}
 
+	transport.probe = probe
+
 	p.Register(remoteId, probe)
 	return probe, nil
 }
