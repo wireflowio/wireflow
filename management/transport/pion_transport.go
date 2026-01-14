@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"wireflow/internal/core/infra"
 	"wireflow/internal/grpc"
+	"wireflow/internal/infra"
 	"wireflow/internal/log"
 
 	"github.com/pion/logging"

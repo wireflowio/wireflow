@@ -16,7 +16,7 @@ package transport
 
 import (
 	"sync"
-	"wireflow/internal/core/infra"
+	"wireflow/internal/infra"
 	"wireflow/internal/log"
 
 	"github.com/wireflowio/ice"

@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 	"time"
-	"wireflow/internal/core/infra"
 	"wireflow/internal/grpc"
+	"wireflow/internal/infra"
 	"wireflow/internal/log"
 
 	"google.golang.org/protobuf/proto"
