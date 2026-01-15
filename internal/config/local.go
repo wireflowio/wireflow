@@ -58,7 +58,11 @@ func init() {
 	if err = viper.ReadInConfig(); err != nil { // Handle errors reading the config file
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
-			// using default configuration
+			configFile := GetConfigFilePath()
+			err = viper.SafeWriteConfigAs(configFile)
+			if err != nil {
+				fmt.Printf("configfile create failed: %v\n", err)
+			}
 		}
 	}
 
@@ -81,77 +85,12 @@ func WriteConfig(key, value string) error {
 	}
 
 	if err != nil {
-		fmt.Printf(" >> 保存配置失败: %v\n", err)
+		fmt.Printf(" >> config persist failed: %v\n", err)
 		return err
 	}
-	fmt.Printf(" >> 配置已更新: %s = %s\n", key, value)
+	fmt.Printf(" >> config updated: %s = %s\n", key, value)
 	return nil
 }
-
-//
-//func GetLocalConfig() (*Config, error) {
-//	local, err := getLocal(os.O_RDWR)
-//	defer local.Close()
-//	if err != nil {
-//		return nil, err
-//	}
-//	return local.ReadFile()
-//}
-//
-//// UpdateLocalConfig update json file
-//func UpdateLocalConfig(newCfg *Config) error {
-//	local, err := getLocal(os.O_RDWR | os.O_CREATE)
-//	defer local.Close()
-//	if err != nil {
-//		return err
-//	}
-//	defer local.Close()
-//
-//	err = local.WriteFile(newCfg)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//// ReplaceLocalConfig update json file
-//func ReplaceLocalConfig(newCfg *Config) error {
-//	local, err := getLocal(os.O_RDWR | os.O_TRUNC)
-//	defer local.Close()
-//	if err != nil {
-//		return err
-//	}
-//	defer local.Close()
-//
-//	err = local.WriteFile(newCfg)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-//
-//func GetLocalUserInfo() (info *LocalInfo, err error) {
-//	localCfg, err := GetLocalConfig()
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	if localCfg.Auth == "" {
-//		return nil, errors.New("please login first")
-//	}
-//	info = new(LocalInfo)
-//	values := strings.Split(localCfg.Auth, ":")
-//	info.Username = values[0]
-//	info.Password, err = Base64Decode(values[1])
-//	info.UserId = localCfg.UserId
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return info, nil
-//}
 
 func DecodeAuth(auth string) (string, string, error) {
 	if auth == "" {

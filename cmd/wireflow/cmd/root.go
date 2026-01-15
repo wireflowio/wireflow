@@ -32,6 +32,8 @@ var rootCmd = &cobra.Command{
 			runVersion() // 在这里调用你联网获取 Server 版本的逻辑
 			return
 		}
+
+		cmd.Help()
 	},
 }
 
