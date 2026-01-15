@@ -251,7 +251,7 @@ func (b *DefaultBind) Open(uport uint16) ([]conn.ReceiveFunc, uint16, error) {
 	var v4pc *ipv4.PacketConn
 	var v6pc *ipv6.PacketConn
 
-	// Listen on the same port as we're using for ipv4.
+	// HandleFrame on the same port as we're using for ipv4.
 	var fns []conn.ReceiveFunc
 	if b.v4conn != nil {
 		if runtime.GOOS == "linux" {
