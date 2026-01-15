@@ -1,0 +1,9 @@
+# .github/workflows/lint.yml 示例
+name: lint
+on: [pull_request]
+jobs:
+  golangci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: golangci/golangci-lint-action@v3
