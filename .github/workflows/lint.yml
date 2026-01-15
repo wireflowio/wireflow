@@ -1,9 +1,24 @@
-# .github/workflows/lint.yml 示例
 name: lint
 on: [pull_request]
+
 jobs:
   golangci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: golangci/golangci-lint-action@v3
+      
+      # 第一步：手动安装 Go 1.25
+      - name: Setup Go 1.25
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false # 建议先关闭缓存，排除缓存旧版本的问题
+
+      # 第二步：运行 golangci-lint
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          # 明确指定 golangci-lint 版本（建议 v2.8.0 以上以支持 Go 1.25）
+          version: latest
+          # 关键：告诉 Action 不要自己安装 Go，直接用上面 setup-go 安装好的 1.25
+          skip-cache: true

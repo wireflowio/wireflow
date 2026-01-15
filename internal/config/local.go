@@ -54,7 +54,6 @@ func init() {
 	viper.SetConfigType("yaml")      // 预期的后缀
 
 	viper.AddConfigPath("$HOME")                // 优先级 1
-	viper.AddConfigPath(".")                    // 优先级 2
 	if err = viper.ReadInConfig(); err != nil { // Handle errors reading the config file
 		var configFileNotFoundError viper.ConfigFileNotFoundError
 		if errors.As(err, &configFileNotFoundError) {
