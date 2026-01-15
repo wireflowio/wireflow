@@ -13,7 +13,7 @@ func newStartCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewControllerCmd())
-	cmd.AddCommand(NewDrpCmd())
+	cmd.AddCommand(wrrp.NewDrpCmd())
 	cmd.AddCommand(NewTurnCmd())
 	cmd.AddCommand(NewManagementCmd())
 

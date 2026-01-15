@@ -15,37 +15,42 @@
 package cmd
 
 import (
+	"wireflow/wrrp"
+
 	"github.com/spf13/cobra"
 )
 
-type signalerOptions struct {
+type wrrpOptions struct {
 	Listen   string
 	LogLevel string
+	TLS      bool
 }
 
-func NewDrpCmd() *cobra.Command {
-	var opts signalerOptions
+func NewWrrpCmd() *cobra.Command {
+	var opts wrrpOptions
 	var cmd = &cobra.Command{
-		Use:          "signaling [command]",
+		Use:          "wrrp [command]",
 		SilenceUsage: true,
-		Short:        "signaling is a signaling server",
-		Long:         `signaling will start a signaling server, signaling server is used to exchange the network information between the clients. which is our core feature.`,
+		Short:        "wrrp using as relay server for wireflow",
+		Long:         `wrrp using as relay server for wireflow`,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSignaling(opts)
+			return runWrrp(&opts)
 		},
 	}
 	fs := cmd.Flags()
 	fs.StringVarP(&opts.Listen, "", "l", "", "http port for drp over http")
-	fs.StringVarP(&opts.LogLevel, "log-level", "", "silent", "log level (silent, info, error, warn, verbose)")
+	fs.StringVarP(&opts.LogLevel, "level", "", "info", "log level (debug|info|warn|error)")
+	fs.BoolVarP(&opts.TLS, "", "", false, "using tls")
 	return cmd
 }
 
 // run signaling server
-func runSignaling(opts signalerOptions) error {
-	return nil
+func runWrrp(opts *wrrpOptions) error {
+	server := wrrp.NewServer()
+	return server.Start()
 }

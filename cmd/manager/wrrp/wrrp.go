@@ -12,36 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package network
+package wrrp
 
 import (
-	"wireflow/internal/config"
+	"wireflow/wrrp"
 
 	"github.com/spf13/cobra"
 )
 
-func newRemoveCmd() *cobra.Command {
-	var opts config.NetworkOptions
+type wrrpOptions struct {
+	Listen   string
+	LogLevel string
+	TLS      bool
+}
+
+func NewWrrpCmd() *cobra.Command {
+	var opts wrrpOptions
 	var cmd = &cobra.Command{
-		Use:          "rm [command]",
+		Use:          "wrrp [command]",
 		SilenceUsage: true,
-		Short:        "rm a network",
-		Long:         `rm a network you created`,
+		Short:        "wrrp using as relay server for wireflow",
+		Long:         `wrrp using as relay server for wireflow`,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runRemove(opts)
+			return runWrrp(&opts)
 		},
 	}
-	//fs := cmd.Flags()
-	//fs.StringVarP(&opts.HandleFrame, "", "l", "", "http port for drp over http")
-	//fs.StringVarP(&opts.LogLevel, "log-level", "", "silent", "log level (silent, info, error, warn, verbose)")
+	fs := cmd.Flags()
+	fs.StringVarP(&opts.Listen, "", "l", "", "http port for drp over http")
+	fs.StringVarP(&opts.LogLevel, "level", "", "info", "log level (debug|info|warn|error)")
+	fs.BoolVarP(&opts.TLS, "", "", false, "using tls")
 	return cmd
 }
 
-func runRemove(opts config.NetworkOptions) error {
-	return nil
+// run signaling server
+func runWrrp(opts *wrrpOptions) error {
+	server := wrrp.NewServer()
+	return server.Start()
 }
