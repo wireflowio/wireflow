@@ -27,7 +27,7 @@ package main
 //	}
 //
 //	go func() {
-//		client.HandleFrame(func(header *wrrp2.Header, payload []byte) {
+//		client.ReceiveFunc(func(header *wrrp2.Header, payload []byte) {
 //			fmt.Println(string(payload))
 //		})
 //	}()

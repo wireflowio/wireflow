@@ -30,6 +30,7 @@ import (
 	mgtclient "wireflow/management/client"
 	"wireflow/management/nats"
 	"wireflow/management/transport"
+	"wireflow/wrrper"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
@@ -152,11 +153,22 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		ctrclient.WithKeyManager(agent.manager.keyManager),
 		ctrclient.WithProbeFactory(probeFactory))
 
+	wrrpUrl := agent.current.WrrpUrl
+	var wrrp infra.Wrrp
+	if wrrpUrl != "" {
+		sessionId, err := infra.IDFromPublicKey(agent.current.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		wrrp = wrrper.NewWrrpClient(sessionId, wrrpUrl)
+	}
+
 	agent.bind = infra.NewBind(&infra.BindConfig{
 		Logger:          cfg.Logger,
 		UniversalUDPMux: universalUdpMuxDefault,
 		V4Conn:          v4conn,
 		V6Conn:          v6conn,
+		WrrpClient:      wrrp,
 		KeyManager:      agent.manager.keyManager,
 	})
 

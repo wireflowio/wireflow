@@ -15,7 +15,7 @@
 package wrrp
 
 import (
-	"wireflow/wrrp"
+	"wireflow/wrrper"
 
 	"github.com/spf13/cobra"
 )
@@ -51,6 +51,6 @@ func NewWrrpCmd() *cobra.Command {
 
 // run signaling server
 func runWrrp(opts *wrrpOptions) error {
-	server := wrrp.NewServer()
+	server := wrrper.NewServer()
 	return server.Start()
 }

@@ -3,7 +3,7 @@ package main
 import "wireflow/wrrp"
 
 func main() {
-	server := wrrp.NewServer()
+	server := wrrper.NewServer()
 	if err := server.Start(); err != nil {
 		panic(err)
 	}
