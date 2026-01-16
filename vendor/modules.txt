@@ -417,7 +417,7 @@ github.com/tklauser/go-sysconf
 # github.com/tklauser/numcpus v0.6.1
 ## explicit; go 1.13
 github.com/tklauser/numcpus
-# github.com/wireflowio/ice v0.0.0 => /Users/francis/ice
+# github.com/wireflowio/ice v0.0.0-20250918024245-51a48c53c081
 ## explicit; go 1.20
 github.com/wireflowio/ice
 github.com/wireflowio/ice/internal/atomic
@@ -639,7 +639,7 @@ golang.org/x/tools/internal/versions
 # golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2
 ## explicit; go 1.17
 golang.zx2c4.com/wintun
-# golang.zx2c4.com/wireguard v0.0.0 => /Users/francis/wireguard-go
+# golang.zx2c4.com/wireguard v0.0.0 => github.com/wireflowio/wireguard-go v0.0.0-20230325221338-052af4a8072b
 ## explicit; go 1.20
 golang.zx2c4.com/wireguard/conn
 golang.zx2c4.com/wireguard/conn/winrio
@@ -1397,3 +1397,4 @@ sigs.k8s.io/structured-merge-diff/v6/value
 ## explicit; go 1.22
 sigs.k8s.io/yaml
 sigs.k8s.io/yaml/goyaml.v2
+# golang.zx2c4.com/wireguard => github.com/wireflowio/wireguard-go v0.0.0-20230325221338-052af4a8072b

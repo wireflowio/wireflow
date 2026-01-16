@@ -225,6 +225,10 @@ github.com/tklauser/go-sysconf v0.3.12 h1:0QaGUFOdQaIVdPgfITYzaTegZvdCjmYO52cSFA
 github.com/tklauser/go-sysconf v0.3.12/go.mod h1:Ho14jnntGE1fpdOqQEEaiKRpvIavV0hSfmBq8nJbHYI=
 github.com/tklauser/numcpus v0.6.1 h1:ng9scYS7az0Bk4OZLvrNXNSAO2Pxr1XXRAPyjhIx+Fk=
 github.com/tklauser/numcpus v0.6.1/go.mod h1:1XfjsgE2zo8GVw7POkMbHENHzVg3GzmoZ9fESEdAacY=
+github.com/wireflowio/ice v0.0.0-20250918024245-51a48c53c081 h1:M3Zi3zq5YKDR+T8Xo+rjWGLJPG1YT4ZobnDaSIEBqRI=
+github.com/wireflowio/ice v0.0.0-20250918024245-51a48c53c081/go.mod h1:zUMblh6Td8M+2bi5DtufHdwtEEsaGabC+troGNlOvy8=
+github.com/wireflowio/wireguard-go v0.0.0-20230325221338-052af4a8072b h1:xGICnh6OE7nDhTU0bxaHk4cP5LkOLkQZZf6h3j9LCFE=
+github.com/wireflowio/wireguard-go v0.0.0-20230325221338-052af4a8072b/go.mod h1:tqur9LnfstdR9ep2LaJT4lFUl0EjlHtge+gAjmsHUG4=
 github.com/wlynxg/anet v0.0.3 h1:PvR53psxFXstc12jelG6f1Lv4MWqE0tI76/hHGjh9rg=
 github.com/wlynxg/anet v0.0.3/go.mod h1:eay5PRQr7fIVAMbTbchTnO9gG65Hg/uYGdc7mguHxoA=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
