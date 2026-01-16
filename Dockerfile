@@ -28,12 +28,13 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o $T
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 #FROM gcr.io/distroless/static:nonroot
-FROM registry.cn-hangzhou.aliyuncs.com/wireflow-io/distroless:nonroot
-
+FROM alpine:latest
+# 安装必要的网络工具，方便调试权限
+RUN apk add --no-cache ca-certificates iproute2
 ARG TARGETSERVICE
 
 WORKDIR /
-COPY --from=builder /workspace/$TARGETSERVICE /wfctl
+COPY --from=builder /workspace/$TARGETSERVICE /wireflow
 USER 65532:65532
 
-ENTRYPOINT ["/wfctl"]
+ENTRYPOINT ["/wireflow"]

@@ -25,14 +25,14 @@ import (
 // configCmd 代表 config 顶层命令
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "管理 wfctl 的本地配置",
+	Short: "manager `.wireflow.yaml'",
 }
 
 // setCmd 用于设置具体的配置项
 var setCmd = &cobra.Command{
 	Use:     "set <key> <value>",
-	Short:   "设置配置项的值",
-	Example: "  wfctl config set server-url https://wireflow.run",
+	Short:   "set config item",
+	Example: "wireflow config set server-url https://wireflow.run",
 	Args:    cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		key := args[0]
@@ -47,23 +47,23 @@ var setCmd = &cobra.Command{
 		}
 
 		if err != nil {
-			fmt.Printf(" >> 保存配置失败: %v\n", err)
+			fmt.Printf(" >> write config failed: %v\n", err)
 			return
 		}
-		fmt.Printf(" >> 配置已更新: %s = %s\n", key, value)
+		fmt.Printf(" >> config updated: %s = %s\n", key, value)
 	},
 }
 
 // getCmd 用于查看当前配置
 var getCmd = &cobra.Command{
 	Use:   "get <key>",
-	Short: "查看配置项的值",
+	Short: "get config item",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		key := args[0]
 		value := viper.GetString(key)
 		if value == "" {
-			fmt.Printf(" >> 未找到配置项: %s\n", key)
+			fmt.Printf(" >> item not found: %s\n", key)
 		} else {
 			fmt.Printf(" >> %s: %s\n", key, value)
 		}
