@@ -25,10 +25,10 @@ import (
 func upCmd() *cobra.Command {
 	var flags config.Flags
 	// upCmd 代表 config 顶层命令
-	var upCmd = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:     "up",
 		Short:   "wireflow startup command",
-		Example: "wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url>",
+		Example: "wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url> --wrrp-url <wrrp-url>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := infra.SetupSignalHandler()
 			showLog, _ := cmd.Flags().GetBool("show-net-log")
@@ -37,8 +37,8 @@ func upCmd() *cobra.Command {
 		},
 	}
 
-	fs := upCmd.Flags()
+	fs := cmd.Flags()
 	fs.StringVarP(&flags.Token, "token", "", "", "token using for creating or joining network")
 	fs.StringVarP(&flags.LogLevel, "level", "", "", "log level (debug, info, warn, error)")
-	return upCmd
+	return cmd
 }
