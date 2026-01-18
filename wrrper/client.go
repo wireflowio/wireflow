@@ -122,7 +122,7 @@ func (c *WRRPClient) ReceiveFunc() conn.ReceiveFunc {
 		headBufp := wrrp.GetHeaderBuffer()
 		defer wrrp.PutHeaderBuffer(headBufp)
 		headBuf := *headBufp
-		if _, err := io.ReadFull(c.Reader, headBuf); err != nil {
+		if _, err = io.ReadFull(c.Reader, headBuf); err != nil {
 			c.log.Error("Connection closed by server", err)
 			return
 		}

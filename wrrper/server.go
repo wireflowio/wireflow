@@ -24,6 +24,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"wireflow/internal/config"
 	internallog "wireflow/internal/log"
 	"wireflow/pkg/wrrp"
 )
@@ -60,10 +61,9 @@ type Server struct {
 	log         *internallog.Logger
 	server      *http.Server
 	wrrpManager *WRRPManager
-	isTLS       bool
 }
 
-func NewServer() *Server {
+func NewServer(flags *config.Flags) *Server {
 	s := &Server{
 		log: internallog.GetLogger("wrrp"),
 		wrrpManager: &WRRPManager{
@@ -75,7 +75,7 @@ func NewServer() *Server {
 
 	// 2. 配置 Server 实例
 	httpServer := &http.Server{
-		Addr:    ":8080",
+		Addr:    flags.Listen,
 		Handler: mux,
 		// 注意：一旦 Hijack，这些超时限制将不再对该连接生效
 		ReadTimeout:  5 * time.Second,
@@ -83,7 +83,7 @@ func NewServer() *Server {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	if s.isTLS {
+	if flags.EnableTLS {
 		httpServer.TLSConfig = &tls.Config{
 			NextProtos: []string{"http/1.1"}, // 禁用 h2，确保 Hijack 可用
 		}
@@ -95,7 +95,7 @@ func NewServer() *Server {
 }
 
 func (s *Server) Start() error {
-	s.log.Info("WRRP Server (wrrper) is running on :8080...")
+	s.log.Info("WRRP Server (wrrper) is running", "listen", s.server.Addr)
 	if err := s.server.ListenAndServe(); err != nil {
 		return err
 	}
@@ -199,6 +199,12 @@ func (s *Server) handleWRRPSession(conn net.Conn, bufrw *bufio.ReadWriter) {
 			}
 
 			target := s.wrrpManager.Get(targetID)
+			// send header
+			_, err = target.Stream.Write(headBuf)
+			if err != nil {
+				s.log.Error("relay packet failed", err)
+				continue
+			}
 			_, err = io.CopyN(target.Stream, stream, int64(h.PayloadLen))
 			if err != nil {
 				s.log.Error("relay packet failed", err)

@@ -26,6 +26,7 @@ import (
 type Wrrp interface {
 	ReceiveFunc() conn.ReceiveFunc
 	Send(sessionId [28]byte, data []byte) error
+	Connect() error
 }
 
 var (

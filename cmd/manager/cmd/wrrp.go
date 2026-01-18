@@ -15,19 +15,13 @@
 package cmd
 
 import (
+	"wireflow/internal/config"
 	"wireflow/wrrper"
 
 	"github.com/spf13/cobra"
 )
 
-type wrrpOptions struct {
-	Listen   string
-	LogLevel string
-	TLS      bool
-}
-
 func newWrrpCmd() *cobra.Command {
-	var opts wrrpOptions
 	var cmd = &cobra.Command{
 		Use:          "wrrp [command]",
 		SilenceUsage: true,
@@ -39,18 +33,17 @@ func newWrrpCmd() *cobra.Command {
 		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runWrrp(&opts)
+			return runWrrp(config.Conf)
 		},
 	}
 	fs := cmd.Flags()
-	fs.StringVarP(&opts.Listen, "", "l", "", "http port for drp over http")
-	fs.StringVarP(&opts.LogLevel, "level", "", "info", "log level (debug|info|warn|error)")
-	fs.BoolVarP(&opts.TLS, "", "", false, "using tls")
+	fs.StringP("listen", "l", "", "port for wrrp server")
+	fs.BoolP("enable-tls", "", false, "using tls")
 	return cmd
 }
 
 // run signaling server
-func runWrrp(opts *wrrpOptions) error {
-	server := wrrper.NewServer()
+func runWrrp(flags *config.Flags) error {
+	server := wrrper.NewServer(flags)
 	return server.Start()
 }
