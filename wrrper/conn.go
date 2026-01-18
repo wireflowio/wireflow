@@ -12,20 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wrrp
+package wrrper
 
-import "net"
+import (
+	"bufio"
+	"net"
+)
 
-// Stream abstract the exact transport protocol
-type Stream interface {
-	Read(p []byte) (n int, err error)
-	Write(p []byte) (n int, err error)
-	Close() error
-	RemoteAddr() net.Addr
+// ReadWriterConn wrapper for missed data when hijack occur， for using Read/Write fn
+type ReadWriterConn struct {
+	net.Conn
+	*bufio.ReadWriter
 }
 
-type Session struct {
-	ID     string
-	Stream Stream
-	Type   string // TCP / QUIC / KCP
+func (c *ReadWriterConn) Read(p []byte) (int, error) {
+	return c.ReadWriter.Read(p)
+}
+
+func (c *ReadWriterConn) Write(p []byte) (int, error) {
+	n, err := c.ReadWriter.Write(p)
+	if err != nil {
+		return n, err
+	}
+	// 确保数据立即发出，而不是留在 bufio 的写缓存里
+	return n, c.ReadWriter.Flush()
 }

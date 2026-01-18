@@ -64,11 +64,19 @@ func Execute() {
 
 func init() {
 	fs := rootCmd.PersistentFlags()
+<<<<<<< HEAD
 	fs.StringP("server-url", "", "", "management server url")
 	fs.StringP("signaling-url", "", "", "signaling server url")
 	fs.BoolP("version", "", false, "Print version information")
 	fs.BoolP("show-system-log", "", false, "whether show (wireguard/ice) detail log")
 	fs.BoolP("save", "", false, "whether save config to file")
+=======
+	fs.StringVarP(&infra.ServerUrl, "server-url", "", "", "management server url")
+	fs.StringVarP(&infra.SignalUrl, "signaling-url", "", "", "signaling server url")
+	fs.StringVarP(&infra.WrrpUrl, "wrrp-url", "", "", "relay server url")
+	fs.BoolP("version", "v", false, "Print version information")
+	fs.BoolVarP(&infra.ShowNetLog, "show-system-log", "s", false, "whether show (wireguard/ice) detail log")
+>>>>>>> 9144276c (Fix wrrp receive in bind)
 	rootCmd.AddCommand(upCmd())
 	rootCmd.AddCommand(token.NewTokenCommand())
 }

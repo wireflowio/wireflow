@@ -1,4 +1,18 @@
-package wrrp
+// Copyright 2025 The Wireflow Authors, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package wrrper
 
 import (
 	"bufio"
@@ -9,12 +23,19 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"wireflow/internal/infra"
+	"wireflow/internal/log"
 	"wireflow/pkg/wrrp"
 
 	"golang.zx2c4.com/wireguard/conn"
 )
 
+var (
+	_ infra.Wrrp = (*WRRPClient)(nil)
+)
+
 type WRRPClient struct {
+	log       *log.Logger
 	mu        sync.Mutex
 	SessionID [28]byte
 	ServerURL string
@@ -22,40 +43,31 @@ type WRRPClient struct {
 	Reader    *bufio.Reader
 }
 
-func NewClient(id [28]byte, url string) *WRRPClient {
+func NewWrrpClient(id [28]byte, url string) infra.Wrrp {
 	return &WRRPClient{
+		log:       log.GetLogger("wrrper"),
 		SessionID: id,
 		ServerURL: url,
 	}
 }
 
-func (c *WRRPClient) Dial(mode string) error {
-	if mode == "tcp" {
-		return c.Connect() // 走刚才写的 HTTP Hijack
-	} else if mode == "quic" {
-		// 将 c.Conn 替换为 quic.Stream
-		// 直接发送 Register，跳过 HTTP 握手
-	}
-	return nil
-}
-
 func (c *WRRPClient) Connect() error {
 	// 1. 建立 TCP 连接 (如果是 https 则需要 tls.Dial)
-	// 这里简化为 http 端口，实际生产建议用 443
-	conn, err := net.Dial("tcp", "127.0.0.1:8080")
+	conn, err := net.Dial("tcp", c.ServerURL)
 	if err != nil {
 		return err
 	}
 
 	// 2. 手动构造 HTTP Upgrade 请求
 	// 注意：不能直接用 http.Get，因为我们需要拿回底层的 conn
-	req, _ := http.NewRequest("GET", "/wrrp/v1/upgrade", nil)
+	req, err := http.NewRequest("GET", "/wrrp/v1/upgrade", nil)
+	if err != nil {
+		return err
+	}
 	req.Header.Set("Upgrade", "wrrp")
 	req.Header.Set("Connection", "Upgrade")
-	//req.Header.Set("X-WRRP-ID", string(c.SessionID[:]))
-	req.Header.Set("Host", "127.0.0.1:8080") // 必须
 
-	if err := req.Write(conn); err != nil {
+	if err = req.Write(conn); err != nil {
 		return err
 	}
 
@@ -104,36 +116,33 @@ func (c *WRRPClient) Send(targetID [28]byte, data []byte) error {
 	return err
 }
 
-var payloadPool = sync.Pool{
-	New: func() interface{} {
-		// 申请一个足够大的缓冲区（比如符合 MTU 的 1600 字节）
-		return make([]byte, 2048)
-	},
-}
-
-// HandleFrame 开始循环监听来自 Server 的转发数据
-func (c *WRRPClient) HandleFrame(handler func(header *wrrp.Header, payload []byte) (int, conn.Endpoint, error)) {
-	for {
-		headBuf := make([]byte, wrrp.HeaderSize)
+// ReceiveFunc using for Bind to handle data in wireguard
+func (c *WRRPClient) ReceiveFunc() conn.ReceiveFunc {
+	return func(packets [][]byte, sizes []int, eps []conn.Endpoint) (n int, err error) {
+		headBufp := wrrp.GetHeaderBuffer()
+		defer wrrp.PutHeaderBuffer(headBufp)
+		headBuf := *headBufp
 		if _, err := io.ReadFull(c.Reader, headBuf); err != nil {
-			fmt.Println("Connection closed by server")
+			c.log.Error("Connection closed by server", err)
 			return
 		}
 
 		header, _ := wrrp.Unmarshal(headBuf)
 		switch header.Cmd {
 		case wrrp.Forward:
-			buf := payloadPool.Get().([]byte) // 拿出一块现成的内存
-			defer payloadPool.Put(buf)        // 函数结束时还回去
-
-			// 只读取 header 指定的长度
-			data := buf[:header.PayloadLen]
-			if _, err := io.ReadFull(c.Reader, data); err != nil {
-				return
+			if _, err = io.ReadFull(c.Reader, packets[0][:header.PayloadLen]); err != nil {
+				c.log.Error("Connection closed by server", err)
+				return 0, err
 			}
-			handler(header, data)
+
+			eps[0] = &infra.WRRPEndpoint{
+				SessionID: header.SessionID,
+			}
+
+			return int(header.PayloadLen), nil
 		}
 
+		return 0, nil
 	}
 }
 

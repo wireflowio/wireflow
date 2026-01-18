@@ -25,6 +25,7 @@ import (
 )
 
 func upCmd() *cobra.Command {
+<<<<<<< HEAD
 	var cmd = &cobra.Command{
 		Use:     "up",
 		Short:   "wireflow startup command",
@@ -33,6 +34,14 @@ func upCmd() *cobra.Command {
 		SilenceUsage: true,
 		// 关键设置：报错后不重复打印错误（如果你已经在 RunE 里打印过了）
 		SilenceErrors: true,
+=======
+	var flags config.Flags
+	// upCmd 代表 config 顶层命令
+	var cmd = &cobra.Command{
+		Use:     "up",
+		Short:   "wireflow startup command",
+		Example: "wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url> --wrrp-url <wrrp-url>",
+>>>>>>> 9144276c (Fix wrrp receive in bind)
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// check appId is empty
 			if config.Conf.AppId == "" {
@@ -75,7 +84,12 @@ func upCmd() *cobra.Command {
 	}
 
 	fs := cmd.Flags()
+<<<<<<< HEAD
 	fs.StringP("token", "", "", "token using for creating or joining network")
 	fs.StringP("level", "", "", "log level (debug, info, warn, error)")
+=======
+	fs.StringVarP(&flags.Token, "token", "", "", "token using for creating or joining network")
+	fs.StringVarP(&flags.LogLevel, "level", "", "", "log level (debug, info, warn, error)")
+>>>>>>> 9144276c (Fix wrrp receive in bind)
 	return cmd
 }

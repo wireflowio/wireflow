@@ -17,6 +17,7 @@ package infra
 // used for cli flags
 var ServerUrl string
 var SignalUrl string
+var WrrpUrl string
 var ShowNetLog bool
 
 const (

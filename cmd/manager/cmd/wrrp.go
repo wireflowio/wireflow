@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package wrrp
+package cmd
 
 import (
-	"wireflow/wrrp"
+	"wireflow/wrrper"
 
 	"github.com/spf13/cobra"
 )
@@ -26,7 +26,7 @@ type wrrpOptions struct {
 	TLS      bool
 }
 
-func NewWrrpCmd() *cobra.Command {
+func newWrrpCmd() *cobra.Command {
 	var opts wrrpOptions
 	var cmd = &cobra.Command{
 		Use:          "wrrp [command]",
@@ -51,6 +51,6 @@ func NewWrrpCmd() *cobra.Command {
 
 // run signaling server
 func runWrrp(opts *wrrpOptions) error {
-	server := wrrp.NewServer()
+	server := wrrper.NewServer()
 	return server.Start()
 }
