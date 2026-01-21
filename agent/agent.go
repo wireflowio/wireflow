@@ -146,7 +146,11 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		ctrclient.WithKeyManager(agent.manager.keyManager),
 		ctrclient.WithProbeFactory(probeFactory))
 
-	wrrpUrl := agent.current.WrrpUrl
+	wrrpUrl := cfg.Flags.WrrperURL
+	if wrrpUrl == "" {
+		wrrpUrl = agent.current.WrrpUrl
+	}
+
 	var wrrp infra.Wrrp
 	if wrrpUrl != "" {
 		sessionId, err := infra.IDFromPublicKey(agent.current.PublicKey)

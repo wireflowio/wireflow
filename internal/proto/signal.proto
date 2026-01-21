@@ -19,8 +19,7 @@ message SignalPacket {
   oneof payload {
     Handshake handshake = 3;
     Offer offer = 4;
-    Offer answer = 5;
-    Message message = 6;
+    Message message = 5;
   }
 }
 

@@ -49,7 +49,7 @@ type Transport interface {
 }
 
 type Probe interface {
-	// 1. 核心控制循环：驱动 Transport 进行打洞
+	
 	Probe(ctx context.Context, remoteId string) error
 
 	HandleOffer(ctx context.Context, remoteId string, packet *grpc.SignalPacket) error
@@ -61,6 +61,8 @@ type Probe interface {
 	// 3. 策略回调：当 Transport 报告 Failed 时被调用
 	// 内部实现：是立即重试，还是退避 5 秒后再重试
 	OnTransportFail(err error)
+
+	OnSuccess(RemoteAddr string) error
 
 	OnConnectionStateChange(state ice.ConnectionState)
 }

@@ -108,6 +108,7 @@ type Flags struct {
 	Token         string `mapstructure:"token,omitempty"`
 	SignalingURL  string `mapstructure:"signaling-url,omitempty"`
 	ServerUrl     string `mapstructure:"server-url,omitempty"`
+	WrrperURL     string `mapstructure:"wrrper-url,omitempty"`
 	TurnServerURL string `mapstructure:"stun-url,omitempty"`
 
 	// for controller

@@ -42,7 +42,7 @@ func NewTransportFactory(sender infra.SignalService, showLog bool, universalUdpM
 		transports:             make(map[string]infra.Transport),
 		sender:                 sender,
 		universalUdpMuxDefault: universalUdpMuxDefault,
-		log:                    log.GetLogger("transport-factory"),
+		log:                    log.GetLogger("ice-factory"),
 		showLog:                showLog,
 	}
 }
@@ -103,7 +103,7 @@ func (t *TransportFactory) MakeTransport(localId, remoteId string, onConnectionS
 		t.mu.Lock()
 		defer t.mu.Unlock()
 		delete(t.transports, remoteId)
-		t.log.Debug("transport: probe closed and removed from factory", "remoteId", remoteId)
+		t.log.Debug("ice: probe closed and removed from factory", "remoteId", remoteId)
 	}
 	t.transports[remoteId] = transport
 	return transport, nil

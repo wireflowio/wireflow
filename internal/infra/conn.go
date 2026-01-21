@@ -410,7 +410,7 @@ func (b *DefaultBind) Close() error {
 func (b *DefaultBind) Send(bufs [][]byte, endpoint conn.Endpoint) error {
 	// add drp write
 	if e, ok := endpoint.(*WRRPEndpoint); ok {
-		return b.wrrperClient.Send(e.SessionID, bufs[0])
+		return b.wrrperClient.Send(context.Background(), e.SessionID, bufs[0])
 	}
 
 	b.mu.Lock()

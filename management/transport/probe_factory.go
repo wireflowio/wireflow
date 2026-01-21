@@ -27,8 +27,13 @@ import (
 
 type ProbeFactory struct {
 	localId string
-	mu      sync.RWMutex
-	probes  map[string]*Probe
+
+	mu     sync.RWMutex
+	probes map[string]*Probe
+
+	wrrpMu     sync.RWMutex
+	wrrpProbes map[string]*Probe
+
 	signal  infra.SignalService
 	factory *TransportFactory
 
@@ -45,12 +50,6 @@ type ProbeFactoryConfig struct {
 }
 
 type ProbeFactoryOptions func(*ProbeFactory)
-
-func WithSignal(signal infra.SignalService) ProbeFactoryOptions {
-	return func(p *ProbeFactory) {
-		p.signal = signal
-	}
-}
 
 func WithOnMessage(onMessage func(context.Context, *infra.Message) error) ProbeFactoryOptions {
 	return func(p *ProbeFactory) {
@@ -105,7 +104,6 @@ func (p *ProbeFactory) NewProbe(remoteId string) (*Probe, error) {
 		peerId:          remoteId,
 		factory:         p.factory,
 		signal:          p.signal,
-		probeAckChan:    make(chan struct{}),
 		remoteOfferChan: make(chan struct{}),
 		state:           ice.ConnectionStateNew,
 	}
@@ -115,8 +113,8 @@ func (p *ProbeFactory) NewProbe(remoteId string) (*Probe, error) {
 		return nil, err
 	}
 
-	// give transport probe access
-	probe.transport = transport
+	// give ice probe access
+	probe.ice = transport
 
 	p.Register(remoteId, probe)
 	return probe, nil
@@ -151,20 +149,24 @@ func (p *ProbeFactory) HandleSignal(ctx context.Context, remoteId string, packet
 		p.onMessage(ctx, &msg)
 	case grpc.PacketType_HANDSHAKE_SYN:
 		p.log.Debug("receive syn packet from: %s, will sending ack", "remoteId", remoteId)
-		// send ack
-		if err = probe.probePacket(ctx, remoteId, grpc.PacketType_HANDSHAKE_ACK); err != nil {
-			return err
-		}
-		// TODO add allows check
-		if p.Allows(remoteId) {
-			return probe.Probe(ctx, remoteId)
-		}
+		//// send ack
+		//if err = probe.probePacket(ctx, remoteId, grpc.PacketType_HANDSHAKE_ACK); err != nil {
+		//	return err
+		//}
+		//// TODO add allows check
+		//if p.Allows(remoteId) {
+		//	return probe.Probe(ctx, remoteId)
+		//}
 	case grpc.PacketType_HANDSHAKE_ACK:
-		return probe.HandleAck(ctx, remoteId, packet)
+		//return probe.HandleAck(ctx, remoteId, packet)
 	case grpc.PacketType_OFFER:
 		return probe.HandleOffer(ctx, remoteId, packet)
 	}
 
+	return nil
+}
+
+func (p *ProbeFactory) OnReceive(sessionId [28]byte, data []byte) error {
 	return nil
 }
 

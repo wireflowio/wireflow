@@ -30,6 +30,7 @@ const (
 	Register uint8 = 0x01 // 客户端注册/握手
 	Forward  uint8 = 0x02 // 数据转发
 	Ping     uint8 = 0x03 // 心跳检测
+	Probe    uint8 = 0x04 // 交换机sessionId信息包
 )
 
 // Header WRRP 协议头 (共 40 字节)

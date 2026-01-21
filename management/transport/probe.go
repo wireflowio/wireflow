@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"wireflow/internal/grpc"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
 
 	"github.com/wireflowio/ice"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -36,18 +36,26 @@ type Probe struct {
 	localId         string
 	peerId          string
 	factory         *TransportFactory
-	transport       infra.Transport
+	ice             infra.Transport
 	state           ice.ConnectionState
 	signal          infra.SignalService
 	ctx             context.Context
 	cancel          context.CancelFunc
 	closeAckOnce    sync.Once
 	closeOnce       sync.Once
-	probeAckChan    chan struct{}
+	answerChan      chan struct{}
 	remoteOfferChan chan struct{}
 	log             *log.Logger
 	lastSeen        time.Time
 	rtt             time.Duration
+	handShackAck    chan struct{}
+
+	// Add wrrp
+	wrrp      infra.Transport
+	wrrpReady atomic.Bool
+	iceReady  atomic.Bool
+	iceChan   chan struct{}
+	wrrpChan  chan struct{}
 }
 
 func (p *Probe) OnConnectionStateChange(state ice.ConnectionState) {
@@ -75,71 +83,40 @@ func (p *Probe) Probe(ctx context.Context, remoteId string) error {
 	return nil
 }
 
+// Prepare candidate, because using natsk, so we send offer directly when candidate ready.
 func (p *Probe) Prepare(ctx context.Context, remoteId string, send func(ctx context.Context, remoteId string, data []byte) error) error {
 	p.log.Info("Prepare probe peer", "remoteId", remoteId)
-	probeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	//1. start handshake syn
+	defer p.updateState(ice.ConnectionStateChecking)
 	go func() {
-		ticker := time.NewTicker(2 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-probeCtx.Done():
-				p.log.Error("stop send syn packet", ctx.Err())
-				return
-			case <-ticker.C:
-				// send syn
-				p.probePacket(ctx, remoteId, grpc.PacketType_HANDSHAKE_SYN)
-			}
+		err := p.Start(ctx, remoteId)
+		if err != nil {
+			p.log.Error("Start probe peer failed", err)
 		}
-
 	}()
 
-	// start to connect
-	if err := p.Start(ctx, remoteId); err != nil {
-		p.OnTransportFail(err)
-	}
-
-	//waiting probe ack
-	p.log.Debug("waiting for preProbe ACK...", "remoteId", remoteId)
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-p.probeAckChan:
-		cancel()
-		// send offer
-		p.log.Debug("preProbe ACK received, will sending offer", "remoteId", remoteId)
-		return p.transport.Prepare()
-	}
+	return p.ice.Prepare()
 }
 
-func (p *Probe) probePacket(ctx context.Context, remoteId string, packetType grpc.PacketType) error {
-	packet := &grpc.SignalPacket{
-		SenderId: p.localId,
-		Type:     packetType,
-		Payload: &grpc.SignalPacket_Handshake{
-			Handshake: &grpc.Handshake{
-				Timestamp: time.Now().Unix(),
-			},
-		},
-	}
+func (p *Probe) probeWrrpPacket(ctx context.Context, remoteId string, packetType grpc.PacketType) error {
+	//packet := &grpc.SignalPacket{
+	//	SenderId: p.localId,
+	//	Type:     packetType,
+	//	Payload: &grpc.SignalPacket_Handshake{
+	//		Handshake: &grpc.Handshake{
+	//			Timestamp: time.Now().Unix(),
+	//		},
+	//	},
+	//}
 
-	data, err := proto.Marshal(packet)
-	if err != nil {
-		return err
-	}
-
-	return p.signal.Send(ctx, remoteId, data)
-}
-
-func (p *Probe) HandleAck(ctx context.Context, remoteId string, packet *grpc.SignalPacket) error {
-	defer func() {
-		p.closeAckOnce.Do(func() {
-			close(p.probeAckChan)
-		})
-	}()
-	p.updateState(ice.ConnectionStateChecking)
+	//data, err := proto.Marshal(packet)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//sessionId, err := infra.IDFromPublicKey(remoteId)
+	//if err != nil {
+	//	return err
+	//}
 	return nil
 }
 
@@ -150,11 +127,11 @@ func (p *Probe) HandleOffer(ctx context.Context, remoteId string, packet *grpc.S
 		})
 	}()
 
-	return p.transport.HandleOffer(ctx, remoteId, packet)
+	return p.ice.HandleOffer(ctx, remoteId, packet)
 }
 
 func (p *Probe) Start(ctx context.Context, remoteId string) error {
-	p.log.Info("Start probe pee", "remoteId", remoteId)
+	p.log.Info("Start probe peer", "remoteId", remoteId)
 	sendReady, recvReady := false, false
 	ctx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
@@ -164,9 +141,6 @@ func (p *Probe) Start(ctx context.Context, remoteId string) error {
 			case <-ctx.Done():
 				p.log.Error("stop send ready ack", ctx.Err())
 				return
-			case <-p.probeAckChan:
-				sendReady = true
-
 			case <-p.remoteOfferChan:
 				recvReady = true
 			}
@@ -178,7 +152,7 @@ func (p *Probe) Start(ctx context.Context, remoteId string) error {
 			}
 		}
 
-		if err := p.transport.Start(ctx, remoteId); err != nil {
+		if err := p.ice.Start(ctx, remoteId); err != nil {
 			p.OnTransportFail(err)
 		}
 	}()
@@ -187,6 +161,11 @@ func (p *Probe) Start(ctx context.Context, remoteId string) error {
 }
 
 func (p *Probe) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (p *Probe) OnSuccess(addr string) error {
+	p.log.Info("OnSuccess", "addr", addr)
 	return nil
 }
 

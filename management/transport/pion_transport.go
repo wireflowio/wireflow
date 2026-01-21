@@ -33,20 +33,18 @@ var (
 	_ infra.Transport = (*PionTransport)(nil)
 )
 
-// PionTransport using pion ice for transport
+// PionTransport using pion ice for ice
 type PionTransport struct {
-	su            sync.Mutex
-	log           *log.Logger
-	localId       string
-	sender        func(ctx context.Context, peerId string, data []byte) error
-	onClose       func(peerId string)
-	provisioner   infra.Provisioner
-	remoteId      string
-	agent         *AgentWrapper
-	probeAckChan  chan struct{}
-	closeOnce     sync.Once
-	ackClose      sync.Once
-	OfferRecvChan chan struct{}
+	su          sync.Mutex
+	log         *log.Logger
+	localId     string
+	sender      func(ctx context.Context, peerId string, data []byte) error
+	onClose     func(peerId string)
+	provisioner infra.Provisioner
+	remoteId    string
+	agent       *AgentWrapper
+	closeOnce   sync.Once
+	ackClose    sync.Once
 
 	universalUdpMuxDefault *ice.UniversalUDPMuxDefault
 
@@ -71,13 +69,11 @@ type ICETransportConfig struct {
 
 func NewPionTransport(cfg *ICETransportConfig) (*PionTransport, error) {
 	t := &PionTransport{
-		log:                     log.GetLogger("transport"),
+		log:                     log.GetLogger("ice"),
 		onClose:                 cfg.OnClose,
 		sender:                  cfg.Sender,
 		localId:                 cfg.LocalId,
 		remoteId:                cfg.RemoteId,
-		probeAckChan:            make(chan struct{}),
-		OfferRecvChan:           make(chan struct{}),
 		universalUdpMuxDefault:  cfg.UniversalUdpMuxDefault,
 		provisioner:             cfg.Configurer,
 		peers:                   cfg.PeerManager,
@@ -206,7 +202,7 @@ func (t *PionTransport) RawConn() (net.Conn, error) {
 }
 
 func (t *PionTransport) Close() error {
-	t.log.Info("closing transport", "remoteId", t.remoteId)
+	t.log.Info("closing ice", "remoteId", t.remoteId)
 	t.closeOnce.Do(func() {
 		if err := t.agent.Close(); err != nil {
 			t.log.Error("close agent", err)

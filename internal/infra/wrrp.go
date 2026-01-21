@@ -15,6 +15,7 @@
 package infra
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/base32"
 	"net/netip"
@@ -25,7 +26,7 @@ import (
 
 type Wrrp interface {
 	ReceiveFunc() conn.ReceiveFunc
-	Send(sessionId [28]byte, data []byte) error
+	Send(ctx context.Context, sessionId [28]byte, data []byte) error
 	Connect() error
 }
 
