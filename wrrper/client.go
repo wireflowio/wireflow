@@ -23,11 +23,13 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"wireflow/internal/grpc"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
 	"wireflow/pkg/wrrp"
 
 	"golang.zx2c4.com/wireguard/conn"
+	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -37,40 +39,67 @@ var (
 type WRRPClient struct {
 	log       *log.Logger
 	mu        sync.Mutex
-	SessionID [28]byte
+	localId   infra.PeerID
 	ServerURL string
 	Conn      net.Conn
 	Reader    *bufio.Reader
 
 	// call back for wrrp probe
-	onMessage func(sessionId [28]byte, data []byte) error
+	onMessage func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error
 
 	probeChan chan *Task
 }
 
+func (c *WRRPClient) RemoteAddr() net.Addr {
+	return c.Conn.RemoteAddr()
+}
+
 type Task struct {
-	SessionID [28]byte
+	SessionID uint64
 	Data      []byte
 }
 
-func NewWrrpClient(id [28]byte, url string) infra.Wrrp {
+func NewWrrpClient(localID infra.PeerID, url string) (*WRRPClient, error) {
+
 	c := &WRRPClient{
 		log:       log.GetLogger("wrrper"),
-		SessionID: id,
 		ServerURL: url,
 		probeChan: make(chan *Task, 1024),
+		localId:   localID,
 	}
 
 	for i := 0; i < 3; i++ {
 		go c.probeWorker()
 	}
 
-	return c
+	return c, nil
 }
 
 func (c *WRRPClient) probeWorker() {
 	for task := range c.probeChan {
-		c.onMessage(task.SessionID, task.Data)
+		var packet grpc.SignalPacket
+		if err := proto.Unmarshal(task.Data, &packet); err != nil {
+			c.log.Error("invalid packet", err)
+			continue
+		}
+
+		if err := c.onMessage(context.Background(), infra.FromUint64(packet.SenderId), &packet); err != nil {
+			c.log.Error("handle probe failed", err)
+		}
+	}
+}
+
+type ClientOption func(*WRRPClient)
+
+func WithOnMessage(fn func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error) ClientOption {
+	return func(c *WRRPClient) {
+		c.onMessage = fn
+	}
+}
+
+func (c *WRRPClient) Configure(opts ...ClientOption) {
+	for _, opt := range opts {
+		opt(c)
 	}
 }
 
@@ -114,7 +143,7 @@ func (c *WRRPClient) register() error {
 		Version:    1,
 		Cmd:        wrrp.Register,
 		PayloadLen: 0,
-		SessionID:  c.SessionID,
+		FromID:     c.localId.ToUint64(),
 	}
 
 	_, err := c.Conn.Write(header.Marshal())
@@ -122,13 +151,14 @@ func (c *WRRPClient) register() error {
 }
 
 // Send 向指定的目标 Peer 发送数据
-func (c *WRRPClient) Send(ctx context.Context, targetID [28]byte, data []byte) error {
+func (c *WRRPClient) Send(ctx context.Context, targetId uint64, wrrpType uint8, data []byte) error {
 	header := &wrrp.Header{
 		Magic:      wrrp.MagicNumber,
 		Version:    1,
-		Cmd:        wrrp.Forward,
+		Cmd:        wrrpType,
 		PayloadLen: uint32(len(data)),
-		SessionID:  targetID, // 这里填目标 ID
+		FromID:     c.localId.ToUint64(),
+		ToID:       targetId,
 	}
 
 	// 发送 Header + Payload
@@ -137,10 +167,6 @@ func (c *WRRPClient) Send(ctx context.Context, targetID [28]byte, data []byte) e
 	}
 	_, err := c.Conn.Write(data)
 	return err
-}
-
-func (c *WRRPClient) HandlePacket(sessionId [28]byte, data []byte) error {
-	return c.onMessage(sessionId, data)
 }
 
 // ReceiveFunc using for Bind to handle data in wireguard
@@ -154,20 +180,25 @@ func (c *WRRPClient) ReceiveFunc() conn.ReceiveFunc {
 			return
 		}
 
-		header, _ := wrrp.Unmarshal(headBuf)
+		header, err := wrrp.Unmarshal(headBuf)
+		if err != nil {
+			c.log.Error("invalid wrrp header", err)
+			return 0, err
+		}
+		c.log.Info("Receiving from wrrp server", "type", header.Cmd, "payloadLen", header.PayloadLen)
 		switch header.Cmd {
 		case wrrp.Probe:
 			// 1. 读取 Probe 数据到临时缓冲区（不要占用 WireGuard 的 packets[0]）
-			bufp := wrrp.GetPayloadBuffer()
-			defer wrrp.PutPayloadBuffer(bufp)
-			_, err = io.ReadFull(c.Reader, *bufp)
+			bufp := (*wrrp.GetPayloadBuffer())[:header.PayloadLen]
+			defer wrrp.PutPayloadBuffer(&bufp)
+			_, err = io.ReadFull(c.Reader, bufp)
 			if err != nil {
 				c.log.Error("Connection closed by server", err)
 				return 0, nil
 			}
 
 			select {
-			case c.probeChan <- &Task{SessionID: header.SessionID, Data: *bufp}:
+			case c.probeChan <- &Task{SessionID: header.FromID, Data: bufp}:
 			default:
 				c.log.Warn("Probe channel is full, dropped probe task")
 			}
@@ -179,7 +210,7 @@ func (c *WRRPClient) ReceiveFunc() conn.ReceiveFunc {
 			}
 
 			eps[0] = &infra.WRRPEndpoint{
-				SessionID: header.SessionID,
+				RemoteId: header.FromID,
 			}
 
 			return int(header.PayloadLen), nil
@@ -216,7 +247,7 @@ func (c *WRRPClient) startKeepAlive(ctx context.Context, interval time.Duration)
 				Version:    1,
 				Cmd:        wrrp.Ping,
 				PayloadLen: 0,
-				SessionID:  c.SessionID,
+				FromID:     c.localId.ToUint64(),
 			}
 
 			c.mu.Lock() // 建议给 Conn 加锁，防止与数据发送冲突
