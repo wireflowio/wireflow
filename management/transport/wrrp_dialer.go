@@ -198,7 +198,7 @@ func (w WrrpTransport) Priority() uint8 {
 }
 
 func (w WrrpTransport) Close() error {
-	return nil
+	return w.conn.Close()
 }
 
 func (w WrrpTransport) Write(data []byte) error {

@@ -58,6 +58,12 @@ func WithOnMessage(onMessage func(context.Context, *infra.Message) error) ProbeF
 	}
 }
 
+func WithWrrp(wrrp infra.Wrrp) ProbeFactoryOptions {
+	return func(p *ProbeFactory) {
+		p.wrrp = wrrp
+	}
+}
+
 func (t *ProbeFactory) Configure(opts ...ProbeFactoryOptions) {
 	for _, opt := range opts {
 		opt(t)

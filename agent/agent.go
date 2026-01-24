@@ -31,10 +31,12 @@ import (
 	ctrclient "wireflow/management/client"
 	"wireflow/management/nats"
 	"wireflow/management/transport"
+	"wireflow/pkg/utils"
 	"wireflow/wrrper"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var (
@@ -81,11 +83,13 @@ type AgentConfig struct {
 // NewAgent create a new Agent instance.
 func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 	var (
-		iface  tun.Device
-		err    error
-		agent  *Agent
-		v4conn *net.UDPConn
-		v6conn *net.UDPConn
+		iface      tun.Device
+		err        error
+		agent      *Agent
+		v4conn     *net.UDPConn
+		v6conn     *net.UDPConn
+		wrrp       infra.Wrrp
+		privateKey wgtypes.Key
 	)
 	agent = new(Agent)
 	agent.manager.peerManager = infra.NewPeerManager()
@@ -116,19 +120,22 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		return nil, err
 	}
 
-	var privateKey string
 	agent.current, err = agent.ctrClient.Register(ctx, cfg.Token, agent.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey = agent.current.PrivateKey
+	privateKey, err = utils.ParseKey(agent.current.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
 	agent.manager.keyManager = infra.NewKeyManager(privateKey)
 
-	localId := agent.manager.keyManager.GetPublicKey()
+	localId := infra.FromKey(agent.manager.keyManager.GetPublicKey())
 	probeFactory := transport.NewProbeFactory(&transport.ProbeFactoryConfig{
-		LocalId: localId,
-		Signal:  natsSignalService,
+		LocalId:     localId,
+		Signal:      natsSignalService,
+		PeerManager: agent.manager.peerManager,
 	})
 
 	//subscribe
@@ -146,13 +153,11 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		wrrpUrl = agent.current.WrrpUrl
 	}
 
-	var wrrp infra.Wrrp
 	if wrrpUrl != "" {
-		sessionId, err := infra.IDFromPublicKey(agent.current.PublicKey)
+		wrrp, err = wrrper.NewWrrpClient(localId, wrrpUrl)
 		if err != nil {
 			return nil, err
 		}
-		wrrp = wrrper.NewWrrpClient(sessionId, wrrpUrl)
 	}
 
 	agent.bind = infra.NewBind(&infra.BindConfig{
@@ -173,7 +178,7 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		})
 	// init event handler
 	agent.eventHandler = NewMessageHandler(agent, log.GetLogger("event-handler"), agent.provisioner)
-	probeFactory.Configure(transport.WithOnMessage(agent.eventHandler.HandleEvent))
+	probeFactory.Configure(transport.WithOnMessage(agent.eventHandler.HandleEvent), transport.WithWrrp(wrrp))
 
 	agent.DeviceManager = NewDeviceManager(log.GetLogger("device-manager"), agent.iface)
 	return agent, err
@@ -193,12 +198,10 @@ func (c *Agent) Start(ctx context.Context) error {
 		}
 	}
 
-	if c.manager.keyManager.GetKey() != "" {
-		if err := c.provisioner.SetupInterface(&infra.DeviceConfig{
-			PrivateKey: c.current.PrivateKey,
-		}); err != nil {
-			return err
-		}
+	if err := c.provisioner.SetupInterface(&infra.DeviceConfig{
+		PrivateKey: c.current.PrivateKey,
+	}); err != nil {
+		return err
 	}
 
 	// get network map
