@@ -148,12 +148,24 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerID) (*Probe, error) {
 		state:    ice.ConnectionStateNew,
 		onSuccess: func(transport infra.Transport) error {
 			p.log.Info("connection established", "transportTypoe", transport.Type(), "remoteAddr", transport.RemoteAddr())
-			return p.provisioner.AddPeer(&infra.SetPeer{
+			err := p.provisioner.AddPeer(&infra.SetPeer{
 				Endpoint:             transport.RemoteAddr(),
 				PublicKey:            remoteKey.String(),
 				PersistentKeepalived: infra.PersistentKeepalive,
 				AllowedIPs:           peer.AllowedIPs,
 			})
+			if err != nil {
+				p.log.Error("probe add peer failed", err)
+				return err
+			}
+
+			err = p.provisioner.ApplyRoute("add", *peer.Address, p.provisioner.GetIfaceName())
+			if err != nil {
+				p.log.Error("probe apply route failed", err)
+				return err
+			}
+
+			return nil
 		},
 		iceDialer: NewIceDialer(&ICEDialerConfig{
 			LocalId:                p.localId,
