@@ -134,24 +134,24 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 	// 用于接收所有的错误，只有全部失败才报错
 	errs := make(chan error, 2)
 
-	//go func() {
-	//	p.log.Debug("Starting ice dialer", "remoteId", p.remoteId)
-	//	if err := p.iceDialer.Prepare(ctx, p.remoteId); err != nil {
-	//		errs <- err
-	//		return
-	//	}
-	//	t, err := p.iceDialer.Dial(ctx)
-	//	if err != nil {
-	//		errs <- err
-	//		return
-	//	}
-	//	result <- t
-	//	if err = p.handleUpgradeTransport(t); err != nil {
-	//		errs <- err
-	//		p.log.Error("Upgrade transport failed", err)
-	//		return
-	//	}
-	//}()
+	go func() {
+		p.log.Debug("Starting ice dialer", "remoteId", p.remoteId)
+		if err := p.iceDialer.Prepare(ctx, p.remoteId); err != nil {
+			errs <- err
+			return
+		}
+		t, err := p.iceDialer.Dial(ctx)
+		if err != nil {
+			errs <- err
+			return
+		}
+		result <- t
+		if err = p.handleUpgradeTransport(t); err != nil {
+			errs <- err
+			p.log.Error("Upgrade transport failed", err)
+			return
+		}
+	}()
 
 	// 2. 启动 WRRP 连接 (保底，通常秒通)
 	go func() {

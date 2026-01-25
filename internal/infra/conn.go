@@ -143,7 +143,8 @@ func (b *DefaultBind) ParseEndpoint(s string) (conn.Endpoint, error) {
 			return nil, err
 		}
 		return &WRRPEndpoint{
-			RemoteId: remoteId,
+			RemoteId:      remoteId,
+			TransportType: WRRP,
 		}, nil
 	}
 	e, err := netip.ParseAddrPort(s)
@@ -151,10 +152,10 @@ func (b *DefaultBind) ParseEndpoint(s string) (conn.Endpoint, error) {
 		return nil, err
 	}
 
-	return &conn.StdNetEndpoint{
-		AddrPort: e,
+	return &WRRPEndpoint{
+		Addr:          e,
+		TransportType: ICE,
 	}, nil
-
 }
 
 // listenNet will return udp and tcp conn on the same port.
@@ -266,8 +267,9 @@ func (b *DefaultBind) makeReceiveIPv4(pc *ipv4.PacketConn, udpConn *net.UDPConn)
 
 			sizes[i] = msg.N
 			addrPort := msg.Addr.(*net.UDPAddr).AddrPort()
-			ep := &conn.StdNetEndpoint{
-				AddrPort: addrPort,
+			ep := &WRRPEndpoint{
+				Addr:          addrPort,
+				TransportType: ICE,
 			} // TODO: remove allocation
 			getSrcFromControl(msg.OOB[:msg.NN], ep)
 			eps[i] = ep
@@ -311,7 +313,10 @@ func (b *DefaultBind) makeReceiveIPv6(pc *ipv6.PacketConn, udpConn *net.UDPConn)
 			}
 			sizes[i] = msg.N
 			addrPort := msg.Addr.(*net.UDPAddr).AddrPort()
-			ep := &conn.StdNetEndpoint{AddrPort: addrPort} // TODO: remove allocation
+			ep := &WRRPEndpoint{
+				Addr:          addrPort,
+				TransportType: ICE,
+			} // TODO: remove allocation
 			getSrcFromControl(msg.OOB[:msg.NN], ep)
 			eps[i] = ep
 		}
@@ -362,6 +367,7 @@ func (b *DefaultBind) Send(bufs [][]byte, endpoint conn.Endpoint) error {
 		for _, buf := range bufs {
 			b.wrrperClient.Send(context.Background(), e.RemoteId, wrrp.Forward, buf)
 		}
+		return nil
 	}
 
 	b.mu.Lock()
@@ -401,12 +407,12 @@ func (b *DefaultBind) send4(udpConn *net.UDPConn, pc *ipv4.PacketConn, ep conn.E
 	as4 := ep.DstIP().As4()
 	copy(ua.IP, as4[:])
 	ua.IP = ua.IP[:4]
-	ua.Port = int(ep.(*conn.StdNetEndpoint).AddrPort.Port())
+	ua.Port = int(ep.(*WRRPEndpoint).Addr.Port())
 	msgs := b.ipv4MsgsPool.Get().(*[]ipv4.Message)
 	for i, buf := range bufs {
 		(*msgs)[i].Buffers[0] = buf
 		(*msgs)[i].Addr = ua
-		setSrcControl(&(*msgs)[i].OOB, ep.(*conn.StdNetEndpoint))
+		setSrcControl(&(*msgs)[i].OOB, ep.(*WRRPEndpoint))
 	}
 	var (
 		n     int
@@ -444,7 +450,7 @@ func (b *DefaultBind) send6(udpConn *net.UDPConn, pc *ipv6.PacketConn, ep conn.E
 	for i, buf := range bufs {
 		(*msgs)[i].Buffers[0] = buf
 		(*msgs)[i].Addr = ua
-		setSrcControl(&(*msgs)[i].OOB, ep.(*conn.StdNetEndpoint))
+		setSrcControl(&(*msgs)[i].OOB, ep.(*WRRPEndpoint))
 	}
 	var (
 		n     int

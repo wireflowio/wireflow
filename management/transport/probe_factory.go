@@ -148,12 +148,18 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerID) (*Probe, error) {
 		state:    ice.ConnectionStateNew,
 		onSuccess: func(transport infra.Transport) error {
 			p.log.Info("connection established", "transportTypoe", transport.Type(), "remoteAddr", transport.RemoteAddr())
-			err := p.provisioner.AddPeer(&infra.SetPeer{
-				Endpoint:             transport.RemoteAddr(),
+			setPeer := &infra.SetPeer{
+				//Endpoint:             transport.RemoteAddr(),
 				PublicKey:            remoteKey.String(),
 				PersistentKeepalived: infra.PersistentKeepalive,
 				AllowedIPs:           peer.AllowedIPs,
-			})
+			}
+			if transport.Type() == infra.WRRP {
+				setPeer.Endpoint = fmt.Sprintf("wrrp://%d", remoteId.ToUint64())
+			} else {
+				setPeer.Endpoint = transport.RemoteAddr()
+			}
+			err := p.provisioner.AddPeer(setPeer)
 			if err != nil {
 				p.log.Error("probe add peer failed", err)
 				return err
