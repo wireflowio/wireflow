@@ -28,7 +28,7 @@ type AgentInterface interface {
 
 	GetDeviceName() string
 
-	Configure(peerId string) error
+	//Configure(peerId string) error
 
 	// Stop the engine
 	Stop() error
