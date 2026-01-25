@@ -151,8 +151,8 @@ func (b *DefaultBind) ParseEndpoint(s string) (conn.Endpoint, error) {
 		return nil, err
 	}
 
-	return &MagicEndpoint{
-		Direct: struct{ AddrPort netip.AddrPort }{AddrPort: e},
+	return &conn.StdNetEndpoint{
+		AddrPort: e,
 	}, nil
 
 }
@@ -266,8 +266,8 @@ func (b *DefaultBind) makeReceiveIPv4(pc *ipv4.PacketConn, udpConn *net.UDPConn)
 
 			sizes[i] = msg.N
 			addrPort := msg.Addr.(*net.UDPAddr).AddrPort()
-			ep := &MagicEndpoint{
-				Direct: struct{ AddrPort netip.AddrPort }{AddrPort: addrPort},
+			ep := &conn.StdNetEndpoint{
+				AddrPort: addrPort,
 			} // TODO: remove allocation
 			getSrcFromControl(msg.OOB[:msg.NN], ep)
 			eps[i] = ep
@@ -311,7 +311,7 @@ func (b *DefaultBind) makeReceiveIPv6(pc *ipv6.PacketConn, udpConn *net.UDPConn)
 			}
 			sizes[i] = msg.N
 			addrPort := msg.Addr.(*net.UDPAddr).AddrPort()
-			ep := &MagicEndpoint{Direct: struct{ AddrPort netip.AddrPort }{AddrPort: addrPort}} // TODO: remove allocation
+			ep := &conn.StdNetEndpoint{AddrPort: addrPort} // TODO: remove allocation
 			getSrcFromControl(msg.OOB[:msg.NN], ep)
 			eps[i] = ep
 		}
@@ -396,17 +396,17 @@ func (b *DefaultBind) Send(bufs [][]byte, endpoint conn.Endpoint) error {
 	return b.send4(b.v4conn, pc4, endpoint, bufs)
 }
 
-func (b *DefaultBind) send4(conn *net.UDPConn, pc *ipv4.PacketConn, ep conn.Endpoint, bufs [][]byte) error {
+func (b *DefaultBind) send4(udpConn *net.UDPConn, pc *ipv4.PacketConn, ep conn.Endpoint, bufs [][]byte) error {
 	ua := b.udpAddrPool.Get().(*net.UDPAddr)
 	as4 := ep.DstIP().As4()
 	copy(ua.IP, as4[:])
 	ua.IP = ua.IP[:4]
-	ua.Port = int(ep.(*MagicEndpoint).Direct.AddrPort.Port())
+	ua.Port = int(ep.(*conn.StdNetEndpoint).AddrPort.Port())
 	msgs := b.ipv4MsgsPool.Get().(*[]ipv4.Message)
 	for i, buf := range bufs {
 		(*msgs)[i].Buffers[0] = buf
 		(*msgs)[i].Addr = ua
-		setSrcControl(&(*msgs)[i].OOB, ep.(*MagicEndpoint))
+		setSrcControl(&(*msgs)[i].OOB, ep.(*conn.StdNetEndpoint))
 	}
 	var (
 		n     int
@@ -423,7 +423,7 @@ func (b *DefaultBind) send4(conn *net.UDPConn, pc *ipv4.PacketConn, ep conn.Endp
 		}
 	} else {
 		for i, buf := range bufs {
-			_, _, err = conn.WriteMsgUDP(buf, (*msgs)[i].OOB, ua)
+			_, _, err = udpConn.WriteMsgUDP(buf, (*msgs)[i].OOB, ua)
 			if err != nil {
 				break
 			}
@@ -434,7 +434,7 @@ func (b *DefaultBind) send4(conn *net.UDPConn, pc *ipv4.PacketConn, ep conn.Endp
 	return err
 }
 
-func (b *DefaultBind) send6(conn *net.UDPConn, pc *ipv6.PacketConn, ep conn.Endpoint, bufs [][]byte) error {
+func (b *DefaultBind) send6(udpConn *net.UDPConn, pc *ipv6.PacketConn, ep conn.Endpoint, bufs [][]byte) error {
 	ua := b.udpAddrPool.Get().(*net.UDPAddr)
 	as16 := ep.DstIP().As16()
 	copy(ua.IP, as16[:])
@@ -444,7 +444,7 @@ func (b *DefaultBind) send6(conn *net.UDPConn, pc *ipv6.PacketConn, ep conn.Endp
 	for i, buf := range bufs {
 		(*msgs)[i].Buffers[0] = buf
 		(*msgs)[i].Addr = ua
-		setSrcControl(&(*msgs)[i].OOB, ep.(*MagicEndpoint))
+		setSrcControl(&(*msgs)[i].OOB, ep.(*conn.StdNetEndpoint))
 	}
 	var (
 		n     int
@@ -461,7 +461,7 @@ func (b *DefaultBind) send6(conn *net.UDPConn, pc *ipv6.PacketConn, ep conn.Endp
 		}
 	} else {
 		for i, buf := range bufs {
-			_, _, err = conn.WriteMsgUDP(buf, (*msgs)[i].OOB, ua)
+			_, _, err = udpConn.WriteMsgUDP(buf, (*msgs)[i].OOB, ua)
 			if err != nil {
 				break
 			}
