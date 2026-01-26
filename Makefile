@@ -13,13 +13,12 @@ LDFLAGS = -X 'github.com/your-org/wireflow/pkg/version.Version=$(WIREFLOW_VERSIO
           -X 'github.com/your-org/wireflow/pkg/version.GoVersion=$(GO_VERSION)'
 
 
-IMG ?= ghcr.io/wireflowio/manager:dev
-
 REGISTRY ?= ghcr.io/wireflowio
 SERVICES := manager wireflow
 TARGETOS ?= linux
 TARGETARCH ?=amd64
-VERSION ?= dev
+VERSION ?= latest
+IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
