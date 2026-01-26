@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"wireflow/internal/config"
 	"wireflow/internal/log"
 	"wireflow/pkg/wrrp"
 
@@ -224,7 +225,9 @@ func (b *DefaultBind) Open(uport uint16) ([]conn.ReceiveFunc, uint16, error) {
 	}
 
 	// add wireflow wrrp
-	fns = append(fns, b.wrrperClient.ReceiveFunc())
+	if config.Conf.EnableWrrp {
+		fns = append(fns, b.wrrperClient.ReceiveFunc())
+	}
 
 	return fns, uint16(port), nil
 }
