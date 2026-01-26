@@ -154,11 +154,11 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerID) (*Probe, error) {
 				PersistentKeepalived: infra.PersistentKeepalive,
 				AllowedIPs:           peer.AllowedIPs,
 			}
-			if transport.Type() == infra.WRRP {
-				setPeer.Endpoint = fmt.Sprintf("wrrp://%d", remoteId.ToUint64())
-			} else {
-				setPeer.Endpoint = transport.RemoteAddr()
-			}
+			//if transport.Type() == infra.WRRP {
+			//	setPeer.Endpoint = fmt.Sprintf("wrrp://%d", remoteId.ToUint64())
+			//} else {
+			setPeer.Endpoint = transport.RemoteAddr()
+			//}
 			err := p.provisioner.AddPeer(setPeer)
 			if err != nil {
 				p.log.Error("probe add peer failed", err)
@@ -171,8 +171,9 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerID) (*Probe, error) {
 				return err
 			}
 
-			return nil
+			return p.provisioner.SetupNAT(peer.InterfaceName)
 		},
+
 		iceDialer: NewIceDialer(&ICEDialerConfig{
 			LocalId:                p.localId,
 			RemoteId:               remoteId,
