@@ -155,8 +155,6 @@ func (r *PeerReconciler) reconcileJoinNetwork(ctx context.Context, peer *v1alpha
 			node.Spec.PublicKey = key.PublicKey().String()
 		}
 
-		// get ip
-
 		return nil
 	})
 
@@ -169,7 +167,6 @@ func (r *PeerReconciler) reconcileJoinNetwork(ctx context.Context, peer *v1alpha
 		return ctrl.Result{}, nil
 	}
 
-	//重新获取node用来更新status, 避免冲突
 	if err = r.Get(ctx, request.NamespacedName, peer); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("WireflowPeer resource not found. Ignoring since object must be deleted.")
@@ -180,9 +177,8 @@ func (r *PeerReconciler) reconcileJoinNetwork(ctx context.Context, peer *v1alpha
 		return ctrl.Result{}, err
 	}
 
-	//查询primary network 分配的ip
 	if peer.Spec.Network == nil {
-		return ctrl.Result{}, fmt.Errorf("WireflowNetwork field is missing")
+		return ctrl.Result{}, fmt.Errorf("spec.network is empty")
 
 	}
 
@@ -191,7 +187,7 @@ func (r *PeerReconciler) reconcileJoinNetwork(ctx context.Context, peer *v1alpha
 		return ctrl.Result{}, err
 	}
 
-	// get ip
+	// allocate ip
 	address, err := r.IPAM.AllocateIP(ctx, &network, peer)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -279,7 +275,6 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 			if !currentMessage.Equal(message) {
 				logger.Info("Updating configmap data", "name", configMapName)
 
-				// 使用SSA模式
 				// 使用SSA模式
 				manager := client.FieldOwner("wireflow-controller-manager")
 				if err = r.Patch(ctx, desiredConfigMap, client.Apply, manager); err != nil {

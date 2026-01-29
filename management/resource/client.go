@@ -24,7 +24,7 @@ import (
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
 
-	v1alpha1 "wireflow/api/v1alpha1"
+	"wireflow/api/v1alpha1"
 
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +47,7 @@ type Client struct {
 	log *log.Logger
 
 	hashMu         sync.RWMutex
-	lastPushedHash map[infra.PeerID]string
+	lastPushedHash map[uint64]string
 	sender         infra.SignalService
 }
 
@@ -78,7 +78,7 @@ func NewClient(signal infra.SignalService, mgr manager.Manager) (*Client, error)
 
 	client := &Client{
 		Client:         mgr.GetClient(),
-		lastPushedHash: make(map[infra.PeerID]string),
+		lastPushedHash: make(map[uint64]string),
 		log:            logger,
 		sender:         signal,
 		Manager:        mgr,
@@ -128,8 +128,6 @@ func (c *Client) handleConfigMapEvent(ctx context.Context, obj interface{}, even
 		"version", cm.ResourceVersion,
 	)
 
-	// 可以在这里添加您的自定义业务逻辑，例如触发配置推送
-
 	var message infra.Message
 	if err := json.Unmarshal([]byte(cm.Data["config.json"]), &message); err != nil {
 		c.log.Error("Failed to unmarshal message", err)
@@ -142,11 +140,14 @@ func (c *Client) handleConfigMapEvent(ctx context.Context, obj interface{}, even
 	}
 }
 
-func (c *Client) pushToNode(ctx context.Context, peerId infra.PeerID, msg *infra.Message) error {
-	// 1. 计算消息哈希
-	msgHash := c.computeMessageHash(msg)
+func (c *Client) pushToNode(ctx context.Context, peerId uint64, msg *infra.Message) error {
+	// hash
+	msgHash, err := c.computeMessageHash(msg)
+	if err != nil {
+		return err
+	}
 
-	// 2. 检查是否与上次推送相同
+	// check hash
 	c.hashMu.RLock()
 	lastHash, exists := c.lastPushedHash[peerId]
 	c.hashMu.RUnlock()
@@ -163,7 +164,7 @@ func (c *Client) pushToNode(ctx context.Context, peerId infra.PeerID, msg *infra
 	}
 
 	packet := &grpc.SignalPacket{
-		SenderId: peerId.ToUint64(),
+		SenderId: peerId,
 		Type:     grpc.PacketType_MESSAGE,
 		Payload: &grpc.SignalPacket_Message{
 			Message: &grpc.Message{
@@ -177,8 +178,8 @@ func (c *Client) pushToNode(ctx context.Context, peerId infra.PeerID, msg *infra
 		return err
 	}
 
-	if err := c.sender.Send(ctx, peerId, content); err != nil {
-		return fmt.Errorf("failed to send message to node %s: %v", peerId, err)
+	if err := c.sender.Send(ctx, infra.FromUint64(peerId), content); err != nil {
+		return fmt.Errorf("Failed to send message to node %s: %v", peerId, err)
 	}
 
 	// 4. 更新缓存
@@ -187,14 +188,20 @@ func (c *Client) pushToNode(ctx context.Context, peerId infra.PeerID, msg *infra
 	c.hashMu.Unlock()
 
 	// 5. 记录日志
-	b, _ := json.Marshal(msg)
-	c.log.Info("push message", "peerId", peerId, "data", len(b))
+	b, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	c.log.Info("Pushing message success", "peerId", peerId, "data", len(b))
 	return nil
 }
 
-func (c *Client) computeMessageHash(msg *infra.Message) string {
-	data, _ := json.Marshal(msg)
-	return fmt.Sprintf("%x", sha256.Sum256(data))
+func (c *Client) computeMessageHash(msg *infra.Message) (string, error) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
 }
 
 func NewManager() (manager.Manager, error) {

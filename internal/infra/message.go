@@ -148,7 +148,7 @@ type Peer struct {
 	PersistentKeepalive int     `json:"persistentKeepalive,omitempty"`
 	PrivateKey          string  `json:"privateKey,omitempty"`
 	PublicKey           string  `json:"publicKey,omitempty"`
-	PeerID              PeerID
+	PeerID              uint64  `json:"peerId,omitempty"`
 	AllowedIPs          string `json:"allowedIps,omitempty"`
 	ReplacePeers        bool   `json:"replacePeers,omitempty"` // whether to replace peers when updating node
 	Port                int    `json:"port"`
