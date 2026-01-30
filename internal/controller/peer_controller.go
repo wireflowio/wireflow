@@ -48,7 +48,7 @@ type PeerReconciler struct {
 	Scheme *runtime.Scheme
 
 	IPAM          *ipam.IPAM
-	Detector      *ChangeDetector
+	Detector      *Detector
 	SnapshotCache map[types.NamespacedName]*PeerStateSnapshot
 }
 
@@ -95,7 +95,7 @@ func (r *PeerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return r.reconcileLeaveNetwork(ctx, &node, req)
 	default:
 		log.Info("No action to handle", "namespace", req.Namespace, "name", req.Name)
-		return r.reconcileConfigmap(ctx, &node, req)
+		return r.finishReconcile(ctx, &node, req)
 	}
 
 }
@@ -205,20 +205,20 @@ func (r *PeerReconciler) reconcileJoinNetwork(ctx context.Context, peer *v1alpha
 		return ctrl.Result{}, nil
 	}
 
-	return r.reconcileConfigmap(ctx, peer, request)
+	return r.finishReconcile(ctx, peer, request)
 }
 
-// reconcileConfigmap create or update the configmap
-func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.WireflowPeer, request ctrl.Request) (ctrl.Result, error) {
+// finishReconcile create or update the configmap
+func (r *PeerReconciler) finishReconcile(ctx context.Context, peer *v1alpha1.WireflowPeer, request ctrl.Request) (ctrl.Result, error) {
 	var (
 		err              error
-		changes          *infra.ChangeDetails
+		changes          *infra.DetailsInfo
 		message          *infra.Message
 		desiredConfigMap *corev1.ConfigMap
 	)
 	logger := logf.FromContext(ctx)
 
-	logger.Info("Reconciling configmap", "name", request.NamespacedName)
+	logger.Info("Last reconciling", "name", request.NamespacedName)
 	oldNodeCtx := r.SnapshotCache[request.NamespacedName]
 	snapshot := r.getPeerStateSnapshot(ctx, peer, request)
 	// 1. 定义期望状态 (Desired State)
@@ -233,7 +233,7 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 			message, err = r.Detector.generateConfigmap(ctx, peer, snapshot, changes, "init")
 			desiredConfigMap = r.newConfigmap(peer.Namespace, configMapName, message.String())
 			// 关键步骤：设置 OwnerReference
-			// 这确保了当主资源 (peer) 被删除时，这个 reconcileConfigmap 也会被 K8s 垃圾回收器自动删除。
+			// 这确保了当主资源 (peer) 被删除时，这个 finishReconcile 也会被 K8s 垃圾回收器自动删除。
 			if err := controllerutil.SetControllerReference(peer, desiredConfigMap, r.Scheme); err != nil {
 				logger.Error(err, "Failed to set owner reference on configmap")
 				return ctrl.Result{}, err
@@ -292,7 +292,7 @@ func (r *PeerReconciler) reconcileConfigmap(ctx context.Context, peer *v1alpha1.
 }
 
 func (r *PeerReconciler) newConfigmap(namespace, configMapName, message string) *corev1.ConfigMap {
-	// 根据 CRD 的 Spec 构建 reconcileConfigmap 的内容
+	// 根据 CRD 的 Spec 构建 finishReconcile 的内容
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -371,7 +371,7 @@ func (r *PeerReconciler) reconcileLeaveNetwork(ctx context.Context, peer *v1alph
 		return ctrl.Result{}, err
 	}
 
-	return r.reconcileConfigmap(ctx, peer, req)
+	return r.finishReconcile(ctx, peer, req)
 }
 
 // reconcileSpec 检查并修正 WireflowPeer.Spec 字段。
@@ -664,14 +664,15 @@ func (r *PeerReconciler) findPeersByNetwork(ctx context.Context, network *v1alph
 	return &peers, nil
 }
 
-func (r *PeerReconciler) filterPoliciesForNode(ctx context.Context, node *v1alpha1.WireflowPeer) ([]*v1alpha1.WireflowPolicy, error) {
+
+func (r *PeerReconciler) filterPoliciesForNode(ctx context.Context, peer *v1alpha1.WireflowPeer) ([]*v1alpha1.WireflowPolicy, error) {
 	var policyList v1alpha1.WireflowPolicyList
-	if err := r.List(ctx, &policyList, client.InNamespace(node.Namespace)); err != nil {
+	if err := r.List(ctx, &policyList, client.InNamespace(peer.Namespace)); err != nil {
 		return nil, err
 	}
 
 	matched := make([]*v1alpha1.WireflowPolicy, 0)
-	nodeLabelSet := labels.Set(node.Labels)
+	nodeLabelSet := labels.Set(peer.Labels)
 
 	for _, policy := range policyList.Items {
 		selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.PeerSelector)

@@ -50,6 +50,7 @@ func buildPolicyFromArgs(namespace, name string, peerSelector metav1.LabelSelect
 			IngressRule:  IngressRule,
 			EgressRule:   EgressRule,
 			Action:       action,
+			Network:      "wireflow-default-net",
 		},
 	}
 }

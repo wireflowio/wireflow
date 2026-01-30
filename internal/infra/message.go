@@ -27,15 +27,15 @@ import (
 
 // Message is the message which is sent to connected peers
 type Message struct {
-	EventType     EventType      `json:"eventType"`               //主事件类型
-	ConfigVersion string         `json:"configVersion"`           //版本号
-	Timestamp     int64          `json:"timestamp"`               //时间戳
-	Changes       *ChangeDetails `json:"changes"`                 // 配置变化详情
-	Current       *Peer          `json:"peer"`                    //当前节点信息
-	Network       *Network       `json:"network"`                 //当前节点网络信息
-	Policies      []*Policy      `json:"policies,omitempty"`      //当前节点的策略
-	ComputedPeers []*Peer        `json:"computedpeers,omitempty"` //当前要连接的节点, 由controller计算完成返回给wireflow
-	ComputedRules *FirewallRule  `json:"computedrules,omitempty"`
+	EventType     EventType     `json:"eventType"`               //主事件类型
+	ConfigVersion string        `json:"configVersion"`           //版本号
+	Timestamp     int64         `json:"timestamp"`               //时间戳
+	Changes       *DetailsInfo  `json:"changes"`                 // 配置变化详情
+	Current       *Peer         `json:"peer"`                    //当前节点信息
+	Network       *Network      `json:"network"`                 //当前节点网络信息
+	Policies      []*Policy     `json:"policies,omitempty"`      //当前节点的策略
+	ComputedPeers []*Peer       `json:"computedpeers,omitempty"` //当前要连接的节点, 由controller计算完成返回给wireflow
+	ComputedRules *FirewallRule `json:"computedrules,omitempty"`
 }
 
 func (m *Message) Equal(b *Message) bool {
@@ -66,7 +66,7 @@ func (m *Message) Equal(b *Message) bool {
 	return true
 }
 
-type ChangeDetails struct {
+type DetailsInfo struct {
 	//节点信息变化
 	AddressChanged  bool `json:"addressChanged,omitempty"`  //IP地址变化
 	KeyChanged      bool `json:"keyChanged,omitempty"`      //密钥变化
@@ -91,17 +91,17 @@ type ChangeDetails struct {
 	TotalChanges int    `json:"totalChanges,omitempty"` // 变更总数
 }
 
-func (c *ChangeDetails) HasChanges() bool {
+func (c *DetailsInfo) HasChanges() bool {
 	return c.TotalChanges > 0
 }
 
-func (c *ChangeDetails) String() string {
+func (c *DetailsInfo) String() string {
 	data, _ := json.Marshal(c)
 	return string(data)
 }
 
 // Summary returns a summary of the changes
-func (c *ChangeDetails) Summary() string {
+func (c *DetailsInfo) Summary() string {
 	parts := make([]string, 0)
 
 	if c.AddressChanged {
@@ -149,14 +149,14 @@ type Peer struct {
 	PrivateKey          string  `json:"privateKey,omitempty"`
 	PublicKey           string  `json:"publicKey,omitempty"`
 	PeerID              uint64  `json:"peerId,omitempty"`
-	AllowedIPs          string `json:"allowedIps,omitempty"`
-	ReplacePeers        bool   `json:"replacePeers,omitempty"` // whether to replace peers when updating node
-	Port                int    `json:"port"`
-	GroupName           string `json:"groupName"`
-	Version             uint64 `json:"version"`
-	LastUpdatedAt       string `json:"lastUpdatedAt"`
-	Token               string `json:"token,omitempty"`
-	WrrpUrl             string `json:"wrrpUrl,omitempty"`
+	AllowedIPs          string  `json:"allowedIps,omitempty"`
+	ReplacePeers        bool    `json:"replacePeers,omitempty"` // whether to replace peers when updating node
+	Port                int     `json:"port"`
+	GroupName           string  `json:"groupName"`
+	Version             uint64  `json:"version"`
+	LastUpdatedAt       string  `json:"lastUpdatedAt"`
+	Token               string  `json:"token,omitempty"`
+	WrrpUrl             string  `json:"wrrpUrl,omitempty"`
 }
 
 // Network is the network information, contains all peers/policies in the network

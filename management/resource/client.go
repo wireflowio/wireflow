@@ -38,6 +38,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 type Client struct {
@@ -213,6 +214,10 @@ func NewManager() (manager.Manager, error) {
 			DefaultLabelSelector: labels.SelectorFromSet(map[string]string{
 				"app.kubernetes.io/managed-by": "wireflow-controller",
 			}),
+		},
+
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
 		},
 	})
 

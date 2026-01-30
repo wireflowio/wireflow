@@ -81,7 +81,7 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 			InterfaceName: e.InterfaceName,
 			PrivateKey:    key.String(),
 			PublicKey:     key.PublicKey().String(),
-			PeerId:        peerId.ToUint64(),
+			PeerId: int64(peerId.ToUint64()),
 		},
 
 		Status: v1alpha1.WireflowPeerStatus{
