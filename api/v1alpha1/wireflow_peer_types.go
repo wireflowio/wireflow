@@ -79,7 +79,10 @@ type WireflowPeerStatus struct {
 
 	LastSyncTime *metav1.Time `json:"lastSyncTime,omitempty"`
 
-	// ObserveGeneration is the generation observed by the controller.
+	// message hash store here
+	CurrentHash string `json:"currentHash,omitempty"`
+
+	// client applied version
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
