@@ -172,14 +172,14 @@ type FirewallRule struct {
 type Rule struct {
 	Peers    []*Peer `json:"peers"`
 	Protocol string  `json:"protocol"`
-	Port     string  `json:"port"`
+	Port     int     `json:"port"`
 }
 
 type TrafficRule struct {
 	ChainName string   `json:"chainName"`
 	Peers     []string `json:"peers,omitempty"` // ip list
 	Protocol  string   `json:"protocol,omitempty"`
-	Port      string   `json:"port,omitempty"`
+	Port      int      `json:"port,omitempty"`
 	Action    string   `json:"action,omitempty"` // Accept or drop
 }
 

@@ -384,7 +384,7 @@ func (d *Generator) buildPolicy(ctx context.Context, src *v1alpha1.WireflowPolic
 
 		if len(ingress.Ports) > 0 {
 			rule.Protocol = ingress.Ports[0].Protocol
-			rule.Port = fmt.Sprintf("%d", ingress.Ports[0].Port)
+			rule.Port = int(ingress.Ports[0].Port)
 		}
 		ingresses = append(ingresses, rule)
 	}
@@ -400,7 +400,7 @@ func (d *Generator) buildPolicy(ctx context.Context, src *v1alpha1.WireflowPolic
 		rule.Peers = peers
 		if len(egress.Ports) > 0 {
 			rule.Protocol = egress.Ports[0].Protocol
-			rule.Port = fmt.Sprintf("%d", egress.Ports[0].Port)
+			rule.Port = int(egress.Ports[0].Port)
 		}
 		egresses = append(egresses, rule)
 	}

@@ -49,18 +49,6 @@ func (r *firewallRuleResolver) ResolveRules(ctx context.Context, currentPeer *in
 		Egress:   make([]infra.TrafficRule, 0),
 	}
 
-	//generator, err := NewRuleGenerator(currentPeer.Platform)
-	//if err != nil {
-	//	log.Error(err, "Error generating firewall rule generator")
-	//	return nil, err
-	//}
-
-	// [Step 0] 状态检测规则 (Stateful Inspection) - 必须放在最前面
-	// 允许已建立连接的流量通过（RELATED,ESTABLISHED）。
-	//statefulRule := fmt.Sprintf("-m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT")
-	//result.Ingress = append(result.Ingress, fmt.Sprintf("-A INPUT -i %s %s", currentPeer.InterfaceName, statefulRule))
-	//result.Egress = append(result.Egress, fmt.Sprintf("-A OUTPUT -o %s %s", currentPeer.InterfaceName, statefulRule))
-
 	// [Step 1] 筛选出适用于当前 Peer 的策略
 	appliedPolicies := allPolicies
 
