@@ -1,23 +1,8 @@
-// Copyright 2025 The Wireflow Authors, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-package controller
+package infra
 
 import (
 	"fmt"
 	"strings"
-	"wireflow/internal/infra"
 )
 
 // RuleGenerator for mutiple platform generate firewall rules
@@ -29,7 +14,7 @@ type RuleGenerator interface {
 	// chain: "INPUT" 或 "OUTPUT"
 	// baseCmd: e.g., "-A INPUT -i wg0 -s 10.0.0.1" (通用部分)
 	// peer: 规则涉及的对端 Peer
-	GenerateRule(chain string, baseCmd string, rule *infra.Rule, peer *infra.Peer) (string, error)
+	GenerateRule(chain string, baseCmd string, rule *TrafficRule, peer *Peer) (string, error)
 
 	// GenerateStatefulAccept 生成状态检测规则（RELATED, ESTABLISHED）
 	GenerateStatefulAccept(iface string, chain string) string
@@ -44,15 +29,15 @@ func NewRuleGenerator(platform string) (RuleGenerator, error) {
 	p := strings.ToLower(platform)
 
 	switch p {
-	case infra.PlatformLinux:
+	case PlatformLinux:
 		// 返回 Linux/iptables 的生成器实例
 		return &IptablesGenerator{}, nil
 
-	case infra.PlatformWindows:
+	case PlatformWindows:
 		// 返回 Windows/PowerShell 的生成器实例
 		return &WindowsGenerator{}, nil
 
-	case infra.PlatformMacOS:
+	case PlatformMacOS:
 		// 如果您决定实现 macOS 的 pf/ipfw 生成器，可以在这里返回
 		return nil, nil
 
@@ -68,7 +53,7 @@ func (g *WindowsGenerator) Name() string {
 	return "Windows"
 }
 
-func (g *WindowsGenerator) GenerateRule(chain string, baseCmd string, rule *infra.Rule, peer *infra.Peer) (string, error) {
+func (g *WindowsGenerator) GenerateRule(chain string, baseCmd string, rule *TrafficRule, peer *Peer) (string, error) {
 	direction := "Outbound"
 	if chain == "INPUT" {
 		direction = "Inbound"
@@ -126,7 +111,7 @@ func (g *IptablesGenerator) Name() string {
 	return "Linux"
 }
 
-func (g *IptablesGenerator) GenerateRule(chain string, baseCmd string, rule *infra.Rule, peer *infra.Peer) (string, error) {
+func (g *IptablesGenerator) GenerateRule(chain string, baseCmd string, rule *TrafficRule, peer *Peer) (string, error) {
 	// baseCmd: e.g., "-A INPUT -i wg0 -s 10.0.0.1"
 
 	cmd := baseCmd
@@ -154,4 +139,14 @@ func (g *IptablesGenerator) GenerateStatefulAccept(iface string, chain string) s
 func (g *IptablesGenerator) GenerateDefaultDeny(iface string, chain string) string {
 	// Linux 默认拒绝的标准命令
 	return fmt.Sprintf("-A %s -i %s -j DROP", chain, iface)
+}
+
+// cleanIP 辅助函数：去除 CIDR 后缀 (例如 "10.0.0.1/32" -> "10.0.0.1")
+func cleanIP(ip *string) string {
+	if ip != nil {
+		if strings.Contains(*ip, "/") {
+			return strings.Split(*ip, "/")[0]
+		}
+	}
+	return ""
 }
