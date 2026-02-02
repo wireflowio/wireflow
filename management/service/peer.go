@@ -130,7 +130,7 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 	var filteredNodes []*model.Peer
 	if pageParam.Search != "" {
 		for _, n := range allPeers {
-			if strings.Contains(n.Name, pageParam.Search) || strings.Contains(*n.Address, pageParam.Search) {
+			if strings.Contains(n.Name, pageParam.Search) || (n.Address != nil && strings.Contains(*n.Address, pageParam.Search)) {
 				filteredNodes = append(filteredNodes, n)
 			}
 		}
