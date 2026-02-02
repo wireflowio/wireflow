@@ -4,18 +4,32 @@ import (
 	"context"
 	"wireflow/api/v1alpha1"
 	"wireflow/internal/log"
+	"wireflow/management/dto"
 	"wireflow/management/resource"
+	"wireflow/management/vo"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type PolicyService interface {
 	CreatePolicy(ctx context.Context, namespace, name, action string, labels map[string]string, ingressRules []v1alpha1.IngressRule, egressRules []v1alpha1.EgressRule) error
+	ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error)
+	UpdatePolicy(ctx context.Context, peerDto *dto.PeerDto) (*vo.PolicyVo, error)
 }
 
 type policyService struct {
 	log    *log.Logger
 	client *resource.Client
+}
+
+func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (p policyService) UpdatePolicy(ctx context.Context, peerDto *dto.PeerDto) (*vo.PolicyVo, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (p policyService) CreatePolicy(ctx context.Context, namespace, name, action string, labels map[string]string, ingressRules []v1alpha1.IngressRule, egressRules []v1alpha1.EgressRule) error {
