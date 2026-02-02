@@ -99,7 +99,8 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 	}
 
 	// http
-	s.Engine = gin.New()
+	s.Engine = gin.Default()
+
 	s.apiRouter()
 
 	return s, nil

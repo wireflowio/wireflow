@@ -32,6 +32,13 @@ func (s *Server) apiRouter() {
 	userApi := r.Group("/api/v1/users")
 	{
 		userApi.POST("/register", s.RegisterUser) //注册用户
+		userApi.POST("/login", s.login)           //注册用户
+	}
+
+	peerApi := r.Group("/api/v1/peers")
+	{
+		peerApi.GET("/list", s.listPeers)
+		peerApi.PUT("/update", s.updatePeer)
 	}
 
 	// 实时状态推送 (WebSocket)
@@ -112,4 +119,60 @@ func (s *Server) RegisterUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "注册成功"})
+}
+
+func (s *Server) login(c *gin.Context) {
+	var req dto.UserDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "参数格式错误"})
+		return
+	}
+
+	token, err := s.userController.Login(c.Request.Context(), req.Email, req.Password)
+	if err != nil {
+		c.JSON(401, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 返回给前端
+	c.JSON(200, gin.H{
+		"message": "登录成功",
+		"token":   token,
+	})
+}
+
+// 模拟获取所有节点（实际可能来自 wg show 或 内存 Map）
+func (s *Server) listPeers(c *gin.Context) {
+	// 1. 获取参数
+	var pageParam dto.PageRequest
+	err := c.ShouldBindQuery(&pageParam)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	data, err := s.peerController.ListPeers(c.Request.Context(), &pageParam)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, data)
+}
+
+func (s *Server) updatePeer(c *gin.Context) {
+	var req dto.PeerDto
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	vo, err := s.peerController.UpdatePeer(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, vo)
 }

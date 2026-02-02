@@ -9,6 +9,7 @@ import (
 
 type UserController interface {
 	Register(ctx context.Context, userDto dto.UserDto) error
+	Login(ctx context.Context, email, password string) (string, error)
 }
 
 var (
@@ -18,6 +19,10 @@ var (
 type userController struct {
 	log         *log.Logger
 	userService service.UserService
+}
+
+func (u userController) Login(ctx context.Context, email, password string) (string, error) {
+	return u.userService.Login(ctx, email, password)
 }
 
 func NewUserController() UserController {

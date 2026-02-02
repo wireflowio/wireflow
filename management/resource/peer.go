@@ -181,7 +181,7 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 	return message, nil
 }
 
-func (c *Client) GetByAppId(ctx context.Context, appId string) (*model.Node, error) {
+func (c *Client) GetByAppId(ctx context.Context, appId string) (*model.Peer, error) {
 	return nil, nil
 }
 
