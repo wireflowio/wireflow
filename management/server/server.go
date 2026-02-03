@@ -44,6 +44,7 @@ type Server struct {
 	peerController    controller.PeerController
 	networkController controller.NetworkController
 	userController    controller.UserController
+	policyController  controller.PolicyController
 }
 
 // ServerConfig is the server configuration.
@@ -85,6 +86,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 		peerController:    controller.NewPeerController(client),
 		networkController: controller.NewNetworkController(client),
 		userController:    controller.NewUserController(),
+		policyController:  controller.NewPolicyController(client),
 	}
 
 	routes := map[string]Handler{

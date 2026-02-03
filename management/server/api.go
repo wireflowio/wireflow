@@ -41,6 +41,14 @@ func (s *Server) apiRouter() {
 		peerApi.PUT("/update", s.updatePeer)
 	}
 
+	policyApi := r.Group("/api/v1/policies")
+	{
+		policyApi.GET("/list", s.listPolicies)
+		policyApi.PUT("/update", s.updatePolicy)
+		policyApi.POST("/create", s.createPolicy)
+		policyApi.DELETE("/delete", s.deletePolicy)
+	}
+
 	// 实时状态推送 (WebSocket)
 	//r.GET("/ws/status", HandleStatusWS)
 }
@@ -53,7 +61,14 @@ func (s *Server) GetPeers(c *gin.Context) {}
 
 func (s *Server) listTokens() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokens, err := s.networkController.ListTokens(c.Request.Context())
+		// 1. 获取参数
+		var pageParam dto.PageRequest
+		err := c.ShouldBindQuery(&pageParam)
+		if err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+		tokens, err := s.networkController.ListTokens(c.Request.Context(), &pageParam)
 		if err != nil {
 			c.JSON(400, gin.H{
 				"error": err.Error(),
