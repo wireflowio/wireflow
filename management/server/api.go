@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"wireflow/management/controller"
+	"wireflow/management/dex"
 	"wireflow/management/dto"
 	"wireflow/management/server/middleware"
 	"wireflow/pkg/cmd/network"
@@ -10,11 +12,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (s *Server) apiRouter() {
+func (s *Server) apiRouter() error {
 	r := s.Engine
 	// 跨域处理（对接 Vite 开发环境）
 	s.Use(middleware.CORSMiddleware())
 
+	dex, err := dex.NewDex(controller.NewTeamController(s.client))
+	if err != nil {
+		return err
+	}
+	r.GET("/auth/callback", dex.Login)
 	api := r.Group("/api/v1")
 	{
 		// 网络管理 (Namespace)
@@ -51,6 +58,7 @@ func (s *Server) apiRouter() {
 
 	// 实时状态推送 (WebSocket)
 	//r.GET("/ws/status", HandleStatusWS)
+	return nil
 }
 
 func (s *Server) ListNetworks(c *gin.Context) {

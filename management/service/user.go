@@ -45,8 +45,8 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 		return "", errors.New("用户不存在或密码错误")
 	}
 
-	// 3. 生成 Token
-	token, err := utils.GenerateToken(uint(user.ID))
+	// 3. 生成 Token //TODO
+	token, err := utils.GenerateToken(123)
 	if err != nil {
 		return "", errors.New("生成 Token 失败")
 	}

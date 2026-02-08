@@ -40,6 +40,7 @@ type Server struct {
 	listen string
 	nats   infra.SignalService
 
+	client            *resource.Client
 	manager           manager.Manager
 	peerController    controller.PeerController
 	networkController controller.NetworkController
@@ -83,6 +84,7 @@ func NewServer(cfg *ServerConfig) (*Server, error) {
 		listen:            cfg.Listen,
 		nats:              signal,
 		manager:           mgr,
+		client:            client,
 		peerController:    controller.NewPeerController(client),
 		networkController: controller.NewNetworkController(client),
 		userController:    controller.NewUserController(),
