@@ -3,6 +3,8 @@ package dex
 import (
 	"net/http"
 	"strings"
+	"wireflow/management/model"
+	"wireflow/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -16,7 +18,7 @@ const (
 )
 
 // AuthMiddleware Gin 鉴权中间件
-func AuthMiddleware(secretKey string) gin.HandlerFunc {
+func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 1. 获取 Authorization Header
 		authHeader := c.GetHeader("Authorization")
@@ -29,9 +31,9 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// 2. 解析 JWT
-		claims := WireFlowClaims{}
+		claims := model.WireFlowClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(secretKey), nil
+			return utils.GetJWTSecret(), nil
 		})
 
 		// 3. 校验 Token 有效性
@@ -43,9 +45,8 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 
 		// 4. 关键信息注入 Gin Context
 		// 这样后续的路由 Handler 就可以通过 c.GetString("namespace") 直接拿到了
-		c.Set(CtxUserKey, claims.UserID)
+		c.Set(CtxUserKey, claims.Subject)
 		c.Set(CtxTeamKey, claims.TeamID)
-		c.Set(CtxNamespaceKey, claims.Namespace)
 
 		c.Next() // 继续执行后续流程
 	}

@@ -10,7 +10,7 @@ func (s *Server) listPolicies(c *gin.Context) {
 	var req dto.PageRequest
 	err := c.ShouldBindQuery(&req)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, err.Error())
 		return
 	}
 
@@ -20,20 +20,20 @@ func (s *Server) listPolicies(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, vo)
+	WriteOK(c.JSON, vo)
 }
 
 func (s *Server) updatePolicy(c *gin.Context) {
 	var req dto.PeerDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, err.Error())
 		return
 	}
 
 	vo, err := s.peerController.UpdatePeer(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		WriteError(c.JSON, err.Error())
 		return
 	}
 
@@ -44,7 +44,7 @@ func (s *Server) createPolicy(c *gin.Context) {
 	var req dto.PeerDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, err.Error())
 		return
 	}
 
@@ -61,7 +61,7 @@ func (s *Server) deletePolicy(c *gin.Context) {
 	var req dto.PeerDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, err.Error())
 		return
 	}
 

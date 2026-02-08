@@ -3,8 +3,8 @@ package dex
 import (
 	"context"
 	"net/http"
+	"wireflow/management/controller"
 	"wireflow/management/model"
-	"wireflow/management/service"
 	"wireflow/pkg/utils"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -30,18 +30,18 @@ type Dex struct {
 	verifier     *oidc.IDTokenVerifier
 	oauth2Config *oauth2.Config
 
-	teamService service.TeamService
+	teamController controller.TeamController
 }
 
-func NewDex(teamService service.TeamService) (*Dex, error) {
+func NewDex(teamController controller.TeamController) (*Dex, error) {
 	veryfier, err := InitVerifier()
 	if err != nil {
 		return nil, err
 	}
 	return &Dex{
-		teamService:  teamService,
-		oauth2Config: &config,
-		verifier:     veryfier,
+		teamController: teamController,
+		oauth2Config:   &config,
+		verifier:       veryfier,
 	}, nil
 }
 
@@ -87,18 +87,18 @@ func (d *Dex) Login(c *gin.Context) {
 
 	// 5. 【核心】同步到你的数据库并初始化 K8s 基础设施
 	// 这调用的是我们最初写的 OnboardExternalUser 函数
-	user, err := d.teamService.OnboardExternalUser(ctx, dexClaims.Subject, dexClaims.Email)
+	user, err := d.teamController.OnboardExternalUser(ctx, dexClaims.Subject, dexClaims.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to onboard user"})
 		return
 	}
 
 	// 6. 签发你自己的业务 JWT (给前端后续请求使用)
-	businessToken, _ := utils.GenerateBusinessJWT(user.ID, user.Email, user.Namespace)
+	businessToken, _ := utils.GenerateBusinessJWT(user.ID, user.Email)
 
 	// 7. 返回结果或重定向
 	// 私有云部署通常直接重定向回前端 Dashboard，带上 Token
-	c.Redirect(http.StatusFound, "http://localhost:3000/login/success?token="+businessToken)
+	c.Redirect(http.StatusFound, "http://localhost:5173/login/success?token="+businessToken)
 }
 
 func InitVerifier() (*oidc.IDTokenVerifier, error) {

@@ -6,6 +6,7 @@ import (
 	"wireflow/internal/log"
 	"wireflow/management/database"
 	"wireflow/management/dto"
+	"wireflow/management/model"
 	"wireflow/management/repository"
 	"wireflow/pkg/utils"
 
@@ -15,11 +16,16 @@ import (
 type UserService interface {
 	Register(ctx context.Context, userDto dto.UserDto) error
 	Login(ctx context.Context, email, password string) (string, error)
+	GetMe(ctx context.Context, id string) (*model.User, error)
 }
 
 type userService struct {
 	log            *log.Logger
 	userRepository repository.UserRepository
+}
+
+func (u userService) GetMe(ctx context.Context, id string) (*model.User, error) {
+	return u.userRepository.GetMe(ctx, id)
 }
 
 func (u userService) Register(ctx context.Context, userDto dto.UserDto) error {
@@ -52,6 +58,10 @@ func (s *userService) Login(ctx context.Context, email, password string) (string
 	}
 
 	return token, nil
+}
+
+func (s *userService) Get() {
+
 }
 
 func NewUserService() UserService {

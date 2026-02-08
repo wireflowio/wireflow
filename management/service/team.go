@@ -2,10 +2,15 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"wireflow/internal/config"
 	"wireflow/internal/log"
 	"wireflow/management/database"
+	"wireflow/management/dto"
 	"wireflow/management/model"
+
+	client_r "wireflow/management/resource"
 
 	"gorm.io/gorm"
 	corev1 "k8s.io/api/core/v1"
@@ -13,50 +18,66 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	client_r "wireflow/management/resource"
 )
 
 type TeamService interface {
-	OnboardExternalUser(ctx context.Context, userId, extEmail, namespace string) (*model.User, error)
+	OnboardExternalUser(ctx context.Context, userId, extEmail string) (*model.User, error)
+	CreateNamespace(ctx context.Context, dto *dto.NamespaceDto) error
 }
 
 type teamService struct {
 	log       *log.Logger
 	K8sClient client.Client
 	DB        *gorm.DB // SQLite 实例
+	config    *config.Config
 }
 
-func NewTeamService(k8sClient *client_r.Client) TeamService {
+func NewTeamService(k8sClient *client_r.Client, config *config.Config) TeamService {
 	return &teamService{
 		log:       log.GetLogger("team-service"),
 		K8sClient: k8sClient,
 		DB:        database.DB,
+		config:    config,
 	}
 }
 
-// OnboardExternalUser 当外部用户通过 SSO 登录时触发
-func (s *teamService) OnboardExternalUser(ctx context.Context, userId, extEmail, namespace string) (*model.User, error) {
+func (t *teamService) OnboardExternalUser(ctx context.Context, externalID, email string) (*model.User, error) {
 	var user model.User
-	// 1. 同步外部用户到 SQLite
-	err := s.DB.FirstOrCreate(&user, model.User{Email: extEmail, Namespace: namespace}).Error
-	if err != nil {
-		return nil, err
+
+	// 1. 先查数据库
+	err := t.DB.Where("external_id = ? OR email = ?", externalID, email).First(&user).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 2. 如果是新用户，判断是否应该给予 Admin 角色
+		role := model.RoleViewer // 默认是普通用户
+		for _, adminEmail := range t.config.App.InitAdmins {
+			if email == adminEmail {
+				role = model.RoleOwner
+				break
+			}
+		}
+
+		// 3. 构造新用户对象
+		user = model.User{
+			ExternalID: externalID,
+			Email:      email,
+			Role:       role,
+		}
+		// 数据库
+		if err := t.DB.Create(&user).Error; err != nil {
+			return nil, err
+		}
+
 	}
 
-	// 2. 如果用户没有团队，创建一个默认团队 (Namespace)
-	var membership model.TeamMember
-	err = s.DB.Where("user_id = ?", user.ID).First(&membership).Error
-	if err == gorm.ErrRecordNotFound {
-		return &user, s.CreateTeamWithInfrastructure(ctx, user.ID, "Default Team")
-	}
-	return &user, err
+	return &user, nil
 }
 
 // CreateTeamWithInfrastructure 创建 K8s Namespace、Quota、RoleBinding
-func (s *teamService) CreateTeamWithInfrastructure(ctx context.Context, ownerID string, teamName string) error {
-	teamID := fmt.Sprintf("wf-team-%s", ownerID[:8]) // 确保 ID 兼容 DNS 命名
+func (t *teamService) CreateTeamWithInfrastructure(ctx context.Context, ownerID string, teamName string) error {
+	teamID := fmt.Sprintf("wf-team-%t", ownerID[:8]) // 确保 ID 兼容 DNS 命名
 
-	return s.DB.Transaction(func(tx *gorm.DB) error {
+	return t.DB.Transaction(func(tx *gorm.DB) error {
 		// --- A. SQLite 事务 ---
 		team := model.Team{DisplayName: teamName}
 
@@ -74,7 +95,7 @@ func (s *teamService) CreateTeamWithInfrastructure(ctx context.Context, ownerID 
 			Name:   teamID,
 			Labels: map[string]string{"managed-by": "wireflow"},
 		}}
-		if err := s.K8sClient.Create(ctx, ns); err != nil {
+		if err := t.K8sClient.Create(ctx, ns); err != nil {
 			return err
 		}
 
@@ -88,7 +109,7 @@ func (s *teamService) CreateTeamWithInfrastructure(ctx context.Context, ownerID 
 				},
 			},
 		}
-		if err := s.K8sClient.Create(ctx, quota); err != nil {
+		if err := t.K8sClient.Create(ctx, quota); err != nil {
 			return err
 		}
 
@@ -106,6 +127,55 @@ func (s *teamService) CreateTeamWithInfrastructure(ctx context.Context, ownerID 
 				APIGroup: "rbac.authorization.k8s.io",
 			},
 		}
-		return s.K8sClient.Create(ctx, rb)
+		return t.K8sClient.Create(ctx, rb)
 	})
+}
+
+// teamService逻辑
+func (t *teamService) CreateNamespace(ctx context.Context, dto *dto.NamespaceDto) error {
+
+	// 1. 在 K8s 中真实创建 Namespace
+	// 同时可以创建 ResourceQuota (配额), 限制 CPU/内存，防止用户把集群搞崩
+	err := t.InitNewNamespace(ctx, dto)
+	if err != nil {
+		return err
+	}
+
+	// 2. 数据库记录这个 Namespace 及其归属信息
+	newNS := model.Namespace{
+		Name:        dto.Name,
+		DisplayName: dto.DisplayName,
+	}
+	t.DB.Create(&newNS)
+
+	return nil
+}
+
+// 授权逻辑
+func (t *teamService) AssignPermission(ctx context.Context, dto *dto.UserNamespacePermissionDto) error {
+
+	// 1. 数据库写入权限记录
+	perm := &model.UserNamespacePermission{
+		UserID:      dto.UserID,
+		Namespace:   dto.Namespace,
+		AccessLevel: dto.AccessLevel,
+	}
+	t.DB.Save(&perm)
+
+	// 2. 【高级操作】同步创建 K8s RBAC RoleBinding
+	// 这样该用户以后通过 kubectl 访问时也会被权限限制
+	err := t.CreateRoleBinding(ctx, perm)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *teamService) InitNewNamespace(ctx context.Context, dto *dto.NamespaceDto) error {
+	return nil
+}
+
+func (t *teamService) CreateRoleBinding(ctx context.Context, perm *model.UserNamespacePermission) error {
+	return nil
 }

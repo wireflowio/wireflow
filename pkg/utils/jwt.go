@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"os"
 	"time"
 	"wireflow/management/model"
 
@@ -53,14 +54,23 @@ func ParseToken(tokenString string) (*Claims, error) {
 }
 
 // 建议从环境变量读取，不要硬编码
-var jwtSecret = []byte("your-256-bit-secret-key-here")
+//var jwtSecret = []byte("your-256-bit-secret-key-here")
 
-func GenerateBusinessJWT(userID, email, namespace string) (string, error) {
+func GetJWTSecret() []byte {
+	// 从环境变量获取，比如在 docker-compose 里配置的
+	secret := os.Getenv("WF_JWT_SECRET")
+	if secret == "" {
+		// 生产环境建议在这里直接 panic，强制要求配置 secret
+		return []byte("your-256-bit-secret-key-here")
+	}
+	return []byte(secret)
+}
+
+func GenerateBusinessJWT(userID, email string) (string, error) {
 	// 1. 设置有效期（例如 12 小时）
 	claims := model.WireFlowClaims{
-		UserID:    userID,
-		Email:     email,
-		Namespace: namespace,
+		Subject: userID,
+		Email:   email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -73,7 +83,7 @@ func GenerateBusinessJWT(userID, email, namespace string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// 3. 生成最终的字符串 Token
-	signedToken, err := token.SignedString(jwtSecret)
+	signedToken, err := token.SignedString(GetJWTSecret())
 	if err != nil {
 		return "", err
 	}
