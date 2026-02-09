@@ -67,18 +67,16 @@ func (s *Server) listTokens() gin.HandlerFunc {
 		var pageParam dto.PageRequest
 		err := c.ShouldBindQuery(&pageParam)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			WriteBadRequest(c.JSON, "invalid params")
 			return
 		}
 		tokens, err := s.networkController.ListTokens(c.Request.Context(), &pageParam)
 		if err != nil {
-			c.JSON(400, gin.H{
-				"error": err.Error(),
-			})
+			WriteError(c.JSON, err.Error())
 			return
 		}
 
-		c.JSON(200, tokens)
+		WriteOK(c.JSON, tokens)
 	}
 }
 
@@ -124,32 +122,32 @@ func (s *Server) listPeers(c *gin.Context) {
 	var pageParam dto.PageRequest
 	err := c.ShouldBindQuery(&pageParam)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, "invalid params")
 		return
 	}
 
 	data, err := s.peerController.ListPeers(c.Request.Context(), &pageParam)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		WriteError(c.JSON, err.Error())
 		return
 	}
 
-	c.JSON(200, data)
+	WriteOK(c.JSON, data)
 }
 
 func (s *Server) updatePeer(c *gin.Context) {
 	var req dto.PeerDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		WriteBadRequest(c.JSON, "invalid params")
 		return
 	}
 
 	vo, err := s.peerController.UpdatePeer(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		WriteError(c.JSON, err.Error())
 		return
 	}
 
-	c.JSON(200, vo)
+	WriteOK(c.JSON, vo)
 }
