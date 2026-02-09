@@ -9,9 +9,8 @@ import (
 )
 
 func (s *Server) userApi() {
-	r := s.Engine
 
-	userApi := r.Group("/api/v1/users")
+	userApi := s.Group("/api/v1/users")
 	userApi.Use(dex.AuthMiddleware())
 	{
 		userApi.POST("/register", s.RegisterUser) //注册用户

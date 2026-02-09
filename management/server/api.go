@@ -12,7 +12,6 @@ import (
 )
 
 func (s *Server) apiRouter() error {
-	r := s.Engine
 	// 跨域处理（对接 Vite 开发环境）
 	s.Use(middleware.CORSMiddleware())
 
@@ -20,8 +19,8 @@ func (s *Server) apiRouter() error {
 	if err != nil {
 		return err
 	}
-	r.GET("/auth/callback", dex.Login)
-	api := r.Group("/api/v1")
+	s.GET("/auth/callback", dex.Login)
+	api := s.Group("/api/v1")
 	{
 		// 网络管理 (Namespace)
 		api.POST("/networks", CreateNetwork) // 创建新网络
@@ -35,17 +34,17 @@ func (s *Server) apiRouter() error {
 		api.GET("/networks/:id/peers", s.GetPeers) // 获取该网络下的所有机器
 	}
 
-	peerApi := r.Group("/api/v1/peers")
+	peerApi := s.Group("/api/v1/peers")
 	{
 		peerApi.GET("/list", s.listPeers)
 		peerApi.PUT("/update", s.updatePeer)
 	}
 
-	policyApi := r.Group("/api/v1/policies")
+	policyApi := s.Group("/api/v1/policies")
 	{
 		policyApi.GET("/list", s.listPolicies)
-		policyApi.PUT("/update", s.updatePolicy)
-		policyApi.POST("/create", s.createPolicy)
+		policyApi.PUT("/update", s.createOrUpdatePolicy)
+		policyApi.POST("/create", s.createOrUpdatePolicy)
 		policyApi.DELETE("/delete", s.deletePolicy)
 	}
 

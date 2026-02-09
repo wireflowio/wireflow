@@ -40,21 +40,21 @@ func (s *Server) updatePolicy(c *gin.Context) {
 	c.JSON(200, vo)
 }
 
-func (s *Server) createPolicy(c *gin.Context) {
-	var req dto.PeerDto
+func (s *Server) createOrUpdatePolicy(c *gin.Context) {
+	var req dto.PolicyDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		WriteBadRequest(c.JSON, err.Error())
 		return
 	}
 
-	vo, err := s.peerController.UpdatePeer(c.Request.Context(), &req)
+	vo, err := s.policyController.CreateOrUpdatePolicy(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(200, vo)
+	WriteOK(c.JSON, vo)
 }
 
 func (s *Server) deletePolicy(c *gin.Context) {

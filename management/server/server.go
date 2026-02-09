@@ -79,6 +79,7 @@ func NewServer(serverConfig *ServerConfig) (*Server, error) {
 	database.InitDB("wireflow.db")
 
 	s := &Server{
+		Engine:            gin.Default(),
 		logger:            logger,
 		listen:            serverConfig.Cfg.App.Listen,
 		nats:              signal,
@@ -102,10 +103,9 @@ func NewServer(serverConfig *ServerConfig) (*Server, error) {
 		s.nats.Service(route, "wireflow_queue", handler)
 	}
 
-	// http
-	s.Engine = gin.Default()
-
-	s.apiRouter()
+	if err = s.apiRouter(); err != nil {
+		return nil, err
+	}
 
 	return s, nil
 }

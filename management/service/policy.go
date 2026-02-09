@@ -14,9 +14,8 @@ import (
 )
 
 type PolicyService interface {
-	CreatePolicy(ctx context.Context, namespace, name, action string, labels map[string]string, ingressRules []v1alpha1.IngressRule, egressRules []v1alpha1.EgressRule) error
+	CreateOrUpdatePolicy(ctx context.Context, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
 	ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error)
-	UpdatePolicy(ctx context.Context, policyDto *dto.PeerDto) (*vo.PolicyVo, error)
 }
 
 type policyService struct {
@@ -40,14 +39,10 @@ func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReques
 
 	for _, n := range policyList.Items {
 		allPolicies = append(allPolicies, &vo.PolicyVo{
-			Name:         n.Name,
-			Type:         n.Annotations["type"],
-			Description:  n.Annotations["description"],
-			PeerSelector: n.Spec.PeerSelector,
-			IngressRule:  n.Spec.IngressRule,
-			EgressRule:   n.Spec.EgressRule,
-			Network:      n.Spec.Network,
-			Action:       n.Spec.Action,
+			Name:               n.Name,
+			Action:             n.Annotations["action"],
+			Description:        n.Annotations["description"],
+			WireflowPolicySpec: &n.Spec,
 		})
 	}
 
@@ -56,7 +51,7 @@ func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReques
 	if pageParam.Search != "" {
 		for _, n := range allPolicies {
 
-			policyType := n.Type
+			policyType := n.Action
 			description := n.Description
 
 			if strings.Contains(n.Name, pageParam.Search) || strings.Contains(policyType, pageParam.Search) || strings.Contains(description, pageParam.Search) {
@@ -100,19 +95,40 @@ func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReques
 	}, nil
 }
 
-func (p policyService) UpdatePolicy(ctx context.Context, policyDto *dto.PeerDto) (*vo.PolicyVo, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (p policyService) CreatePolicy(ctx context.Context, namespace, name, action string, labels map[string]string, ingressRules []v1alpha1.IngressRule, egressRules []v1alpha1.EgressRule) error {
-	selector := metav1.LabelSelector{
-		MatchLabels: labels,
+func (p *policyService) CreateOrUpdatePolicy(ctx context.Context, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
+	newPolicy := &v1alpha1.WireflowPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
+			Kind:       "WireflowPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      policyDto.Name, // 强制使用 DTO 外层的名字
+			Namespace: "default",      // 或者从上下文获取
+			Labels: map[string]string{
+				"action":      policyDto.Action,
+				"description": policyDto.Description,
+			},
+		},
+		// 关键点：直接把嵌入的指针赋值给 Spec
+		Spec: policyDto.WireflowPolicySpec,
 	}
 
-	policy := buildPolicyFromArgs(namespace, name, selector, ingressRules, egressRules, action)
+	// 使用SSA模式
+	manager := client.FieldOwner("wireflow-controller-manager")
 
-	return p.client.Create(ctx, &policy)
+	err := p.client.Patch(ctx, newPolicy, client.Apply, manager)
+	if err != nil {
+		return nil, err
+	}
+	policyVo := vo.PolicyVo{
+		Name:               newPolicy.Name,
+		Action:             newPolicy.Spec.Action,
+		Description:        policyDto.Description,
+		Namespace:          policyDto.Namespace,
+		WireflowPolicySpec: &newPolicy.Spec,
+	}
+
+	return &policyVo, nil
 }
 
 func NewPolicyService(client *resource.Client) PolicyService {
@@ -134,8 +150,8 @@ func buildPolicyFromArgs(namespace, name string, peerSelector metav1.LabelSelect
 		},
 		Spec: v1alpha1.WireflowPolicySpec{
 			PeerSelector: peerSelector,
-			IngressRule:  IngressRule,
-			EgressRule:   EgressRule,
+			Ingress:      IngressRule,
+			Egress:       EgressRule,
 			Action:       action,
 			Network:      "wireflow-default-net",
 		},
