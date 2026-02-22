@@ -1,12 +1,12 @@
 package server
 
 import (
-	"fmt"
-	"wireflow/management/controller"
+	"strings"
 	"wireflow/management/dex"
 	"wireflow/management/dto"
 	"wireflow/management/server/middleware"
-	"wireflow/pkg/cmd/network"
+	"wireflow/management/service"
+	"wireflow/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func (s *Server) apiRouter() error {
 	// 跨域处理（对接 Vite 开发环境）
 	s.Use(middleware.CORSMiddleware())
 
-	dex, err := dex.NewDex(controller.NewTeamController(s.client, s.cfg))
+	dex, err := dex.NewDex(service.NewWorkspaceService(s.client))
 	if err != nil {
 		return err
 	}
@@ -26,29 +26,36 @@ func (s *Server) apiRouter() error {
 		api.POST("/networks", CreateNetwork) // 创建新网络
 		api.GET("/networks", s.ListNetworks) // 获取网络列表
 
-		// Token 管理
-		api.POST("/networks/:id/tokens", GenerateToken) // 为指定网络生成入网 Token
-		api.GET("/tokens", s.listTokens())
-
 		// 节点管理 (Peers)
-		api.GET("/networks/:id/peers", s.GetPeers) // 获取该网络下的所有机器
+		api.GET("/networks/peers", middleware.TenantContextMiddleware(), s.GetPeers) // 获取该网络下的所有机器
+	}
+
+	tokenApi := s.Group("/api/v1/token")
+	{
+		// Token 管理
+		tokenApi.POST("/generate", middleware.TenantContextMiddleware(), s.generateToken()) // 为指定网络生成入网 Token// Token 管理
+		tokenApi.DELETE("/:token", middleware.TenantContextMiddleware(), s.rmToken())
+		tokenApi.GET("/list", middleware.TenantContextMiddleware(), s.listTokens())
+
 	}
 
 	peerApi := s.Group("/api/v1/peers")
 	{
-		peerApi.GET("/list", s.listPeers)
+		peerApi.GET("/list", middleware.TenantContextMiddleware(), s.listPeers)
 		peerApi.PUT("/update", s.updatePeer)
 	}
 
 	policyApi := s.Group("/api/v1/policies")
 	{
-		policyApi.GET("/list", s.listPolicies)
-		policyApi.PUT("/update", s.createOrUpdatePolicy)
-		policyApi.POST("/create", s.createOrUpdatePolicy)
-		policyApi.DELETE("/delete", s.deletePolicy)
+		policyApi.GET("/list", middleware.TenantContextMiddleware(), s.listPolicies)
+		policyApi.PUT("/update", middleware.TenantContextMiddleware(), s.createOrUpdatePolicy)
+		policyApi.POST("/create", middleware.TenantContextMiddleware(), s.createOrUpdatePolicy)
+		policyApi.DELETE("/:name", middleware.TenantContextMiddleware(), s.deletePolicy)
 	}
 
-	s.userApi()
+	s.userRouter()
+
+	s.workspaceRouter()
 
 	// 实时状态推送 (WebSocket)
 	//r.GET("/ws/status", HandleStatusWS)
@@ -67,35 +74,47 @@ func (s *Server) listTokens() gin.HandlerFunc {
 		var pageParam dto.PageRequest
 		err := c.ShouldBindQuery(&pageParam)
 		if err != nil {
-			WriteBadRequest(c.JSON, "invalid params")
+			resp.BadRequest(c, "invalid params")
 			return
 		}
 		tokens, err := s.networkController.ListTokens(c.Request.Context(), &pageParam)
 		if err != nil {
-			WriteError(c.JSON, err.Error())
+			resp.Error(c, err.Error())
 			return
 		}
 
-		WriteOK(c.JSON, tokens)
+		resp.OK(c, tokens)
 	}
 }
 
 // 模拟 JWT 或加密 Token 的生成
-func GenerateToken(c *gin.Context) {
-	//networkID := c.Param("id") // 这里就是 Namespace 的名字
+func (s *Server) generateToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err := s.tokenController.Create(c.Request.Context())
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
 
-	// 实际商业化建议使用 JWT，包含过期时间和 Namespace 信息
-	// 简单实现可以是一个带前缀的随机串
-	token := fmt.Sprintf("", network.GenerateNetworkID())
+		resp.OK(c, nil)
+	}
+}
 
-	// 将 Token 存入 Redis 或 K8s Secret，供 Agent 加入时校验
-	// SaveTokenToStore(token, networkID)
+func (s *Server) rmToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Param("token")
+		if token == "" {
+			resp.Error(c, "token is required")
+			return
+		}
+		err := s.tokenController.Delete(c.Request.Context(), strings.ToLower(token))
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
 
-	c.JSON(200, gin.H{
-		"token":       token,
-		"expires_in":  86400, // 24小时
-		"install_cmd": fmt.Sprintf("curl -sL wireflow.io/i.sh | sh -s -- --token %s", token),
-	})
+		resp.OK(c, nil)
+	}
 }
 
 func CreateNetwork(c *gin.Context) {
@@ -103,14 +122,14 @@ func CreateNetwork(c *gin.Context) {
 		Name string `json:"name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "无效的参数"})
+		resp.BadRequest(c, "invalid json")
 		return
 	}
 
 	// 调用 K8s SDK 创建 Namespace
-	// err := k8sClient.CreateNamespace(req.Name)
+	// err := k8sClient.AddWorkspace(req.Name)
 
-	c.JSON(201, gin.H{
+	resp.OK(c, gin.H{
 		"message": "网络创建成功",
 		"id":      req.Name,
 	})
@@ -122,32 +141,32 @@ func (s *Server) listPeers(c *gin.Context) {
 	var pageParam dto.PageRequest
 	err := c.ShouldBindQuery(&pageParam)
 	if err != nil {
-		WriteBadRequest(c.JSON, "invalid params")
+		resp.BadRequest(c, "invalid params")
 		return
 	}
 
 	data, err := s.peerController.ListPeers(c.Request.Context(), &pageParam)
 	if err != nil {
-		WriteError(c.JSON, err.Error())
+		resp.Error(c, err.Error())
 		return
 	}
 
-	WriteOK(c.JSON, data)
+	resp.OK(c, data)
 }
 
 func (s *Server) updatePeer(c *gin.Context) {
 	var req dto.PeerDto
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		WriteBadRequest(c.JSON, "invalid params")
+		resp.BadRequest(c, "invalid params")
 		return
 	}
 
 	vo, err := s.peerController.UpdatePeer(c.Request.Context(), &req)
 	if err != nil {
-		WriteError(c.JSON, err.Error())
+		resp.Error(c, err.Error())
 		return
 	}
 
-	WriteOK(c.JSON, vo)
+	resp.OK(c, vo)
 }

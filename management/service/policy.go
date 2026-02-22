@@ -6,6 +6,7 @@ import (
 	"wireflow/api/v1alpha1"
 	"wireflow/internal/log"
 	"wireflow/management/dto"
+	"wireflow/management/repository"
 	"wireflow/management/resource"
 	"wireflow/management/vo"
 
@@ -16,19 +17,61 @@ import (
 type PolicyService interface {
 	CreateOrUpdatePolicy(ctx context.Context, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
 	ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error)
+	DeletePolicy(ctx context.Context, name string) error
 }
 
 type policyService struct {
-	log    *log.Logger
-	client *resource.Client
+	log           *log.Logger
+	client        *resource.Client
+	workspaceRepo repository.WorkspaceRepository
 }
 
-func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error) {
+func (p *policyService) DeletePolicy(ctx context.Context, name string) error {
+
+	wsId := ctx.Value("workspaceId").(string)
+	workspace, err := p.workspaceRepo.FindById(ctx, wsId)
+	if err != nil {
+		return err
+	}
+
+	resource := &v1alpha1.WireflowPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "WireflowPolicy",
+			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: workspace.Namespace,
+		},
+	}
+
+	err = p.client.Delete(ctx, resource)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error) {
 	var (
 		policyList v1alpha1.WireflowPolicyList
 		err        error
 	)
-	err = p.client.GetAPIReader().List(ctx, &policyList, client.InNamespace(pageParam.Namespace))
+
+	workspaceV := ctx.Value("workspaceId")
+	var workspaceId string
+	if workspaceV != nil {
+		workspaceId = workspaceV.(string)
+	}
+
+	workspace, err := p.workspaceRepo.FindById(ctx, workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.client.GetAPIReader().List(ctx, &policyList, client.InNamespace(workspace.Namespace))
 
 	if err != nil {
 		return nil, err
@@ -48,13 +91,13 @@ func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReques
 
 	// 3. 逻辑过滤（搜索）
 	var filteredPolicies []*vo.PolicyVo
-	if pageParam.Search != "" {
+	if pageParam.Keyword != "" {
 		for _, n := range allPolicies {
 
 			policyType := n.Action
 			description := n.Description
 
-			if strings.Contains(n.Name, pageParam.Search) || strings.Contains(policyType, pageParam.Search) || strings.Contains(description, pageParam.Search) {
+			if strings.Contains(n.Name, pageParam.Keyword) || strings.Contains(policyType, pageParam.Keyword) || strings.Contains(description, pageParam.Keyword) {
 				filteredPolicies = append(filteredPolicies, n)
 			}
 		}
@@ -96,16 +139,25 @@ func (p policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReques
 }
 
 func (p *policyService) CreateOrUpdatePolicy(ctx context.Context, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
+
+	wsId := ctx.Value("workspaceId").(string)
+	workspace, err := p.workspaceRepo.FindById(ctx, wsId)
+	if err != nil {
+		return nil, err
+	}
+
 	newPolicy := &v1alpha1.WireflowPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
 			Kind:       "WireflowPolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      policyDto.Name, // 强制使用 DTO 外层的名字
-			Namespace: "default",      // 或者从上下文获取
+			Name:      policyDto.Name,      // 强制使用 DTO 外层的名字
+			Namespace: workspace.Namespace, // 或者从上下文获取
 			Labels: map[string]string{
-				"action":      policyDto.Action,
+				"action": policyDto.Action,
+			},
+			Annotations: map[string]string{
 				"description": policyDto.Description,
 			},
 		},
@@ -116,7 +168,7 @@ func (p *policyService) CreateOrUpdatePolicy(ctx context.Context, policyDto *dto
 	// 使用SSA模式
 	manager := client.FieldOwner("wireflow-controller-manager")
 
-	err := p.client.Patch(ctx, newPolicy, client.Apply, manager)
+	err = p.client.Patch(ctx, newPolicy, client.Apply, manager)
 	if err != nil {
 		return nil, err
 	}
@@ -133,8 +185,9 @@ func (p *policyService) CreateOrUpdatePolicy(ctx context.Context, policyDto *dto
 
 func NewPolicyService(client *resource.Client) PolicyService {
 	return &policyService{
-		log:    log.GetLogger("policy-service"),
-		client: client,
+		log:           log.GetLogger("policy-service"),
+		client:        client,
+		workspaceRepo: repository.NewWorkspaceRepository(),
 	}
 }
 
