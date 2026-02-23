@@ -21,6 +21,7 @@ import (
 	"time"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
+	"wireflow/management/database"
 	"wireflow/management/dto"
 	"wireflow/management/model"
 	"wireflow/management/repository"
@@ -57,7 +58,7 @@ type peerService struct {
 	logger *log.Logger
 	client *resource.Client
 
-	workspaceRepo repository.WorkspaceRepository
+	workspaceRepo *repository.WorkspaceRepository
 }
 
 func (p *peerService) UpdatePeer(ctx context.Context, peerDto *dto.PeerDto) (*vo.PeerVo, error) {
@@ -116,7 +117,7 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 		workspaceId = workspaceV.(string)
 	}
 
-	workspace, err := p.workspaceRepo.FindById(ctx, workspaceId)
+	workspace, err := p.workspaceRepo.GetByID(ctx, workspaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +247,7 @@ func NewPeerService(client *resource.Client) PeerService {
 	return &peerService{
 		client:        client,
 		logger:        log.GetLogger("peer-service"),
-		workspaceRepo: repository.NewWorkspaceRepository(),
+		workspaceRepo: repository.NewWorkspaceRepository(database.DB),
 	}
 }
 

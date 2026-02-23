@@ -34,8 +34,8 @@ type tokenService struct {
 func (t tokenService) Delete(ctx context.Context, token string) error {
 	return t.db.Transaction(func(tx *gorm.DB) error {
 		wsId := ctx.Value("workspaceId").(string)
-		workspaceRepo := t.workspaceRepo.WithTx(tx)
-		workspace, err := workspaceRepo.FindById(ctx, wsId)
+		workspaceRepo := repository.NewWorkspaceRepository(tx)
+		workspace, err := workspaceRepo.GetByID(ctx, wsId)
 		if err != nil {
 			return err
 		}
@@ -59,8 +59,8 @@ func (t tokenService) Delete(ctx context.Context, token string) error {
 func (t tokenService) Create(ctx context.Context) error {
 	wsId := ctx.Value("workspaceId").(string)
 	return t.db.Transaction(func(tx *gorm.DB) error {
-		workspaceRepo := t.workspaceRepo.WithTx(tx)
-		workspace, err := workspaceRepo.FindById(ctx, wsId)
+		workspaceRepo := repository.NewWorkspaceRepository(tx)
+		workspace, err := workspaceRepo.GetByID(ctx, wsId)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,6 @@ func NewTokenService(client *resource.Client) TokenService {
 	return &tokenService{
 		log:           log.GetLogger("user-service"),
 		db:            database.DB,
-		workspaceRepo: repository.NewWorkspaceRepository(),
 		peerService:   NewPeerService(client),
 		policyService: NewPolicyService(client),
 		client:        client,
