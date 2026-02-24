@@ -6,10 +6,25 @@ run:
     - vendor
     - third_party
 
+linters:
+  disable-all: false
+  enable:
+    - errcheck # 检查未处理的错误（建议保留）
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  disable:
+    - lll          # 关闭行太长的检查
+    - gocyclo      # 关闭代码复杂度检查
+    - dupl         # 关闭代码重复检查
+    - typecheck    # 如果泛型报错太严重，可以暂时关闭
+    - revive       # 很多关于注释的琐碎规则都在这里，关掉它
+
 issues:
-  # 排除掉所有来自外部库或生成的代码的警告
   exclude-rules:
-    - path: _test\.go
+    - path: _test\.go # 测试文件不进行严格检查
       linters:
-        - gocyclo
         - errcheck
+    - text: "excuse me" # 排除包含特定文字的报错

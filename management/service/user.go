@@ -46,6 +46,7 @@ func (u *userService) AddUser(ctx context.Context, dto *dto.UserDto) error {
 		newUser := &model.User{
 			Username: dto.Username,
 			Password: dto.Password,
+			Role:     dto.Role,
 		}
 		err := userRepo.Create(ctx, newUser)
 		if err != nil {
