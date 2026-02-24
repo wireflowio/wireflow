@@ -17,7 +17,7 @@ REGISTRY ?= ghcr.io/wireflowio
 SERVICES := manager wireflow
 TARGETOS ?= linux
 TARGETARCH ?=amd64
-VERSION ?= latest
+VERSION ?= dev
 IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
