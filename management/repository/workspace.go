@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"wireflow/internal/infra"
 	"wireflow/management/dto"
 	"wireflow/management/model"
 
@@ -70,7 +71,7 @@ func (r *WorkspaceMemberRepository) Delete(ctx context.Context, workspace *model
 
 func (r *WorkspaceMemberRepository) List(ctx context.Context, request *dto.PageRequest) ([]model.WorkspaceMember, int64, error) {
 
-	userID, ok := ctx.Value("user_id").(string)
+	userID, ok := ctx.Value(infra.UserIDKey).(string)
 	if !ok {
 		return nil, 0, errors.New("unauthorized: user_id not found in context")
 	}

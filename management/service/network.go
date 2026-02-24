@@ -63,7 +63,7 @@ func (s *networkService) ListTokens(ctx context.Context, pageParam *dto.PageRequ
 		err       error
 	)
 
-	workspaceV := ctx.Value("workspaceId")
+	workspaceV := ctx.Value(infra.WorkspaceKey)
 	var workspaceId string
 	if workspaceV != nil {
 		workspaceId = workspaceV.(string)

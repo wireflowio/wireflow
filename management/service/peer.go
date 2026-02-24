@@ -111,7 +111,7 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 		err      error
 	)
 
-	workspaceV := ctx.Value("workspaceId")
+	workspaceV := ctx.Value(infra.WorkspaceKey)
 	var workspaceId string
 	if workspaceV != nil {
 		workspaceId = workspaceV.(string)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"wireflow/api/v1alpha1"
+	"wireflow/internal/infra"
 	"wireflow/internal/log"
 	"wireflow/management/database"
 	"wireflow/management/dto"
@@ -28,12 +29,12 @@ type tokenService struct {
 	client        *resource.Client
 	peerService   PeerService
 	policyService PolicyService
-	workspaceRepo repository.WorkspaceRepository
+	workspaceRepo repository.WorkspaceRepository // nolint:all
 }
 
 func (t tokenService) Delete(ctx context.Context, token string) error {
 	return t.db.Transaction(func(tx *gorm.DB) error {
-		wsId := ctx.Value("workspaceId").(string)
+		wsId := ctx.Value(infra.WorkspaceKey).(string)
 		workspaceRepo := repository.NewWorkspaceRepository(tx)
 		workspace, err := workspaceRepo.GetByID(ctx, wsId)
 		if err != nil {
@@ -57,7 +58,7 @@ func (t tokenService) Delete(ctx context.Context, token string) error {
 }
 
 func (t tokenService) Create(ctx context.Context) error {
-	wsId := ctx.Value("workspaceId").(string)
+	wsId := ctx.Value(infra.WorkspaceKey).(string)
 	return t.db.Transaction(func(tx *gorm.DB) error {
 		workspaceRepo := repository.NewWorkspaceRepository(tx)
 		workspace, err := workspaceRepo.GetByID(ctx, wsId)

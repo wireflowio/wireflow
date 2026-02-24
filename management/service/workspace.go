@@ -43,7 +43,6 @@ type workspaceService struct {
 	log           *log.Logger
 	client        *client_r.Client
 	db            *gorm.DB // SQLite 实例
-	config        *config.Config
 	workspaceRepo *repository.WorkspaceRepository
 	memberRepo    *repository.WorkspaceMemberRepository
 	identify      *client_r.IdentityImpersonator
@@ -394,6 +393,7 @@ func (w *workspaceService) InitializeTenant(ctx context.Context, wsID, role stri
 }
 
 // 无论什么用户，都走这套逻辑，只是参数不同
+// nolint:all
 func (w *workspaceService) setupQuota(ctx context.Context, ns string, plan *model.Plan) {
 	quota := &corev1.ResourceQuota{
 		Spec: corev1.ResourceQuotaSpec{

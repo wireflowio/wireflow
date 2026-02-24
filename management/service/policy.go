@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"wireflow/api/v1alpha1"
+	"wireflow/internal/infra"
 	"wireflow/internal/log"
 	"wireflow/management/database"
 	"wireflow/management/dto"
@@ -29,7 +30,7 @@ type policyService struct {
 
 func (p *policyService) DeletePolicy(ctx context.Context, name string) error {
 
-	wsId := ctx.Value("workspaceId").(string)
+	wsId := ctx.Value(infra.WorkspaceKey).(string)
 	workspace, err := p.workspaceRepo.GetByID(ctx, wsId)
 	if err != nil {
 		return err
@@ -61,7 +62,7 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 		err        error
 	)
 
-	workspaceV := ctx.Value("workspaceId")
+	workspaceV := ctx.Value(infra.WorkspaceKey)
 	var workspaceId string
 	if workspaceV != nil {
 		workspaceId = workspaceV.(string)
@@ -122,9 +123,7 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 	// 截取
 	data := filteredPolicies[start:end]
 	var res []*vo.PolicyVo
-	for _, n := range data {
-		res = append(res, n)
-	}
+	res = append(res, data...)
 
 	var vos []vo.PolicyVo
 	for _, n := range res {
@@ -141,7 +140,7 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 
 func (p *policyService) CreateOrUpdatePolicy(ctx context.Context, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
 
-	wsId := ctx.Value("workspaceId").(string)
+	wsId := ctx.Value(infra.WorkspaceKey).(string)
 	workspace, err := p.workspaceRepo.GetByID(ctx, wsId)
 	if err != nil {
 		return nil, err
@@ -192,6 +191,7 @@ func NewPolicyService(client *resource.Client) PolicyService {
 	}
 }
 
+// nolint:all
 func buildPolicyFromArgs(namespace, name string, peerSelector metav1.LabelSelector, IngressRule []v1alpha1.IngressRule, EgressRule []v1alpha1.EgressRule, action string) v1alpha1.WireflowPolicy {
 	return v1alpha1.WireflowPolicy{
 		TypeMeta: metav1.TypeMeta{
