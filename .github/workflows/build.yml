@@ -1,0 +1,38 @@
+name: Build Multi-Images via Makefile
+
+on:
+  push:
+    branches: [ "dev" ]
+
+permissions:
+  packages: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. 登录仓库（这样你的 Makefile 里的 docker push 才有权限）
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. 如果你的编译依赖特定的环境（比如 Go），需要先安装
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      # 3. 调用你的 Makefile 进行构建
+      - name: Build and Push all images
+        run: |
+          # 可以在这里传入环境变量给 Makefile
+          export REPO_URL=ghcr.io/${{ github.repository }}
+          export IMAGE_TAG=latest
+          make docker-all
