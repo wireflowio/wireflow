@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM registry.cn-hangzhou.aliyuncs.com/wireflow-io/golang:1.25.2 AS builder
+FROM golang:1.25.2 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETSERVICE
