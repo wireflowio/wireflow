@@ -39,16 +39,16 @@ spec:
             - "manager"
             - "--level=INFO"
           volumeMounts:
-            - mountPath: /app/control.yaml
+            - mountPath: /deploy/conf.yaml
               name: conf
-              subPath: control.yaml
+              subPath: conf.yaml
       volumes:
         - name: conf
           configMap:
             name: wireflow-control-config
             items:
-              - key: control.yaml
-                path: control.yaml
+              - key: conf.yaml
+                path: conf.yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
