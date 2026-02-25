@@ -1,43 +1,52 @@
-name: Continuous Integration
+name: Build and Push
 
 on:
-  push:
-    branches: [ "dev" ]
   pull_request:
+    branches: [ "master" ]
+  push:
     branches: [ "master" ]
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 登录容器仓库
-      # 逻辑：只要不是在 Upstream 的 PR 流程（没权限），就尝试登录
+      # 1. 计算并确定唯一的 Tag
+      - name: Calculate Tag
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            TAG="pr-${{ github.event.number }}"
+          else
+            TAG="latest"
+          fi
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          # 将这个 Tag 写入本地文件，准备传递
+          echo "$TAG" > build_tag.txt
+
+      # 2. 登录 GHCR
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. 执行编译
-      # 无论在哪个仓库，都要保证代码能 build 成功
-      - name: Build All Images
+      # 3. 编译并推送镜像 (利用 GitHub 强大的 CPU)
+      - name: Build and Push Images
         run: |
-          make build-all REGISTRY=ghcr.io/${{ github.repository }}
+          make build-all REGISTRY=ghcr.io/${{ github.repository }} TAG=${{ steps.vars.outputs.TAG }}
+          make push-all  REGISTRY=ghcr.io/${{ github.repository }} TAG=${{ steps.vars.outputs.TAG }}
 
-      # 3. 执行推送
-      # 逻辑：
-      # - 如果是 Push 到 main (无论主库还是 Fork)，推送。
-      # - 如果是 PR，跳过（防止 Fork 权限错误）。
-      - name: Push All Images
-        if: github.event_name == 'push'
-        run: |
-          make push-all REGISTRY=ghcr.io/${{ github.repository }}
+      # 4. 关键：将 Tag 文件上传为 Artifact
+      - name: Upload Tag Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-context  # 产物名称，部署时根据这个名字找
+          path: build_tag.txt
+          retention-days: 1    # 临时文件，保留1天即可
