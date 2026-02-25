@@ -44,6 +44,12 @@ jobs:
     needs: build-and-push
     runs-on: self-hosted    # 切换到你自己的服务器
     steps:
+      # 第一步：直接拉取当前 PR 的最新代码
+      - name: Checkout PR Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Deploy to K3s/K8s
         run: |
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -55,5 +61,6 @@ jobs:
           # 创建独立的隔离空间
           kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
           
+          cd /home/actions/wireflow-deploy/wireflow
           # 这里的 make deploy 需要支持传入 REGISTRY, TAG 和 NAMESPACE
-          make deploy REGISTRY=ghcr.io/${OWNER_LOWER} TAG=$PR_TAG NAMESPACE=$NAMESPACE
+          make deploy IMG=ghcr.io/wireflowio/manager:$PR_TAG
