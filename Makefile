@@ -106,28 +106,28 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
-# TODO(user): To use a different vendor for e2e tests, modify the setup under 'tests/e2e'.
-# The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
-# CertManager is installed by default; skip with:
-# - CERT_MANAGER_INSTALL_SKIP=true
-KIND_CLUSTER ?= wireflow-controller-test-e2e
-
-.PHONY: setup-test-e2e
-setup-test-e2e: ## Set up a Kind cluster for e2e tests if it does not exist
-	@command -v $(KIND) >/dev/null 2>&1 || { \
-		echo "Kind is not installed. Please install Kind manually."; \
-		exit 1; \
-	}
-	$(KIND) create cluster --name $(KIND_CLUSTER)
+# 变量定义
+TEST_NS_A ?= wireflow-e2e-source
+TEST_NS_B ?= wireflow-e2e-target
 
 .PHONY: test-e2e
-test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	KIND_CLUSTER=$(KIND_CLUSTER) go test ./test/e2e/ -v -ginkgo.v
-	$(MAKE) cleanup-test-e2e
+test-e2e: ## 运行跨 Namespace 连通性集成测试
+	@echo "====> Prepare test env..."
+	kubectl create namespace $(TEST_NS_A) --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create namespace $(TEST_NS_B) --dry-run=client -o yaml | kubectl apply -f -
+	@echo "====> Deploy tests resources (Token/Peers)..."
+	# 这里可以根据你的需求，用 sed 替换模板生成 Token 资源
+	# kubectl apply -f config/samples/test_token.yaml -n $(TEST_NS_B)
+	@echo "====> tests connectivity..."
+	chmod +x ./scripts/test-connectivity.sh
+	./scripts/test-connectivity.sh $(TEST_NS_A) $(TEST_NS_B)
+	@$(MAKE) test-e2e-cleanup
 
-.PHONY: cleanup-test-e2e
-cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
-	@$(KIND) delete cluster --name $(KIND_CLUSTER)
+.PHONY: test-e2e-cleanup
+test-e2e-cleanup: ## 清理测试残留
+	@echo "====> 清理测试 Namespace..."
+	kubectl delete namespace $(TEST_NS_A) $(TEST_NS_B) --ignore-not-found=true
+
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter
