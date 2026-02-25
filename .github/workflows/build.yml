@@ -40,8 +40,7 @@ jobs:
       # 3. 编译并推送镜像 (利用 GitHub 强大的 CPU)
       - name: Build and Push Images
         run: |
-          make build-all REGISTRY=ghcr.io/${{ github.repository }} TAG=${{ steps.vars.outputs.TAG }}
-          make push-all  REGISTRY=ghcr.io/${{ github.repository }} TAG=${{ steps.vars.outputs.TAG }}
+          make docker-all REGISTRY=ghcr.io/${{ github.repository }} TAG=${{ steps.vars.outputs.TAG }}
 
       # 4. 关键：将 Tag 文件上传为 Artifact
       - name: Upload Tag Artifact
