@@ -16,6 +16,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Check Secret Availability
+        run: |
+          if [ -z "${{ secrets.GHCR_PAT }}" ]; then
+            echo "❌ 变量完全不存在或为空！请检查是否为 Fork 的 PR。"
+          else
+            echo "✅ 变量已读取，长度为 ${#VAR} 位。"
+          fi
+        env:
+          VAR: ${{ secrets.GHCR_PAT }}
+
       # 1. 计算并确定唯一的 Tag
       - name: Calculate Tag
         id: vars
