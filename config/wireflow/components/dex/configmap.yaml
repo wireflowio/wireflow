@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dex-config
+  namespace: auth
+data:
+  config.yaml: |
+    issuer: http://dex.auth.svc.cluster.local:5556/dex
+    storage:
+      type: kubernetes
+      config:
+        inCluster: true
+    web:
+      http: 0.0.0.0:5556
+    
+    # 这里的 connector 定义你是用 GitHub 还是静态账号
+    connectors:
+      - type: mockCallback
+        id: mock
+        name: Mock
+    
+    staticClients:
+      - id: wireflow-client
+        redirectURIs:
+          - 'http://your-wireflow-app.com/callback'
+        name: 'Wireflow API'
+        secret: ZXhhbXBsZS1hcHAtc2VjcmV0 # 你的 Client Secret
+
+    enablePasswordDB: true
+    staticPasswords:
+      - email: "admin@example.com"
+        hash: "$2a$10$2b2uVqbL9slZAbjg9asP6eVG0EKKvB5W5L687eK8rA7fV0mD0u2" # 密码是: password
+        username: "admin"
+        userID: "08a8684b-db88-4b73-90a9-3dd1b617a397"
