@@ -39,7 +39,7 @@ spec:
             - "manager"
             - "--level=INFO"
           volumeMounts:
-            - mountPath: /deploy/conf.yaml
+            - mountPath: /app/deploy/conf.yaml
               name: conf
               subPath: conf.yaml
       volumes:
