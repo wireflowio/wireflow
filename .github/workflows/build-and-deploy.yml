@@ -56,11 +56,7 @@ jobs:
           PR_TAG="pr-${{ github.event.pull_request.number }}"
           NAMESPACE="wireflow-pr-${{ github.event.pull_request.number }}"
           
-          echo "🚀 Deploying PR ${{ github.event.pull_request.number }} to Namespace: $NAMESPACE"
+          echo "🚀 Deploying pr-${{ github.event.pull_request.number }}"
           
-          # 创建独立的隔离空间
-          kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
-          
-          cd /home/actions/wireflow-deploy/wireflow
           # 这里的 make deploy 需要支持传入 REGISTRY, TAG 和 NAMESPACE
           make deploy IMG=ghcr.io/wireflowio/manager:$PR_TAG
