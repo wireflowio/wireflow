@@ -23,7 +23,7 @@ IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
 # 默认环境设置为 dev
 ENV ?= dev
 # 定义 overlays 的根目录
-OVERLAYS_PATH = config/overlays/$(ENV)
+OVERLAYS_PATH = config/wireflow/overlays/$(ENV)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -246,6 +246,9 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## 根据 ENV 部署 (usage: make deploy ENV=production)
+	# 1. 强制创建 Namespace (如果已存在则忽略错误)
+	$(KUBECTL) create namespace wireflow-system --dry-run=client -o yaml | $(KUBECTL) apply -f -
+
 	@echo "正在部署到环境: $(ENV)..."
 	# 1. 动态修改对应环境的镜像标签
 	cd $(OVERLAYS_PATH) && $(KUSTOMIZE) edit set image manager=${IMG}
@@ -257,6 +260,9 @@ deploy: manifests kustomize ## 根据 ENV 部署 (usage: make deploy ENV=product
 
 	# 3. 部署指定环境的完整资源
 	$(KUSTOMIZE) build $(OVERLAYS_PATH) | $(KUBECTL) apply -f -
+
+	# 3. 立即还原该文件（文件变干净）
+	git checkout config/wireflow/overlays/$(ENV)/kustomization.yaml
 
 .PHONY: Yaml
 yaml:
