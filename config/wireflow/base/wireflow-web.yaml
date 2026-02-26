@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wireflow-web
+  name: web
   labels:
     app: wireflow-web
 spec:
@@ -15,9 +15,9 @@ spec:
         app: wireflow-web
     spec:
       containers:
-        - name: wireflow-web
+        - name: web
           image: ghcr.io/wireflowio/wireflow-web:v0.0.1
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
 
@@ -51,7 +51,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: wireflow-web
+  name: web
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
@@ -64,6 +64,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: wireflow-web
+                name: web
                 port:
                   number: 80
