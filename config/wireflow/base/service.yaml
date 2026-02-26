@@ -52,7 +52,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: wireflow-web
+  name: web
   labels:
     app: wireflow-web
 spec:

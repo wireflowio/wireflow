@@ -66,6 +66,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: web
+                name: wireflow-web
                 port:
                   number: 80
