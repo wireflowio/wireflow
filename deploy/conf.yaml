@@ -12,4 +12,4 @@ jwt:
 
 database:
   driver: "sqlite"
-  dsn: "wireflow.db"
+  dsn: "root:root@tcp(10.7.88.27:3306)/wireflow?charset=utf8mb4&parseTime=True&loc=Local"
