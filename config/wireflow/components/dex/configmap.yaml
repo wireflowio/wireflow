@@ -5,7 +5,7 @@ metadata:
   namespace: auth
 data:
   config.yaml: |
-    issuer: http://dex.auth.svc.cluster.local:5556/dex
+    issuer: http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex
     storage:
       type: kubernetes
       config:
@@ -29,6 +29,6 @@ data:
     enablePasswordDB: true
     staticPasswords:
       - email: "admin@example.com"
-        hash: "$2a$10$2b2uVqbL9slZAbjg9asP6eVG0EKKvB5W5L687eK8rA7fV0mD0u2" # 密码是: password
+        hash: "$2a$12$mpGgiE3WVcM7fpIEahH.AukuFNGrpsvKT8xVFpb0wJ.nMkOytsaKq" # 密码是: justsoso
         username: "admin"
         userID: "08a8684b-db88-4b73-90a9-3dd1b617a397"

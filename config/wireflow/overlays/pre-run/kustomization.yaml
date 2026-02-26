@@ -29,4 +29,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/env/0/value
-        value: "http://dex.auth.svc.cluster.local:5556/dex"
+        value: "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex"

@@ -18,6 +18,7 @@ SERVICES := manager wireflow
 TARGETOS ?= linux
 TARGETARCH ?=amd64
 VERSION ?= dev
+TAG ?= dev
 IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
 
 # 默认环境设置为 dev
@@ -175,12 +176,12 @@ docker-build: ## 构建单个服务的 Docker 镜像 (使用: make docker-build 
 		--build-arg TARGETSERVICE=$(SERVICE) \
 		--build-arg TARGETOS=$(TARGETOS) \
 		--build-arg TARGETARCH=$(TARGETARCH) \
-		--build-arg VERSION=$(VERSION) \
+		--build-arg VERSION=$(TAG) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		-t $(REGISTRY)/$(SERVICE):$(VERSION) \
+		-t $(REGISTRY)/$(SERVICE):$(TAG) \
 		-f Dockerfile \
 		.
-	@echo "✅ Built image: $(REGISTRY)/$(SERVICE):$(VERSION)"
+	@echo "✅ Built image: $(REGISTRY)/$(SERVICE):$(TAG)"
 
 # ============ Docker 推送 ============
 .PHONY: docker-push-all
@@ -196,9 +197,9 @@ docker-push: ## 推送单个服务的 Docker 镜像
 		echo "❌ Error: SERVICE is required"; \
 		exit 1; \
 	fi
-	@echo " Pushing $(REGISTRY)/$(SERVICE):$(VERSION)..."
-	$(CONTAINER_TOOL) push $(REGISTRY)/$(SERVICE):$(VERSION)
-	@echo "✅ Pushed: $(REGISTRY)/$(SERVICE):$(VERSION)"
+	@echo " Pushing $(REGISTRY)/$(SERVICE):$(TAG)..."
+	$(CONTAINER_TOOL) push $(REGISTRY)/$(SERVICE):$(TAG)
+	@echo "✅ Pushed: $(REGISTRY)/$(SERVICE):$(TAG)"
 
 # ============ Docker 构建并推送 ============
 .PHONY: docker-all
@@ -270,7 +271,7 @@ yaml:
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=true -f -
+	$(KUSTOMIZE) build $(OVERLAYS_PATH) | $(KUBECTL) delete -f -
 
 ##@ Dependencies
 

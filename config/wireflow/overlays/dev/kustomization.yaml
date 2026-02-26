@@ -17,14 +17,6 @@ images:
 - name: wireflow-manager
   newTag: dev
 
-# 4. 如果需要修改环境变量（比如指向不同的 Dex 地址）
-patches:
-- patch: |-
-    - op: replace
-      path: /spec/template/spec/containers/0/env/0/value
-      value: "http://dex.auth.svc.cluster.local:5556/dex"
-  target:
-    kind: Deployment
-    name: wireflow-manager
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
