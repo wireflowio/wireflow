@@ -20,6 +20,11 @@ TARGETARCH ?=amd64
 VERSION ?= dev
 IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
 
+# 默认环境设置为 dev
+ENV ?= dev
+# 定义 overlays 的根目录
+OVERLAYS_PATH = config/overlays/$(ENV)
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -240,12 +245,18 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 .PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/default && $(KUSTOMIZE) edit set image manager=${IMG}
+deploy: manifests kustomize ## 根据 ENV 部署 (usage: make deploy ENV=production)
+	@echo "正在部署到环境: $(ENV)..."
+	# 1. 动态修改对应环境的镜像标签
+	cd $(OVERLAYS_PATH) && $(KUSTOMIZE) edit set image manager=${IMG}
+
+	# 2. 部署 CRD (通常 CRD 是全局的，可以继续用 base)
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 	@echo "等待5秒，让CRD完成初始化..."
 	@sleep 5
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+
+	# 3. 部署指定环境的完整资源
+	$(KUSTOMIZE) build $(OVERLAYS_PATH) | $(KUBECTL) apply -f -
 
 .PHONY: Yaml
 yaml:
