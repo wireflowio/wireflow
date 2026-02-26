@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 	"time"
+	"wireflow/management/model"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -35,4 +36,10 @@ func InitDB(dsn string) {
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// 自动迁移表结构
+	err = DB.AutoMigrate(&model.User{}, &model.Token{}, &model.Workspace{}, &model.WorkspaceMember{})
+	if err != nil {
+		log.Printf("自动迁移失败: %v", err)
+	}
 }
