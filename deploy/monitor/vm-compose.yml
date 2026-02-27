@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  vmagent-mac:
+    image: victoriametrics/vmagent:latest
+    container_name: vmagent-mac
+    volumes:
+      - vdata-mac:/vmagentdata
+    # 关键：extra_hosts 允许容器通过 host.docker.internal 访问 Mac 宿主机的端口
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - "-remoteWrite.url=http://101.36.119.12:8428/api/v1/write"
+      - "-remoteWrite.label=node_id=my-macbook"
+      - "-remoteWrite.tmpDataPath=/vmagentdata"
+      # 告诉 vmagent 去抓谁的数据
+      - "-promscrape.config.inline='
+        scrape_configs:
+          - job_name: \"mac-wireflow\"
+            static_configs:
+              - targets: [\"host.docker.internal:9586\"]
+        '"
+    restart: always
+
+volumes:
+  vdata-mac:
