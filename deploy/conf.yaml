@@ -9,7 +9,3 @@ app:
 jwt:
   secret: "your-super-secret-key"
   expire_hours: 24
-
-database:
-  driver: "sqlite"
-  dsn: "root:root@tcp(10.7.88.27:3306)/wireflow?charset=utf8mb4&parseTime=True&loc=Local"

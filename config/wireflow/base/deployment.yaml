@@ -42,6 +42,17 @@ spec:
             - mountPath: /app/deploy/conf.yaml
               name: conf
               subPath: conf.yaml
+          env:
+            # 对应结构体 Database.DSN
+            - name: APP_DATABASE_DSN
+              value: "root:root@tcp(10.7.88.27:3306)/wireflow?charset=utf8mb4&parseTime=True&loc=Local"
+
+            # 对应结构体 Dex.Issuer
+            - name: APP_DEX_ISSUER
+              value: "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex/auth"
+            # 对应结构体 Dex.Issuer
+            - name: APP_DEX_PROVIDERURL
+              value: "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex"
       volumes:
         - name: conf
           configMap:
