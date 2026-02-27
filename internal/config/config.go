@@ -59,18 +59,19 @@ func InitConfig(env string) *Config {
 		}
 
 		// 3. 读取环境特定配置并覆盖
-		v.SetConfigName("conf." + env)
+		v.SetConfigName("config." + env)
 		if err := v.MergeInConfig(); err != nil {
-			panic(fmt.Errorf("Warning: config.%s.yaml not found, using base config", env))
+			// 如果文件不存在，我们保持沉默，因为我们有环境变量作为后备
+			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+				fmt.Printf("未找到 config.%s.yaml，将完全使用环境变量", env)
+			} else {
+				fmt.Printf("合并配置失败: %v", err)
+			}
 		}
 
 		// 4. 允许环境变量覆盖 (例如 APP_DATABASE_DSN 会覆盖配置文件)
 		v.SetEnvPrefix("APP")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-		if err := v.ReadInConfig(); err != nil {
-			panic(fmt.Errorf("读取配置文件失败: %w", err))
-		}
 
 		if err := v.Unmarshal(&GlobalConfig); err != nil {
 			panic(fmt.Errorf("解析配置文件失败: %w", err))

@@ -38,6 +38,7 @@ spec:
             - "start"
             - "manager"
             - "--level=INFO"
+            - "--env=prod"
           volumeMounts:
             - mountPath: /app/deploy/conf.yaml
               name: conf
@@ -48,7 +49,7 @@ spec:
               value: "root:root@tcp(10.7.88.27:3306)/wireflow?charset=utf8mb4&parseTime=True&loc=Local"
 
             # 对应结构体 Dex.Issuer
-            - name: APP_DEX_ISSUER
+            - name: APP_DEX_ISSUR
               value: "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex/auth"
             # 对应结构体 Dex.Issuer
             - name: APP_DEX_PROVIDERURL
