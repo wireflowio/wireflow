@@ -15,7 +15,7 @@ spec:
         k8s-app: wireflow-control
     spec:
       hostAliases:
-      - ip: "101.36.119.12"
+      - ip: "10.7.88.27"
         hostnames:
           - "signaling.wireflow.run"
       serviceAccountName: wireflow-controller-admin
@@ -79,7 +79,7 @@ spec:
         k8s-app: wireflow-turn
     spec:
       hostAliases:
-        - ip: "101.36.119.12"
+        - ip: "10.7.88.27"
           hostnames:
             - "signaling.wireflow.run"
       initContainers:
