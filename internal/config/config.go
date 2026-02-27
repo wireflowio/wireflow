@@ -36,7 +36,7 @@ type DatabaseConfig struct {
 }
 
 type DexConfig struct {
-	Issuer      string `mapstructure:"issuer"`
+	Issur       string `mapstructure:"issur"`
 	ProviderUrl string `mapstructure:"providerUrl"`
 }
 
@@ -72,6 +72,7 @@ func InitConfig(env string) *Config {
 		// 4. 允许环境变量覆盖 (例如 APP_DATABASE_DSN 会覆盖配置文件)
 		v.SetEnvPrefix("APP")
 		v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+		v.AutomaticEnv()
 
 		if err := v.Unmarshal(&GlobalConfig); err != nil {
 			panic(fmt.Errorf("解析配置文件失败: %w", err))
