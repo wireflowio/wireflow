@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-ping/ping"
+	probing "github.com/prometheus-community/pro-bing"
 )
 
 // 定义一个简单的接口，让核心逻辑传数据进来
@@ -30,7 +30,7 @@ func RunCycle(targets []TargetPeer) {
 		go func(target TargetPeer) {
 			defer wg.Done()
 
-			pinger, err := ping.NewPinger(target.IP)
+			pinger, err := probing.NewPinger("www.google.com")
 			if err != nil {
 				return
 			}
