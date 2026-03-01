@@ -5,3 +5,6 @@ database:
 dex:
   issur: http://localhost:5556/dex/auth
   providerUrl: http://localhost:5556/dex
+
+monitor:
+  address: http://101.36.119.12:8248

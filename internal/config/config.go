@@ -12,7 +12,7 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Dex      DexConfig      `mapstructure:"dex"`
-	Metrics  MetricsConfig  `mapstructure:"metrics"`
+	Monitor  MonitorConfig  `mapstructure:"monitor"`
 }
 
 type AppConfig struct {
@@ -41,8 +41,8 @@ type DexConfig struct {
 	ProviderUrl string `mapstructure:"providerUrl"`
 }
 
-type MetricsConfig struct {
-	Port string `mapstructure:"port"`
+type MonitorConfig struct {
+	Address string `mapstructure:"address"`
 }
 
 var (
