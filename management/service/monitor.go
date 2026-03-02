@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	"wireflow/internal/log"
+	"wireflow/monitor"
+	"wireflow/pkg/utils"
 
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/client_golang/api/prometheus/v1"
@@ -12,22 +15,7 @@ import (
 )
 
 type MonitorService interface {
-	// GetPeerStatus 获取所有 Peer 的拓扑状态（瞬时向量）。
-	// 说明：
-	// - 返回值 model.Vector：每个元素是一条 time series 的“当前值”
-	// - 通常用于展示在线/离线状态、拓扑连通性等
-	GetPeerStatus(ctx context.Context) (model.Vector, error)
-
-	// GetNodeUseAge 获取节点自身资源使用情况（CPU/内存/运行时长）。
-	// 返回说明：
-	// - 返回值 model.Vector：包含多条指标序列（不同 __name__），每条序列是一个“当前值”
-	// - 典型包含：
-	//   - wireflow_node_cpu_usage_percent
-	//   - wireflow_node_memory_bytes
-	//   - wireflow_node_uptime_seconds
-	// 注意：
-	// - PromQL 返回的是“瞬时向量”，因此建议配合 last_over_time() 获取窗口内最后样本，避免 scrape 间隔导致的空值
-	GetNodeUseAge(ctx context.Context) (model.Vector, error)
+	GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error)
 }
 
 type monitorService struct {
@@ -110,44 +98,78 @@ func (v *monitorService) queryInstant(ctx context.Context, promql string, ts tim
 }
 
 // GetPeerStatus 获取所有 Peer 的拓扑状态
-func (v *monitorService) GetPeerStatus(ctx context.Context) (model.Vector, error) {
-	// 使用 PromQL 查询最新快照：
-	// - exporter 里定义的指标名是 wireflow_peer_status
-	// - last_over_time 用于取窗口内最后一个样本，避免 scrape 间隔导致的“空洞”
-	query := `last_over_time(wireflow_peer_status[5m])`
-
-	result, err := v.queryInstant(ctx, query, time.Now())
+func (v *monitorService) GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error) {
+	// 1. 查询所有以 wireflow_node_ 开头的指标
+	query := `last_over_time({__name__=~"wireflow_node_.*"}[5m])`
+	vector, err := v.QueryByTime(ctx, query, time.Now())
 	if err != nil {
 		return nil, err
 	}
 
-	vector, ok := result.(model.Vector)
-	if !ok {
-		return nil, fmt.Errorf("unexpected result type: %T", result)
+	nodeMap := make(map[string]*monitor.PeerSnapshot)
+
+	for _, s := range vector {
+		nodeID := string(s.Metric["node_id"])
+		metricName := string(s.Metric["__name__"])
+		val := float64(s.Value)
+
+		// 初始化节点
+		if _, ok := nodeMap[nodeID]; !ok {
+			nodeMap[nodeID] = &monitor.PeerSnapshot{
+				ID:          nodeID,
+				Name:        string(s.Metric["node_id"]),
+				InternalIP:  string(s.Metric["ip"]),
+				Status:      "online",
+				HealthLevel: "success",
+				Metrics:     make(map[string]string),
+			}
+		}
+
+		// 2. 自动格式化并存入 Map
+		// 我们去掉前缀 "wireflow_node_" 让前端拿到的 Key 更简洁
+		shortName := strings.TrimPrefix(metricName, "wireflow_node_")
+		nodeMap[nodeID].Metrics[shortName] = utils.AutoFormat(metricName, val)
+
+		// 3. 特殊逻辑：根据 CPU 自动判定健康度
+		if shortName == "cpu_usage_percent" {
+			if val > 80 {
+				nodeMap[nodeID].HealthLevel = "warning"
+			}
+			if val > 95 {
+				nodeMap[nodeID].HealthLevel = "error"
+			}
+		}
 	}
-	return vector, nil
+
+	// 转为切片
+	var result []monitor.PeerSnapshot
+	for _, node := range nodeMap {
+		result = append(result, *node)
+	}
+	return result, nil
 }
 
-func (v *monitorService) GetNodeUseAge(ctx context.Context) (model.Vector, error) {
-	// 一次性拉取节点资源使用相关的 3 个指标（用 __name__ 正则匹配）。
-	// 这里用 last_over_time 保证即使某次抓取抖动，也能拿到最近窗口内的最后值。
-	//
-	// 你在 exporter/registry.go 里定义的指标名分别是：
-	// - wireflow_node_cpu_usage_percent
-	// - wireflow_node_memory_bytes
-	// - wireflow_node_uptime_seconds
-	query := `
-last_over_time({__name__=~"wireflow_node_(cpu_usage_percent|memory_bytes|uptime_seconds)"}[5m])
-`
-
-	result, err := v.queryInstant(ctx, query, time.Now())
+// QueryByTime 执行瞬时查询 (Instant Query)
+// query: PromQL 语句，例如 `last_over_time(peer_status[5m])`
+// t: 目标时间点。传入 time.Now() 查当前，传入过去的时间戳则查历史。
+func (v *monitorService) QueryByTime(ctx context.Context, query string, t time.Time) (model.Vector, error) {
+	// 1. 调用底层的 v1.API。注意：Query 接口返回的是指定时间点 t 的“快照”
+	result, warnings, err := v.api.Query(ctx, query, t)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("promql query error: %v", err)
 	}
 
+	// 2. 打印 VM 返回的潜在警告（如查询超时、数据部分缺失）
+	for _, w := range warnings {
+		fmt.Printf("VM Warning: %v\n", w)
+	}
+
+	// 3. 类型断言。Instant Query 的结果通常是 Vector (瞬时向量)
+	// 如果你查的是一个不存在的指标，这里会返回一个空的 Vector 而不是 error
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return nil, fmt.Errorf("unexpected result type: %T", result)
+		return nil, fmt.Errorf("unexpected result type: %T, expected model.Vector", result)
 	}
+
 	return vector, nil
 }

@@ -33,9 +33,13 @@ type CPUCollector struct {
 	lastUpdate   time.Time
 }
 
-func NewCPUCollector(pm *infra.PeerManager) *CPUCollector {
+func (c *CPUCollector) Name() string {
+	return "cpu_collector"
+}
+
+func NewCPUCollector() MetricCollector {
 	c := &CPUCollector{
-		peerManager: pm,
+		peerManager: infra.NewPeerManager(),
 	}
 	// 启动后台异步采集协程
 	go c.runSnapshotter()

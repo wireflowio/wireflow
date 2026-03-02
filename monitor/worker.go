@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"time"
 	"wireflow/monitor/collector"
 	exporter "wireflow/monitor/wireflow-exporter"
@@ -16,6 +15,7 @@ type MetricWorker struct {
 }
 
 func NewMetricWorker() *MetricWorker {
+
 	return &MetricWorker{
 		stopChan:            make(chan struct{}),
 		cpuCollector:        collector.NewCPUCollector(),
@@ -35,7 +35,6 @@ func (mw *MetricWorker) StartLinkProbing(ctx context.Context, interval time.Dura
 				// targets := core.GetActivePeers()
 				// 2. 执行并发探测
 				// RunCycle(targets)
-				fmt.Println("start link probing")
 			case <-mw.stopChan:
 				return
 			case <-ctx.Done():

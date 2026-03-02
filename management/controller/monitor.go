@@ -4,12 +4,11 @@ import (
 	"context"
 	"wireflow/internal/log"
 	"wireflow/management/service"
-
-	"github.com/prometheus/common/model"
+	"wireflow/monitor"
 )
 
 type MonitorController interface {
-	GetPeerStatus(ctx context.Context) (model.Vector, error)
+	GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error)
 }
 
 type monitorController struct {
@@ -17,8 +16,8 @@ type monitorController struct {
 	log            *log.Logger
 }
 
-func (m *monitorController) GetPeerStatus(ctx context.Context) (model.Vector, error) {
-	return m.monitorService.GetPeerStatus(ctx)
+func (m *monitorController) GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error) {
+	return m.monitorService.GetTopologySnapshot(ctx)
 }
 
 func NewMonitorController(address string) MonitorController {

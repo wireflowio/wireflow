@@ -63,7 +63,7 @@ func Start(ctx context.Context, flags *config.Flags) error {
 	}
 
 	// 创建一个随主程序生命周期管理的 Context
-	g, ctx := errgroup.WithContext(context.Background())
+	g, newCtx := errgroup.WithContext(ctx)
 
 	if flags.EnableDaemon {
 		fmt.Println("Run wireflow in daemon mode")
@@ -155,8 +155,15 @@ func Start(ctx context.Context, flags *config.Flags) error {
 	// enable metrics
 	if flags.EnableMetric {
 		g.Go(func() error {
-			runner := monitor.NewMonitorRunner(infra.NewPeerManager())
-			return runner.Run(ctx)
+			select {
+			case <-newCtx.Done():
+				return newCtx.Err()
+			default:
+				runner := monitor.NewMonitorRunner(infra.NewPeerManager())
+				err := runner.Run(ctx)
+				return err
+			}
+
 		})
 	}
 
@@ -206,15 +213,23 @@ func Start(ctx context.Context, flags *config.Flags) error {
 		os.Exit(-1)
 	}
 
-	go func() {
+	g.Go(func() error {
 		for {
-			conn, err := uapi.Accept()
-			if err != nil {
-				return
+			select {
+			case <-newCtx.Done():
+				return newCtx.Err()
+			default:
+				conn, err := uapi.Accept()
+				if err != nil {
+					return err
+				}
+				c.DeviceManager.IpcHandle(conn)
+				return nil
 			}
-			go c.DeviceManager.IpcHandle(conn)
+
 		}
-	}()
+	})
+
 	logger.Info("wireflow started")
 
 	// 等待所有任务完成（或者任意一个任务出错退出）
@@ -249,7 +264,6 @@ func Stop(flags *config.Flags) error {
 	}
 	// 如果 UAPI 失败，尝试通过 PID 文件停止进程
 	return stopViaPIDFile(interfaceName)
-
 }
 
 func Status(flags *config.Flags) error {
