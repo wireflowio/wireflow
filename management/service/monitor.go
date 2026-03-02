@@ -73,29 +73,29 @@ func NewMonitorServiceWithOptions(opts MonitorServiceOptions) (MonitorService, e
 
 // ... existing code ...
 
-// ensureTimeout：如果 ctx 没有 deadline，则注入默认超时；否则原样返回
-func (v *monitorService) ensureTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {}
-	}
-	return context.WithTimeout(ctx, v.timeout)
-}
-
-// queryInstant 执行一次 PromQL Instant Query，并统一处理 warnings
-func (v *monitorService) queryInstant(ctx context.Context, promql string, ts time.Time) (model.Value, error) {
-	ctx, cancel := v.ensureTimeout(ctx)
-	defer cancel()
-
-	val, warnings, err := v.api.Query(ctx, promql, ts)
-	if err != nil {
-		return nil, err
-	}
-	for _, w := range warnings {
-		// 避免 fmt.Printf，统一走 logger
-		v.log.Warn("promql warning", "warning", w, "query", promql)
-	}
-	return val, nil
-}
+//// ensureTimeout：如果 ctx 没有 deadline，则注入默认超时；否则原样返回
+//func (v *monitorService) ensureTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+//	if _, ok := ctx.Deadline(); ok {
+//		return ctx, func() {}
+//	}
+//	return context.WithTimeout(ctx, v.timeout)
+//}
+//
+//// queryInstant 执行一次 PromQL Instant Query，并统一处理 warnings
+//func (v *monitorService) queryInstant(ctx context.Context, promql string, ts time.Time) (model.Value, error) {
+//	ctx, cancel := v.ensureTimeout(ctx)
+//	defer cancel()
+//
+//	val, warnings, err := v.api.Query(ctx, promql, ts)
+//	if err != nil {
+//		return nil, err
+//	}
+//	for _, w := range warnings {
+//		// 避免 fmt.Printf，统一走 logger
+//		v.log.Warn("promql warning", "warning", w, "query", promql)
+//	}
+//	return val, nil
+//}
 
 // GetPeerStatus 获取所有 Peer 的拓扑状态
 func (v *monitorService) GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error) {
