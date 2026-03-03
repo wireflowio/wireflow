@@ -214,19 +214,30 @@ func Start(ctx context.Context, flags *config.Flags) error {
 	}
 
 	g.Go(func() error {
+		// 1. 监听退出信号，手动关闭 listener 以解开 Accept 的阻塞
+		go func() {
+			<-newCtx.Done()
+			uapi.Close()
+		}()
+
 		for {
-			select {
-			case <-newCtx.Done():
-				return newCtx.Err()
-			default:
-				conn, err := uapi.Accept()
-				if err != nil {
-					return err
+			// Accept 会阻塞在这里，直到有新连接或 listener 被关闭
+			conn, err := uapi.Accept()
+			if err != nil {
+				// 如果是因为 context 取消导致的关闭，返回错误
+				select {
+				case <-newCtx.Done():
+					return newCtx.Err()
+				default:
+					return fmt.Errorf("ipc accept error: %w", err)
 				}
-				c.DeviceManager.IpcHandle(conn)
-				return nil
 			}
 
+			// 2. 异步处理连接，不阻塞 Accept 接收下一个请求
+			go func(nc net.Conn) {
+				defer nc.Close() // 3. 确保连接关闭
+				c.DeviceManager.IpcHandle(nc)
+			}(conn)
 		}
 	})
 

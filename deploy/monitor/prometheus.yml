@@ -6,6 +6,3 @@ scrape_configs:
     static_configs:
       # 使用 host.docker.internal 访问宿主机上开启了 9586 的 wireflow 进程
       - targets: ['host.docker.internal:9586']
-        labels:
-          env: 'dev'
-          os: 'macos'
