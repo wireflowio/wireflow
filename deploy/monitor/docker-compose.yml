@@ -16,7 +16,7 @@ services:
     restart: always
 
   vmagent:
-    image: victoriametrics/vmagent:latest
+    image: docker.1ms.run/victoriametrics/vmagent
     container_name: vmagent
     ports:
       - "8429:8429"

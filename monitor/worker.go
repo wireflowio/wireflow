@@ -70,11 +70,10 @@ func (mw *MetricWorker) StartSystemMetrics(ctx context.Context, interval time.Du
 
 					switch m.Name() {
 					case "cpu_usage_total":
-						exporter.NodeCpuUsage.Set(val)
+						exporter.NodeCpuUsage.WithLabelValues("ws-01", "macbook-pro.local").Set(val)
 
 					case "cpu_usage_core":
-						coreID := m.Labels()["core"]
-						exporter.NodeCoreUsage.WithLabelValues(coreID).Set(val)
+						exporter.NodeCoreUsage.WithLabelValues("ws-01", "macbook-pro.local").Set(val)
 					}
 				}
 			case <-mw.stopChan:

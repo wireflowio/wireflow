@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"wireflow/internal/log"
+	"wireflow/management/models"
 	"wireflow/monitor"
 	"wireflow/pkg/utils"
 
@@ -16,6 +17,7 @@ import (
 
 type MonitorService interface {
 	GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error)
+	GetNodeSnapshot(ctx context.Context, wsID string) ([]models.NodeSnapshot, error)
 }
 
 type monitorService struct {
@@ -172,4 +174,108 @@ func (v *monitorService) QueryByTime(ctx context.Context, query string, t time.T
 	}
 
 	return vector, nil
+}
+
+// GetNodeSnapshots 获取特定空间的节点快照
+func (s *monitorService) GetNodeSnapshot(ctx context.Context, wsID string) ([]models.NodeSnapshot, error) {
+	// GetSnapshotsByPrometheus 从 VM 获取实时快照
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+
+	// 1. 定义 PromQL：查询该空间下所有节点的最新 CPU、内存和在线状态
+	// 假设我们在 vmagent 上传时打上了 workspace_id 标签
+	query := fmt.Sprintf(`last_over_time({node_id="%s"}[5m])`, "macbook-pro.local")
+
+	// 执行即时查询 (Instant Query)
+	val, _, err := s.api.Query(ctx, query, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	vector, ok := val.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("unexpected prometheus return type")
+	}
+
+	// 2. 转换数据结构
+	// 使用 Map 聚合同一节点的不同指标
+	nodeMap := make(map[string]*models.NodeSnapshot)
+
+	for _, sample := range vector {
+		nodeID := string(sample.Metric["node_id"])
+		if _, exists := nodeMap[nodeID]; !exists {
+			nodeMap[nodeID] = &models.NodeSnapshot{
+				ID:         nodeID,
+				Name:       string(sample.Metric["node_name"]),
+				IP:         string(sample.Metric["node_ip"]),
+				Metrics:    make(map[string]string),
+				RawMetrics: make(map[string]float64),
+				Status:     "online",
+			}
+		}
+
+		metricName := string(sample.Metric["__name__"])
+		value := float64(sample.Value)
+
+		// 3. 灵活填充指标
+		s.fillMetrics(nodeMap[nodeID], metricName, value)
+	}
+
+	// 转为 Slice 返回
+	result := make([]models.NodeSnapshot, 0, len(nodeMap))
+	for _, v := range nodeMap {
+		result = append(result, *v)
+	}
+	return result, nil
+}
+
+// fillMetrics 负责将原始监控项映射到业务字段
+func (s *monitorService) fillMetrics(node *models.NodeSnapshot, name string, val float64) {
+	switch name {
+	case models.WIREWFLOW_NODE_CPU_USEAGE:
+		node.RawMetrics["cpu"] = val
+		node.Metrics["cpu"] = fmt.Sprintf("%.1f%%", val)
+		// 动态逻辑：CPU 超过 90% 标记为 error
+		if val > 90 {
+			node.HealthLevel = "error"
+		}
+	case models.WIREFLOW_PEER_STATUS:
+		if val == 1 {
+			node.Status = "online"
+			if node.HealthLevel == "" {
+				node.HealthLevel = "success"
+			}
+		} else {
+			node.Status = "offline"
+			node.HealthLevel = "error"
+		}
+	// 你可以在这里无限增加新的监控项，如 gpu_temp, mem_usage 等
+	default:
+		node.RawMetrics[name] = val
+		node.Metrics[name] = fmt.Sprintf("%.2f", val)
+	}
+}
+
+// GetGlobalStats 获取全域聚合指标
+func (s *monitorService) GetGlobalStats(ctx context.Context, metricName string) (map[string]float64, error) {
+	// 使用 sum(...) by (workspace_id) 进行服务端聚合
+	query := fmt.Sprintf(`sum(%s) by (workspace_id)`, metricName)
+
+	val, _, err := s.api.Query(ctx, query, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	vector, ok := val.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("unexpected vector type")
+	}
+
+	stats := make(map[string]float64)
+	for _, sample := range vector {
+		wsID := string(sample.Metric["workspace_id"])
+		stats[wsID] = float64(sample.Value)
+	}
+
+	return stats, nil
 }

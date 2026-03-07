@@ -8,3 +8,6 @@ dex:
 
 monitor:
   address: http://101.36.119.12:8428
+
+signaling:
+  signalAddress: localhost:4222
