@@ -48,6 +48,7 @@ func (c *DeviceManager) IpcHandle(socket net.Conn) {
 	}(socket)
 	for {
 		op, err := buffered.ReadString('\n')
+
 		if err != nil {
 			return
 		}

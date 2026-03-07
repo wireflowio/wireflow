@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"time"
 	"wireflow/monitor/collector"
 	exporter "wireflow/monitor/wireflow-exporter"
@@ -16,6 +15,7 @@ type MetricWorker struct {
 }
 
 func NewMetricWorker() *MetricWorker {
+
 	return &MetricWorker{
 		stopChan:            make(chan struct{}),
 		cpuCollector:        collector.NewCPUCollector(),
@@ -35,7 +35,6 @@ func (mw *MetricWorker) StartLinkProbing(ctx context.Context, interval time.Dura
 				// targets := core.GetActivePeers()
 				// 2. 执行并发探测
 				// RunCycle(targets)
-				fmt.Println("start link probing")
 			case <-mw.stopChan:
 				return
 			case <-ctx.Done():
@@ -71,11 +70,10 @@ func (mw *MetricWorker) StartSystemMetrics(ctx context.Context, interval time.Du
 
 					switch m.Name() {
 					case "cpu_usage_total":
-						exporter.NodeCpuUsage.Set(val)
+						exporter.NodeCpuUsage.WithLabelValues("ws-01", "macbook-pro.local").Set(val)
 
 					case "cpu_usage_core":
-						coreID := m.Labels()["core"]
-						exporter.NodeCoreUsage.WithLabelValues(coreID).Set(val)
+						exporter.NodeCoreUsage.WithLabelValues("ws-01", "macbook-pro.local").Set(val)
 					}
 				}
 			case <-mw.stopChan:
