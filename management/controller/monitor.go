@@ -12,11 +12,16 @@ import (
 type MonitorController interface {
 	GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error)
 	GetNodeSnapshot(ctx context.Context) ([]models.NodeSnapshot, error)
+	GetWorkspaceAggregatedMonitor(ctx context.Context, wsID string) (*models.AggregatedMonitorResponse, error)
 }
 
 type monitorController struct {
 	monitorService service.MonitorService
 	log            *log.Logger
+}
+
+func (m *monitorController) GetWorkspaceAggregatedMonitor(ctx context.Context, wsID string) (*models.AggregatedMonitorResponse, error) {
+	return m.monitorService.GetWorkspaceAggregatedMonitor(ctx, wsID)
 }
 
 func (m *monitorController) GetNodeSnapshot(ctx context.Context) ([]models.NodeSnapshot, error) {

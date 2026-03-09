@@ -1,4 +1,4 @@
-package wireflow_exporter
+package internal
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,10 +63,22 @@ var (
 		Help: "Number of seconds since the wireflow process started",
 	}, []string{"workspace_id", "node_id"})
 
+	// 空间总数与利用率真
+	WorkspaceResourceTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "wireflow_workspace_resource_total",
+		Help: "Workspace resource total of the wireflow process",
+	}, []string{"workspace_id", "node_id", "resource_typ"}) //resource_type=nodes|bandwidth|subnets
+
 	WorkspaceResourceUsage = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "wireflow_workspace_resource_usage",
 		Help: "Workspace resource usage of the wireflow process",
 	}, []string{"workspace_id", "node_id", "resource_typ"}) //resource_type=nodes|bandwidth|subnets
+
+	// 在线节点
+	WorkspaceNodeTotal = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "wireflow_workspace_nodes_total",
+		Help: "",
+	}, []string{"workspace_id", "node_id", "status"}) // status = online
 
 	WorkspaceTunnels = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "wireflow_workspace_tunnels",

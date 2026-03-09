@@ -13,11 +13,13 @@ import (
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"golang.org/x/sync/errgroup"
 )
 
 type MonitorService interface {
 	GetTopologySnapshot(ctx context.Context) ([]monitor.PeerSnapshot, error)
 	GetNodeSnapshot(ctx context.Context, wsID string) ([]models.NodeSnapshot, error)
+	GetWorkspaceAggregatedMonitor(ctx context.Context, wsID string) (*models.AggregatedMonitorResponse, error)
 }
 
 type monitorService struct {
@@ -278,4 +280,201 @@ func (s *monitorService) GetGlobalStats(ctx context.Context, metricName string) 
 	}
 
 	return stats, nil
+}
+
+func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, wsID string) (*models.AggregatedMonitorResponse, error) {
+	var eg errgroup.Group
+	resp := &models.AggregatedMonitorResponse{
+		WorkspaceID: wsID,
+		LiveStats:   make([]models.StatCard, 4), // 预分配固定长度
+	}
+
+	// 1. 获取实时吞吐量 (TX/RX)
+	eg.Go(func() error {
+		// 查询最近 1 分钟的平均吞吐量
+		//query := fmt.Sprintf(`sum(irate(wireflow_interface_tx_bytes_total{ws_id="%s"}[1m])) * 8 / 1000000`, wsID)
+		//val, _, err := s.api.Query(ctx, query, time.Now())
+		//if err == nil {
+		//	resp.LiveStats[0] = models.StatCard{
+		//		Label: "实时吞吐",
+		//		Value: s.formatVectorValue(val),
+		//		Unit:  "Mbps",
+		//		Color: "text-blue-500",
+		//		Trend: "up",
+		//	}
+		//}
+		//return err
+		resp.LiveStats[0] = s.fetchThroughput(ctx, wsID)
+		return nil
+	})
+
+	// 2. 获取平均延迟
+	eg.Go(func() error {
+		query := fmt.Sprintf(`avg(wireflow_node_latency_ms{ws_id="%s"})`, wsID)
+		val, _, err := s.api.Query(ctx, query, time.Now())
+		if err == nil {
+			resp.LiveStats[1] = models.StatCard{
+				Label: "平均延迟",
+				Value: s.formatVectorValue(val),
+				Unit:  "ms",
+				Color: "text-emerald-500",
+			}
+		}
+		return err
+	})
+
+	// 2. 获取丢包率
+	eg.Go(func() error {
+		query := fmt.Sprintf(`avg(wireflow_node_latency_ms{ws_id="%s"})`, wsID)
+		val, _, err := s.api.Query(ctx, query, time.Now())
+		if err == nil {
+			resp.LiveStats[2] = models.StatCard{
+				Label: "丢包率",
+				Value: s.formatVectorValue(val),
+				Unit:  "ms",
+				Color: "text-emerald-500",
+			}
+		}
+		return err
+	})
+
+	// 2. 获取平均延迟
+	eg.Go(func() error {
+		query := fmt.Sprintf(`avg(wireflow_node_latency_ms{ws_id="%s"})`, wsID)
+		val, _, err := s.api.Query(ctx, query, time.Now())
+		if err == nil {
+			resp.LiveStats[3] = models.StatCard{
+				Label: "活动隧道",
+				Value: s.formatVectorValue(val),
+				Unit:  "uint",
+				Color: "text-emerald-500",
+			}
+		}
+		return err
+	})
+
+	// 3. 获取趋势图数据 (过去 1 小时)
+	eg.Go(func() error {
+		r := v1.Range{
+			Start: time.Now().Add(-1 * time.Hour),
+			End:   time.Now(),
+			Step:  time.Minute * 2,
+		}
+		query := fmt.Sprintf(`sum(irate(wireflow_interface_tx_bytes_total{ws_id="%s"}[5m]))`, wsID)
+		result, _, err := s.api.QueryRange(ctx, query, r)
+		if err == nil {
+			resp.Trend = s.processMatrixToTrend(result)
+		}
+		return err
+	})
+
+	// 4. 获取节点列表明细 (通过 VM 里的最新样本判定)
+	eg.Go(func() error {
+		// 获取各节点的最新流量和模式标签
+		query := fmt.Sprintf(`last_over_time(wireflow_node_info{ws_id="%s"}[5m])`, wsID)
+		val, _, err := s.api.Query(ctx, query, time.Now())
+		if err == nil {
+			resp.Nodes = s.convertVectorToNodes(val)
+		}
+		return err
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// 格式化标量值
+func (s *monitorService) formatVectorValue(val model.Value) string {
+	vector, ok := val.(model.Vector)
+	if !ok || len(vector) == 0 {
+		return "0.0"
+	}
+	return fmt.Sprintf("%.1f", float64(vector[0].Value))
+}
+
+// 将 Range Query 的 Matrix 转换为前端波形图格式
+func (s *monitorService) processMatrixToTrend(val model.Value) models.TrendData {
+	matrix, ok := val.(model.Matrix)
+	if !ok || len(matrix) == 0 {
+		return models.TrendData{}
+	}
+
+	trend := models.TrendData{}
+	for _, sample := range matrix[0].Values {
+		trend.Timestamps = append(trend.Timestamps, sample.Timestamp.Time().Format("15:04"))
+		trend.TXData = append(trend.TXData, float64(sample.Value))
+	}
+	return trend
+}
+
+// 将节点标签信息转换为明细列表
+func (s *monitorService) convertVectorToNodes(val model.Value) []models.NodeMonitorDetail {
+	vector, _ := val.(model.Vector)
+	nodes := make([]models.NodeMonitorDetail, 0)
+	for _, sample := range vector {
+		nodes = append(nodes, models.NodeMonitorDetail{
+			Name:           string(sample.Metric["node_name"]),
+			VIP:            string(sample.Metric["vip"]),
+			ConnectionType: string(sample.Metric["conn_type"]), // p2p 或 relay
+			Online:         true,                               // 如果能查到最近 5 分钟的样本则视为在线
+		})
+	}
+	return nodes
+}
+
+func (s *monitorService) fetchThroughput(ctx context.Context, wsID string) models.StatCard {
+	// 1. 定义查询语句
+	// 使用 irate 获取瞬时速率
+	query := fmt.Sprintf(`sum(irate(wireflow_interface_tx_bytes_total{ws_id="%s"}[1m])) * 8 / 1000000`, wsID)
+
+	// 2. 执行查询
+	val, _, err := s.api.Query(ctx, query, time.Now())
+
+	// 3. 默认值处理
+	if err != nil || len(val.(model.Vector)) == 0 {
+		return models.StatCard{
+			Label:   "实时吞吐",
+			Value:   "0.0",
+			Unit:    "Mbps",
+			Trend:   "stable",
+			Color:   "text-blue-500",
+			Percent: 0,
+		}
+	}
+
+	// 4. 数值解析与趋势判断
+	currentValue := float64(val.(model.Vector)[0].Value)
+
+	// 这里的 Percent 可以根据你预设的带宽上限（例如 1000Mbps）计算进度条
+	percent := int((currentValue / 1000.0) * 100)
+	if percent > 100 {
+		percent = 100
+	}
+
+	return models.StatCard{
+		Label:   "实时吞吐",
+		Value:   fmt.Sprintf("%.1f", currentValue),
+		Unit:    "Mbps",
+		Trend:   s.getTrend(wsID, currentValue), // 见下方趋势逻辑
+		Color:   "text-blue-500",
+		Percent: percent,
+	}
+}
+
+func (s *monitorService) getTrend(wsID string, current float64) string {
+	lastVal, exists := s.cache.Get("last_tp_" + wsID)
+	s.cache.Set("last_tp_"+wsID, current, 1*time.Minute)
+
+	if !exists {
+		return "stable"
+	}
+	if current > lastVal.(float64)*1.05 {
+		return "up"
+	} // 增长超过5%判定为上升
+	if current < lastVal.(float64)*0.95 {
+		return "down"
+	} // 下降超过5%判定为下降
+	return "stable"
 }
