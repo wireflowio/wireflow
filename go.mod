@@ -5,7 +5,6 @@ go 1.24.5
 require (
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/gin-gonic/gin v1.11.0
-	github.com/go-ping/ping v1.2.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/lmittmann/tint v1.1.2
@@ -15,11 +14,13 @@ require (
 	github.com/nats-io/nats.go v1.34.0
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pion/logging v0.2.2
 	github.com/pion/stun/v3 v3.0.0
 	github.com/pion/turn/v4 v4.0.0
 	github.com/prometheus-community/pro-bing v0.8.0
 	github.com/prometheus/client_golang v1.22.0
+	github.com/prometheus/common v0.62.0
 	github.com/redis/go-redis/v9 v9.7.0
 	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/spf13/cobra v1.10.1
@@ -120,7 +121,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/quic-go/qpack v0.5.1 // indirect
 	github.com/quic-go/quic-go v0.54.0 // indirect
