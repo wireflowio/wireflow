@@ -14,7 +14,11 @@ type User struct {
 	Avatar     string            `json:"avatar"`
 	Address    string            `json:"address,omitempty"`
 	Gender     int               `json:"gender,omitempty"`
-	Workspaces []Workspace       `gorm:"many2many:t_workspaces_member;" json:"workspaces,omitempty"`
+	// 关联定义：UserProfile 的主键就是 User 的 ID
+	// references:ID 表示引用 User 表的 ID
+	// foreignKey:UserID 表示 UserProfile 表里的关联键是 UserID（同时也是主键）
+	UserProfile *UserProfile `gorm:"foreignKey:UserID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"userProfile,omitempty"`
+	Workspaces  []Workspace  `gorm:"many2many:t_workspaces_member;" json:"workspaces,omitempty"`
 }
 
 func (User) TableName() string {
@@ -23,7 +27,7 @@ func (User) TableName() string {
 
 // UserProfile 用户详细资料与设置 (与 User 一对一)
 type UserProfile struct {
-	UserID      string `gorm:"primaryKey" json:"-"`
+	UserID      string `gorm:"primaryKey;autoIncrement:false" json:"user_id"`
 	Title       string `gorm:"size:128" json:"title"`
 	Company     string `gorm:"size:128" json:"company"`
 	Bio         string `gorm:"type:text" json:"bio"`

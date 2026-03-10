@@ -21,7 +21,12 @@ type UserSettingsResponse struct {
 
 // UpdateSettingsRequest 接收前端修改的结构体
 type UpdateSettingsRequest struct {
-	Name        string `json:"name" binding:"required,min=2"`
+	Name      string `json:"name" binding:"required,min=2"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatarUrl"`
+	Address   string `json:"address"`
+	Gender    int    `json:"gender"`
+
 	Title       string `json:"title"`
 	Company     string `json:"company"`
 	Bio         string `json:"bio"`

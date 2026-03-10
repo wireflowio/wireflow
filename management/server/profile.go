@@ -2,7 +2,9 @@ package server
 
 import (
 	"wireflow/internal/infra"
+	"wireflow/management/dto"
 	"wireflow/management/server/middleware"
+	"wireflow/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -12,7 +14,7 @@ func (s *Server) profileRouter() {
 	//userApi.Use(dex.AuthMiddleware())
 	{
 		profileApi.POST("/getProfile", middleware.AuthMiddleware(), s.getProfile())
-		profileApi.POST("/updateProfile", middleware.AuthMiddleware(), s.updateProfile())
+		profileApi.PUT("/updateProfile", middleware.AuthMiddleware(), s.updateProfile())
 	}
 }
 
@@ -24,5 +26,20 @@ func (s *Server) getProfile() gin.HandlerFunc {
 }
 
 func (s *Server) updateProfile() gin.HandlerFunc {
-	return func(c *gin.Context) {}
+	return func(c *gin.Context) {
+		userId := c.Request.Context().Value(infra.UserIDKey).(string)
+		var req dto.UpdateSettingsRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			resp.BadRequest(c, err.Error())
+			return
+		}
+
+		err := s.profileController.UpdateProfile(c.Request.Context(), userId, req)
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
+
+		resp.OK(c, nil)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"gorm.io/gorm"
 )
@@ -79,7 +80,13 @@ func (r *BaseRepository[T]) Delete(ctx context.Context, scopes ...func(*gorm.DB)
 }
 
 func (r *BaseRepository[T]) Update(ctx context.Context, entity *T) error {
-	return r.db.WithContext(ctx).Save(entity).Error
+	return r.db.WithContext(ctx).Updates(entity).Error
+}
+
+// 辅助方法：通过反射获取泛型实体的主键 ID
+func (r *BaseRepository[T]) getID(entity *T) any {
+	val := reflect.ValueOf(entity).Elem()
+	return val.FieldByName("ID").Interface()
 }
 
 func (r *BaseRepository[T]) Upsert(ctx context.Context, attrs T, values T) error {

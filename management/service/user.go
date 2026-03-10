@@ -114,7 +114,7 @@ func (u *userService) InitAdmin(ctx context.Context, admins []config.AdminConfig
 }
 
 func (u *userService) GetMe(ctx context.Context, id string) (*models.User, error) {
-	return u.userRepo.First(ctx, repository.WithID(id))
+	return u.userRepo.GetByID(ctx, id, "UserProfile")
 }
 
 func (u *userService) Register(ctx context.Context, userDto dto.UserDto) error {
