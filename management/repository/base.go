@@ -78,6 +78,10 @@ func (r *BaseRepository[T]) Delete(ctx context.Context, scopes ...func(*gorm.DB)
 	return r.db.WithContext(ctx).Scopes(scopes...).Delete(&model).Error
 }
 
+func (r *BaseRepository[T]) Update(ctx context.Context, entity *T) error {
+	return r.db.WithContext(ctx).Save(entity).Error
+}
+
 func (r *BaseRepository[T]) Upsert(ctx context.Context, attrs T, values T) error {
 	var model T
 	return r.db.WithContext(ctx).Where(attrs).Assign(values).FirstOrCreate(&model).Error

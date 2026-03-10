@@ -51,6 +51,7 @@ type Server struct {
 	tokenController     controller.TokenController
 
 	monitorController controller.MonitorController
+	profileController controller.ProfileController
 }
 
 // ServerConfig is the server configuration.
@@ -98,6 +99,7 @@ func NewServer(serverConfig *ServerConfig) (*Server, error) {
 		workspaceController: controller.NewWorkspaceController(client),
 		tokenController:     controller.NewTokenController(client),
 		monitorController:   controller.NewMonitorController(config.GlobalConfig.Monitor.Address),
+		profileController:   controller.NewProfileController(),
 	}
 
 	// initAdmins

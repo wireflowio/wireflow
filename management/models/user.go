@@ -21,6 +21,21 @@ func (User) TableName() string {
 	return "t_user"
 }
 
+// UserProfile 用户详细资料与设置 (与 User 一对一)
+type UserProfile struct {
+	UserID      string `gorm:"primaryKey" json:"-"`
+	Title       string `gorm:"size:128" json:"title"`
+	Company     string `gorm:"size:128" json:"company"`
+	Bio         string `gorm:"type:text" json:"bio"`
+	Timezone    string `gorm:"size:64;default:'Asia/Shanghai'" json:"timezone"`
+	Language    string `gorm:"size:16;default:'zh-CN'" json:"language"`
+	EmailNotify bool   `gorm:"default:true" json:"emailNotify"`
+}
+
+func (UserProfile) TableName() string {
+	return "t_user_profile"
+}
+
 type Namespace struct {
 	Model
 	Name        string `gorm:"name"`
