@@ -34,7 +34,7 @@ type CPUCollector struct {
 }
 
 func (c *CPUCollector) Name() string {
-	return "cpu_collector"
+	return CPUUsage
 }
 
 func NewCPUCollector() MetricCollector {

@@ -19,21 +19,19 @@ package agent
 import (
 	"context"
 	"fmt"
-	"net"
+	"github.com/Microsoft/go-winio"
+	"golang.org/x/sync/errgroup"
+	wg "golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 	"wireflow/dns"
 	"wireflow/internal/config"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
 	"wireflow/monitor"
-	"wireflow/monitor/collector"
-
-	wg "golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/ipc"
-	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 func Start(ctx context.Context, flags *config.Flags) error {
@@ -60,6 +58,9 @@ func Start(ctx context.Context, flags *config.Flags) error {
 		),
 		Flags: flags,
 	}
+
+	// 创建一个随主程序生命周期管理的 Context
+	g, ctx := errgroup.WithContext(context.Background())
 
 	if flags.EnableDaemon {
 		fmt.Println("Run wireflow in daemon mode")
@@ -150,22 +151,20 @@ func Start(ctx context.Context, flags *config.Flags) error {
 
 	// enable metrics
 	if flags.EnableMetric {
-		go func() {
-			metric := monitor.NewNodeMonitor(10*time.Second, collector.NewPrometheusStorage(""), nil)
-			metric.AddCollector(&collector.CPUCollector{})
-			metric.AddCollector(&collector.MemoryCollector{})
-			metric.AddCollector(&collector.DiskCollector{})
-			metric.AddCollector(&collector.TrafficCollector{})
-			metric.Start()
-			fmt.Println("Metrics started")
-		}()
+		g.Go(func() error {
+			runner := monitor.NewMonitorRunner(infra.NewPeerManager())
+			return runner.Run(ctx)
+		})
 	}
 
 	// enable DNS
 	if flags.EnableDNS {
 		go func() {
 			nativeDNS := dns.NewNativeDNS(&dns.DNSConfig{})
-			nativeDNS.Start()
+			err := nativeDNS.Start()
+			if err != nil {
+				logger.Error("Failed to start", err)
+			}
 			fmt.Println("Dns started")
 		}()
 	}
@@ -269,26 +268,24 @@ func Status(flags *config.Flags) error {
 
 // stop wireflow daemon via sock file
 func stopViaPIDFile(interfaceName string) error {
-	// get sock
-	socketPath := fmt.Sprintf("/var/run/wireguard/%s.sock", interfaceName)
-	// check sock
-	if _, err := os.Stat(socketPath); os.IsNotExist(err) {
-		return fmt.Errorf("file %s not exists", socketPath)
-	}
+	pipePath := fmt.Sprintf(`\\.\pipe\wireguard\%s`, interfaceName)
 
-	// connect to the socket
-	conn, err := net.Dial("unix", socketPath)
+	// Windows上不需要检查管道是否存在，Dial会返回错误
+
+	// 连接到命名管道
+	conn, err := winio.DialPipe(pipePath, nil)
 	if err != nil {
-		return fmt.Errorf("wireflow sock connect failed: %v", err)
+		return fmt.Errorf("wireflow pipe connect failed: %v", err)
 	}
 	defer conn.Close()
-	// 发送消息到服务器
+
+	// 发送停止消息
 	_, err = conn.Write([]byte("stop\n"))
 	if err != nil {
 		return fmt.Errorf("send stop failed: %v", err)
 	}
 
-	// receive
+	// 接收响应
 	buffer := make([]byte, 4096)
 	_, err = conn.Read(buffer)
 	if err != nil {

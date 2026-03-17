@@ -25,15 +25,15 @@ type DiskCollector struct {
 	paths []string
 }
 
+func (c *DiskCollector) Name() string {
+	return DiskUsage
+}
+
 func NewDiskCollector(paths []string) *DiskCollector {
 	if len(paths) == 0 {
 		paths = []string{"/"}
 	}
 	return &DiskCollector{paths: paths}
-}
-
-func (c *DiskCollector) Name() string {
-	return "disk"
 }
 
 func (c *DiskCollector) Collect() ([]Metric, error) {

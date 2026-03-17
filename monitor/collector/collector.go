@@ -14,7 +14,11 @@
 
 package collector
 
-import "time"
+import (
+	"log"
+	"os"
+	"time"
+)
 
 type MetricCollector interface {
 	Collect() ([]Metric, error)
@@ -39,8 +43,12 @@ type SimpleMetric struct {
 }
 
 func NewSimpleMetric(name string, value interface{}, labels map[string]string, timestamp time.Time, help string) *SimpleMetric {
+	hostName, err := os.Hostname()
+	if err != nil {
+		log.Println("failed to get hostname")
+	}
 	return &SimpleMetric{
-		peerId:    "test-node-id",
+		peerId:    hostName,
 		name:      name,
 		value:     value,
 		labels:    labels,

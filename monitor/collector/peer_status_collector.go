@@ -2,10 +2,9 @@ package collector
 
 import (
 	"fmt"
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"time"
 	"wireflow/internal/infra"
-
-	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 type PeerStatusCollector struct {
@@ -19,7 +18,7 @@ func NewPeerStatusCollector() *PeerStatusCollector {
 }
 
 func (c *PeerStatusCollector) Name() string {
-	return "peer_status"
+	return PeerStatus
 }
 
 func (c *PeerStatusCollector) Collect() ([]Metric, error) {

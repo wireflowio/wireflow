@@ -16,16 +16,18 @@ package collector
 
 import (
 	"fmt"
-	"time"
-
 	"golang.zx2c4.com/wireguard/wgctrl"
+	"time"
 )
 
 type TrafficCollector struct {
 }
 
+func NewTrafficCollector() *TrafficCollector {
+	return &TrafficCollector{}
+}
 func (t *TrafficCollector) Name() string {
-	return "TrafficCollector"
+	return TrafficUsage
 }
 
 func (t *TrafficCollector) Collect() ([]Metric, error) {
@@ -36,11 +38,11 @@ func (t *TrafficCollector) Collect() ([]Metric, error) {
 	devices, _ := ctr.Devices()
 	if len(devices) > 0 {
 		peers := devices[0].Peers
-		var allTrafficeIn int64
-		var allTrafficeOut int64
+		var allTrafficIn int64
+		var allTrafficOut int64
 		for _, peer := range peers {
-			allTrafficeIn += peer.ReceiveBytes
-			allTrafficeOut += peer.TransmitBytes
+			allTrafficIn += peer.ReceiveBytes
+			allTrafficOut += peer.TransmitBytes
 			metrics = append(metrics, NewSimpleMetric(
 				fmt.Sprintf("%s_%s", peer.PublicKey, "traffic_in"),
 				peer.ReceiveBytes,
@@ -58,7 +60,7 @@ func (t *TrafficCollector) Collect() ([]Metric, error) {
 
 		metrics = append(metrics, NewSimpleMetric(
 			"all_traffic_in",
-			allTrafficeIn,
+			allTrafficIn,
 			map[string]string{"device": devices[0].Name},
 			time.Now(),
 			"all traffic in",
@@ -66,7 +68,7 @@ func (t *TrafficCollector) Collect() ([]Metric, error) {
 
 		metrics = append(metrics, NewSimpleMetric(
 			"all_traffic_out",
-			allTrafficeOut,
+			allTrafficOut,
 			map[string]string{"device": devices[0].Name},
 			time.Now(),
 			"all traffic out",

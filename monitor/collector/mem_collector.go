@@ -15,30 +15,67 @@
 package collector
 
 import (
-	"time"
-
+	"fmt"
 	"github.com/shirou/gopsutil/v4/mem"
+	"sync"
+	"time"
+	"wireflow/internal/infra"
 )
 
-type MemoryCollector struct{}
+type MemoryCollector struct {
+	peerManager *infra.PeerManager // 保持和你项目架构一致
+
+	// 缓存数据
+	mu         sync.RWMutex
+	memStats   *mem.VirtualMemoryStat
+	lastUpdate time.Time
+}
 
 func (c *MemoryCollector) Name() string {
-	return "memory"
+	return MemUsage
+}
+
+func NewMemCollector() *MemoryCollector {
+	c := &MemoryCollector{
+		peerManager: infra.NewPeerManager(),
+	}
+	// 启动后台异步采集协程
+	go c.runSnapshotter()
+	return c
+}
+
+func (c *MemoryCollector) runSnapshotter() {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		stats, err := mem.VirtualMemory()
+		if err != nil {
+			continue
+		}
+
+		c.mu.Lock()
+		c.memStats = stats
+		c.lastUpdate = time.Now()
+		c.mu.Unlock()
+	}
 }
 
 func (c *MemoryCollector) Collect() ([]Metric, error) {
-	metrics := make([]Metric, 0)
+	c.mu.RLock()
+	stats := c.memStats
+	c.mu.RUnlock()
 
-	memStats, err := mem.VirtualMemory()
-	if err != nil {
-		return nil, err
+	if stats == nil {
+		return nil, fmt.Errorf("memory stats not available yet")
 	}
 
+	metrics := make([]Metric, 0)
 	now := time.Now()
 
 	metrics = append(metrics, NewSimpleMetric(
 		"memory_total",
-		float64(memStats.Total),
+		float64(stats.Total),
 		nil,
 		now,
 		"memory total",
@@ -46,7 +83,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 
 	metrics = append(metrics, NewSimpleMetric(
 		"memory_used",
-		float64(memStats.Used),
+		float64(stats.Used),
 		nil,
 		now,
 		"memory used",
@@ -54,7 +91,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 
 	metrics = append(metrics, NewSimpleMetric(
 		"memory_free",
-		float64(memStats.Free),
+		float64(stats.Free),
 		nil,
 		now,
 		"memory free",
@@ -62,7 +99,7 @@ func (c *MemoryCollector) Collect() ([]Metric, error) {
 
 	metrics = append(metrics, NewSimpleMetric(
 		"memory_used_percent",
-		memStats.UsedPercent,
+		stats.UsedPercent,
 		nil,
 		now,
 		"memory used_percent",

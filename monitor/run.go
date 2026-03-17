@@ -55,6 +55,8 @@ func (r *MonitorRunner) Run(ctx context.Context) error {
 
 	worker.StartPeerStatusMetrics(ctx, 15*time.Second)
 
+	worker.StartTrafficMetrics(ctx, 15*time.Second)
+
 	// 3. 主线程 hold 住
 	fmt.Printf("Metrics Server 启动在 %s\n", server.Addr)
 	err := server.ListenAndServe()
