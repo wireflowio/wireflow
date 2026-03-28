@@ -162,6 +162,7 @@ var _ = Describe("Wireflow 核心连通性 E2E", Ordered, func() {
 								Command: []string{
 									"/app/wireflow", "up",
 									"--token", joinToken,
+									"--level", "debug",
 									"--server-url", "wireflow-api-service.wireflow-system.svc.cluster.local:8080",
 									"--signaling-url", "nats://signaling.wireflow.run:4222",
 								},

@@ -45,12 +45,15 @@ type iceDialer struct {
 	provisioner infra.Provisioner // nolint
 	agent       *AgentWrapper
 	closeOnce   sync.Once
+	offerOnce   sync.Once
 	showLog     bool
 	localPeer   *infra.Peer
 	onPeerReceived func(peer infra.Peer)
 
 	// offerReady start Dial() after receiving offer
 	offerReady chan struct{}
+	// closeChan is closed when the dialer is closed, unblocking any pending Dial().
+	closeChan  chan struct{}
 	cancel     context.CancelFunc
 	ackChan    chan struct{} // nolint
 
@@ -123,7 +126,7 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 		}
 
 		i.log.Debug("add remote candidate", "candidate", candidate)
-		i.closeOnce.Do(func() {
+		i.offerOnce.Do(func() {
 			close(i.offerReady)
 		})
 	}
@@ -142,6 +145,8 @@ func NewIceDialer(cfg *ICEDialerConfig) infra.Dialer {
 		localPeer:              cfg.LocalPeer,
 		onPeerReceived:         cfg.OnPeerReceived,
 		offerReady:             make(chan struct{}),
+		closeChan:              make(chan struct{}),
+		cancel:                 func() {}, // no-op until Prepare sets a real one
 	}
 }
 
@@ -197,6 +202,8 @@ func (i *iceDialer) Dial(ctx context.Context) (infra.Transport, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	case <-i.closeChan:
+		return nil, fmt.Errorf("iceDialer closed before offer received")
 	case <-i.offerReady:
 		i.log.Debug("start dial")
 		if i.agent.GetTieBreaker() > i.agent.RTieBreaker {
@@ -315,8 +322,18 @@ func (i *iceDialer) sendPacket(ctx context.Context, remoteId infra.PeerIdentity,
 func (i *iceDialer) close() error {
 	i.log.Debug("closing ice", "remoteId", i.remoteId)
 	i.closeOnce.Do(func() {
-		if err := i.agent.Close(); err != nil {
-			i.log.Error("close agent", err)
+		i.mu.Lock()
+		agent := i.agent
+		i.agent = nil
+		i.mu.Unlock()
+
+		// Unblock any Dial() waiting on offerReady or closeChan.
+		close(i.closeChan)
+
+		if agent != nil {
+			if err := agent.Close(); err != nil {
+				i.log.Error("close agent", err)
+			}
 		}
 		if i.onClose != nil {
 			i.onClose(i.remoteId)

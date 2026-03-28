@@ -47,6 +47,9 @@ type Probe struct {
 	// Add wrrp
 	wrrpDialer infra.Dialer
 
+	// newIceDialer creates a fresh iceDialer instance for reconnection.
+	newIceDialer func() infra.Dialer
+
 	onSuccess        func(transport infra.Transport) error
 	onFailure        func(error) error
 	currentTransport infra.Transport
@@ -55,12 +58,28 @@ type Probe struct {
 func (p *Probe) Handle(ctx context.Context, remoteId infra.PeerIdentity, packet *grpc.SignalPacket) error {
 	switch packet.Dialer {
 	case grpc.DialerType_ICE:
-		return p.iceDialer.Handle(ctx, p.remoteId, packet)
+		p.mu.RLock()
+		d := p.iceDialer
+		p.mu.RUnlock()
+		return d.Handle(ctx, p.remoteId, packet)
 	case grpc.DialerType_WRRP:
 		return p.wrrpDialer.Handle(ctx, p.remoteId, packet)
 	}
 
 	return nil
+}
+
+// restart replaces the iceDialer with a fresh instance and re-runs discovery.
+// Called by the iceDialer's OnClose callback when a connection is lost.
+func (p *Probe) restart() {
+	if p.newIceDialer == nil {
+		return
+	}
+	p.mu.Lock()
+	p.iceDialer = p.newIceDialer()
+	p.mu.Unlock()
+	p.started.Store(false)
+	_ = p.Start(context.Background(), p.remoteId)
 }
 
 func (p *Probe) OnConnectionStateChange(state ice.ConnectionState) {

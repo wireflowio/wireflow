@@ -186,17 +186,27 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 
 			return p.provisioner.SetupNAT(rp.InterfaceName)
 		},
+		wrrpDialer: wrrpDialer,
+	}
 
-		iceDialer: NewIceDialer(&ICEDialerConfig{
+	// makeIceDialer is a factory that creates a fresh iceDialer, wired to
+	// call probe.restart() on close so reconnection works automatically.
+	var makeIceDialer func() infra.Dialer
+	makeIceDialer = func() infra.Dialer {
+		return NewIceDialer(&ICEDialerConfig{
 			LocalId:                p.localId,
 			RemoteId:               remoteId,
 			Sender:                 p.signal.Send,
 			LocalPeer:              localPeer,
 			OnPeerReceived:         onPeerReceived,
 			UniversalUdpMuxDefault: p.UniversalUdpMuxDefault,
-		}),
-		wrrpDialer: wrrpDialer,
+			OnClose: func(_ infra.PeerIdentity) {
+				probe.restart()
+			},
+		})
 	}
+	probe.newIceDialer = makeIceDialer
+	probe.iceDialer = makeIceDialer()
 
 	p.Register(remoteId, probe)
 	return probe, nil
