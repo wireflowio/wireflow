@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"wireflow/internal/store"
 	"wireflow/management/dto"
 	"wireflow/management/service"
 )
@@ -23,6 +24,6 @@ func (p profileController) UpdateProfile(ctx context.Context, userID string, req
 	return p.profileService.UpdateProfile(ctx, userID, req)
 }
 
-func NewProfileController() ProfileController {
-	return &profileController{profileService: service.NewProfileService()}
+func NewProfileController(st store.Store) ProfileController {
+	return &profileController{profileService: service.NewProfileService(st)}
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net/http"
 	"wireflow/internal/infra"
 	"wireflow/management/dto"
 	"wireflow/management/server/middleware"
@@ -21,7 +22,13 @@ func (s *Server) profileRouter() {
 func (s *Server) getProfile() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userId := c.Request.Context().Value(infra.UserIDKey).(string)
-		s.profileController.GetProfile(c.Request.Context(), userId)
+		response, err := s.profileController.GetProfile(c.Request.Context(), userId)
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, response)
 	}
 }
 
