@@ -127,12 +127,15 @@ func (p *Probe) updateState(state ice.ConnectionState) {
 	p.state = state
 }
 
-// discover 实现了“谁快用谁”的竞速逻辑
+// discover 实现了"谁快用谁"的竞速逻辑
 func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
-	// 用于接收第一个成功的 Transport
-	result := make(chan infra.Transport, 2)
-	// 用于接收所有的错误，只有全部失败才报错
-	errs := make(chan error, 2)
+	dialerCount := 1
+	if config.Conf.EnableWrrp {
+		dialerCount = 2
+	}
+
+	result := make(chan infra.Transport, dialerCount)
+	errs := make(chan error, dialerCount)
 
 	go func() {
 		p.log.Debug("Starting ice dialer", "remoteId", p.remoteId)
@@ -147,9 +150,7 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 		}
 		result <- t
 		if err = p.handleUpgradeTransport(t); err != nil {
-			errs <- err
 			p.log.Error("Upgrade transport failed", err)
-			return
 		}
 	}()
 
@@ -157,8 +158,7 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 	if config.Conf.EnableWrrp {
 		go func() {
 			p.log.Debug("Starting wrrp dialer", "remoteId", p.remoteId)
-			err := p.wrrpDialer.Prepare(ctx, p.remoteId)
-			if err != nil {
+			if err := p.wrrpDialer.Prepare(ctx, p.remoteId); err != nil {
 				errs <- err
 				return
 			}
@@ -172,25 +172,32 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 		}()
 	}
 
-	// 3. 竞速决策逻辑
-	var best infra.Transport
-	select {
-	case t := <-result:
-		best = t
-		// 特殊优化：如果 WRRP 先到了，我们可以额外等一小会儿（如 500ms）给 ICE 机会
-		if t.Type() == infra.WRRP {
-			select {
-			case iceT := <-result:
-				t.Close()
-				best = iceT
-			case <-time.After(500 * time.Millisecond):
+	// 竞速决策逻辑：谁先成功用谁；全部失败则报错
+	failed := 0
+	var lastErr error
+	for {
+		select {
+		case t := <-result:
+			// 特殊优化：如果 WRRP 先到了，额外等 500ms 给 ICE 机会
+			if t.Type() == infra.WRRP && config.Conf.EnableWrrp {
+				select {
+				case iceT := <-result:
+					_ = t.Close()
+					return iceT, nil
+				case <-time.After(500 * time.Millisecond):
+				}
 			}
+			return t, nil
+		case err := <-errs:
+			lastErr = err
+			failed++
+			if failed == dialerCount {
+				return nil, lastErr
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
 		}
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
-
-	return best, nil
 }
 
 func (p *Probe) handleUpgradeTransport(newTransport infra.Transport) error {

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 	"wireflow/internal/grpc"
 	"wireflow/internal/infra"
@@ -36,26 +37,27 @@ var (
 )
 
 type iceDialer struct {
-	mu          sync.Mutex
-	log         *log.Logger
-	localId     infra.PeerIdentity
-	remoteId    infra.PeerIdentity
-	sender      func(ctx context.Context, peerId infra.PeerID, data []byte) error
-	onClose     func(peerId infra.PeerIdentity)
-	provisioner infra.Provisioner // nolint
-	agent       *AgentWrapper
-	closeOnce   sync.Once
-	offerOnce   sync.Once
-	showLog     bool
-	localPeer   *infra.Peer
+	mu             sync.Mutex
+	log            *log.Logger
+	localId        infra.PeerIdentity
+	remoteId       infra.PeerIdentity
+	sender         func(ctx context.Context, peerId infra.PeerID, data []byte) error
+	onClose        func(peerId infra.PeerIdentity)
+	provisioner    infra.Provisioner // nolint
+	agent          *AgentWrapper
+	closeOnce      sync.Once
+	offerOnce      sync.Once
+	closed         atomic.Bool
+	showLog        bool
+	localPeer      *infra.Peer
 	onPeerReceived func(peer infra.Peer)
 
 	// offerReady start Dial() after receiving offer
 	offerReady chan struct{}
 	// closeChan is closed when the dialer is closed, unblocking any pending Dial().
-	closeChan  chan struct{}
-	cancel     context.CancelFunc
-	ackChan    chan struct{} // nolint
+	closeChan chan struct{}
+	cancel    context.CancelFunc
+	ackChan   chan struct{} // nolint
 
 	universalUdpMuxDefault *ice.UniversalUDPMuxDefault
 }
@@ -79,26 +81,55 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 	}
 	switch packet.Type {
 	case grpc.PacketType_HANDSHAKE_ACK:
+		if i.closed.Load() {
+			return nil
+		}
+		i.mu.Lock()
+		agent := i.agent
+		i.mu.Unlock()
+		if agent == nil {
+			return nil
+		}
 		// cancel send syn
 		i.cancel()
 		// start send offer
-		return i.agent.GatherCandidates()
+		return agent.GatherCandidates()
 	case grpc.PacketType_HANDSHAKE_SYN:
+		// If already fully closed, the remote may have restarted after our cleanup.
+		// Drop the SYN — probe.restart() already created a new iceDialer that will
+		// handle the next retry (Node A resends SYN every 2 s).
+		if i.closed.Load() {
+			return nil
+		}
+
+		i.mu.Lock()
+		existingAgent := i.agent
+		i.mu.Unlock()
+
+		// If an agent already exists the remote restarted before we detected the
+		// disconnect (fast restart, keepalive not yet timed out).  Force-close the
+		// current dialer so probe.restart() creates a fresh one.
+		if existingAgent != nil {
+			i.log.Debug("SYN on active agent — remote restarted, forcing close", "remoteId", remoteId)
+			go i.close()
+			return nil
+		}
+
 		// send ack to remote
 		if err := i.sendPacket(ctx, i.remoteId, grpc.PacketType_HANDSHAKE_ACK, nil); err != nil {
 			return err
 		}
 
 		// init agent
-		if i.agent == nil {
-			agent, err := i.getAgent(remoteId)
-			if err != nil {
-				panic(err)
-			}
-			i.agent = agent
+		agent, err := i.getAgent(remoteId)
+		if err != nil {
+			return err
 		}
+		i.mu.Lock()
+		i.agent = agent
+		i.mu.Unlock()
 		// start send offer (localId < remoteId)
-		return i.agent.GatherCandidates()
+		return agent.GatherCandidates()
 	case grpc.PacketType_OFFER, grpc.PacketType_ANSWER:
 		i.log.Debug("receive offer", "remoteId", remoteId)
 		offer := packet.GetOffer()
@@ -322,6 +353,7 @@ func (i *iceDialer) sendPacket(ctx context.Context, remoteId infra.PeerIdentity,
 func (i *iceDialer) close() error {
 	i.log.Debug("closing ice", "remoteId", i.remoteId)
 	i.closeOnce.Do(func() {
+		i.closed.Store(true)
 		i.mu.Lock()
 		agent := i.agent
 		i.agent = nil
@@ -355,8 +387,7 @@ func (i *ICETransport) Priority() uint8 {
 }
 
 func (i *ICETransport) Close() error {
-	//TODO implement me
-	panic("implement me")
+	return i.Conn.Close()
 }
 
 func (i *ICETransport) Write(data []byte) error {

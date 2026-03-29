@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 	"wireflow/internal/grpc"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
@@ -148,7 +149,8 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 		return nil, err
 	}
 
-	probe := &Probe{
+	var probe *Probe
+	probe = &Probe{
 		log:      p.log,
 		localId:  p.localId,
 		remoteId: remoteId,
@@ -185,6 +187,11 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 			}
 
 			return p.provisioner.SetupNAT(rp.InterfaceName)
+		},
+		onFailure: func(err error) error {
+			p.log.Warn("discover failed, retrying in 10s", "remoteId", remoteId.AppID, "err", err)
+			time.AfterFunc(10*time.Second, probe.restart)
+			return nil
 		},
 		wrrpDialer: wrrpDialer,
 	}
