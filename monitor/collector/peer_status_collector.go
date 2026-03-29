@@ -32,7 +32,7 @@ func (c *PeerStatusCollector) Collect() ([]Metric, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to init wgctrl: %v", err)
 	}
-	defer client.Close()
+	defer client.Close() //nolint:errcheck
 
 	// 1. 获取 WireGuard 设备信息
 	device, err := client.Device(c.interfaceName)

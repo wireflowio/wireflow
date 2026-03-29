@@ -198,8 +198,7 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 
 	// makeIceDialer is a factory that creates a fresh iceDialer, wired to
 	// call probe.restart() on close so reconnection works automatically.
-	var makeIceDialer func() infra.Dialer
-	makeIceDialer = func() infra.Dialer {
+	makeIceDialer := func() infra.Dialer {
 		return NewIceDialer(&ICEDialerConfig{
 			LocalId:                p.localId,
 			RemoteId:               remoteId,

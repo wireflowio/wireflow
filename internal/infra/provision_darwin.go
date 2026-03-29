@@ -61,7 +61,7 @@ func (r *ruleProvisioner) Name() string { return "pfctl" }
 
 func ensurePFReady(anchor string) error {
 	// 确保 pf 已启用
-	exec.Command("sudo", "pfctl", "-e").Run() //nolint:errcheck — 已启用时返回错误属正常
+	exec.Command("sudo", "pfctl", "-e").Run() //nolint:errcheck
 
 	// 检查 anchor 是否已在主 ruleset 中
 	out, _ := exec.Command("sudo", "pfctl", "-sr").Output()

@@ -1,0 +1,167 @@
+# Wireflow All-in-One Quickstart Manifest
+# Includes: Namespace, RBAC, Service, Deployment for wireflowd (all-in-one control plane)
+# NOTE: CRDs are applied separately by hack/quickstart.sh before this file.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wireflow-system
+  labels:
+    app.kubernetes.io/name: wireflow
+    app.kubernetes.io/part-of: wireflow
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wireflowd
+  namespace: wireflow-system
+  labels:
+    app.kubernetes.io/name: wireflow
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wireflowd-manager-role
+  labels:
+    app.kubernetes.io/name: wireflow
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, events]
+    verbs: [create, delete, get, list, patch, update, watch]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [create, delete, get, list, patch, update, watch]
+  - apiGroups: [wireflowcontroller.wireflow.run]
+    resources:
+      - wireflowenrollmenttokens
+      - wireflownetworks
+      - wireflowpeers
+      - wireflowpolicies
+      - wireflowglobalippools
+      - wireflowendpoints
+      - wireflowsubnetallocations
+      - wireflowinvitations
+    verbs: [create, delete, get, list, patch, update, watch]
+  - apiGroups: [wireflowcontroller.wireflow.run]
+    resources:
+      - wireflowenrollmenttokens/finalizers
+      - wireflownetworks/finalizers
+      - wireflowpeers/finalizers
+      - wireflowpolicies/finalizers
+      - wireflowenrollmenttokens/status
+      - wireflownetworks/status
+      - wireflowpeers/status
+      - wireflowpolicies/status
+    verbs: [get, patch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wireflowd-manager-rolebinding
+  labels:
+    app.kubernetes.io/name: wireflow
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: wireflowd-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: wireflowd
+    namespace: wireflow-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireflowd-config
+  namespace: wireflow-system
+  labels:
+    app.kubernetes.io/name: wireflow
+data:
+  wireflow.yaml: |
+    listen: :8080
+    level: info
+    env: dev
+---
+# LoadBalancer service — k3d maps host ports 8080 (web+api embedded) and 4222 (NATS) to this service
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireflowd
+  namespace: wireflow-system
+  labels:
+    app.kubernetes.io/name: wireflow
+spec:
+  type: LoadBalancer
+  selector:
+    app: wireflowd
+  ports:
+    - name: api
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: nats
+      protocol: TCP
+      port: 4222
+      targetPort: 4222
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireflowd
+  namespace: wireflow-system
+  labels:
+    app.kubernetes.io/name: wireflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wireflowd
+  template:
+    metadata:
+      labels:
+        app: wireflowd
+        app.kubernetes.io/name: wireflow
+    spec:
+      serviceAccountName: wireflowd
+      containers:
+        - name: wireflowd
+          image: ghcr.io/wireflowio/wireflowd:latest
+          imagePullPolicy: Always
+          ports:
+            - name: api
+              containerPort: 8080
+              protocol: TCP
+            - name: nats
+              containerPort: 4222
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /root/.wireflow
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: wireflowd-config
+        - name: data
+          emptyDir: {}

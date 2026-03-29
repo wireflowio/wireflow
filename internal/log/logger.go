@@ -87,6 +87,10 @@ func getHandler() slog.Handler {
 	return rootHandler
 }
 
+func (l *Logger) Error(msg string, err error, args ...any) {
+	l.Logger.Error(msg, append([]any{"err", err}, args...)...)
+}
+
 func GetLogger(module string) *Logger {
 	logger := slog.New(getHandler()).With("mod", module)
 	return &Logger{logger}

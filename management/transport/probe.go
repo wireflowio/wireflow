@@ -214,7 +214,7 @@ func (p *Probe) handleUpgradeTransport(newTransport infra.Transport) error {
 		if old != nil {
 			go func() {
 				time.Sleep(2 * time.Second)
-				old.Close()
+				old.Close() //nolint:errcheck
 			}()
 		}
 	}

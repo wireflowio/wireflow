@@ -14,12 +14,14 @@ LDFLAGS = -X 'github.com/your-org/wireflow/pkg/version.Version=$(WIREFLOW_VERSIO
 
 
 REGISTRY ?= ghcr.io/wireflowio
-SERVICES := manager wireflow
+# manager: K8s operator; wireflow: edge agent; wireflowd: all-in-one control plane
+SERVICES := manager wireflow wireflowd
 TARGETOS ?= linux
 TARGETARCH ?=amd64
 VERSION ?= dev
 TAG ?= dev
 IMG ?= ghcr.io/wireflowio/manager:$(VERSION)
+WIREFLOWD_IMG ?= $(REGISTRY)/wireflowd:$(TAG)
 
 # 默认环境设置为 dev
 ENV ?= dev
@@ -66,6 +68,42 @@ build: fmt vet build-ui## 构建单个服务 (使用: make build SERVICE=wireflo
 		./cmd/$(SERVICE)/main.go
 	@echo "✅ Built: bin/$(SERVICE)"
 	@ls -lh bin/$(SERVICE)
+
+.PHONY: build-wireflowd
+build-wireflowd: fmt vet ## 构建 wireflowd all-in-one 二进制
+	@echo ">>> Building wireflowd (all-in-one)..."
+	@mkdir -p bin
+	CGO_ENABLED=0 GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) \
+		go build \
+		-ldflags="-s -w $(LDFLAGS)" \
+		-o bin/wireflowd \
+		./cmd/wireflowd/main.go
+	@echo "✅ Built: bin/wireflowd"
+	@ls -lh bin/wireflowd
+
+.PHONY: test-wireflowd
+test-wireflowd: ## 运行 wireflowd 相关单元测试
+	go test ./cmd/wireflowd/... ./internal/nats/... ./internal/db/... -v -count=1
+
+.PHONY: docker-build-wireflowd
+docker-build-wireflowd: ## 构建 wireflowd Docker 镜像
+	$(CONTAINER_TOOL) build \
+		--build-arg TARGETSERVICE=wireflowd \
+		--build-arg TARGETOS=linux \
+		--build-arg TARGETARCH=$(TARGETARCH) \
+		--build-arg VERSION=$(TAG) \
+		-t $(WIREFLOWD_IMG) \
+		-f Dockerfile \
+		.
+	@echo "✅ Built image: $(WIREFLOWD_IMG)"
+
+.PHONY: docker-push-wireflowd
+docker-push-wireflowd: ## 推送 wireflowd Docker 镜像
+	$(CONTAINER_TOOL) push $(WIREFLOWD_IMG)
+	@echo "✅ Pushed: $(WIREFLOWD_IMG)"
+
+.PHONY: docker-wireflowd
+docker-wireflowd: docker-build-wireflowd docker-push-wireflowd ## 构建并推送 wireflowd 镜像
 
 # ============ Docker 构建 ============
 ##@ General
@@ -310,6 +348,20 @@ install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: deploy-aio
+deploy-aio: kustomize ## 部署 all-in-one 模式到已有 K8s 集群 (usage: make deploy-aio TAG=v0.1.0)
+	$(KUBECTL) create namespace wireflow-system --dry-run=client -o yaml | $(KUBECTL) apply -f -
+	@echo "正在部署 all-in-one wireflowd (TAG=$(TAG))..."
+	cd config/wireflow/overlays/all-in-one && $(KUSTOMIZE) edit set image ghcr.io/wireflowio/wireflowd:$(TAG)
+	$(KUSTOMIZE) build config/wireflow/overlays/all-in-one | $(KUBECTL) apply -f -
+	git checkout config/wireflow/overlays/all-in-one/kustomization.yaml
+	$(KUBECTL) rollout status deployment/wireflow-aio -n wireflow-system --timeout=120s
+	@echo "✅ All-in-one 部署完成。API: $(KUBECTL) port-forward svc/wireflow-api-service 8080:8080 -n wireflow-system"
+
+.PHONY: undeploy-aio
+undeploy-aio: kustomize ## 卸载 all-in-one 部署
+	$(KUSTOMIZE) build config/wireflow/overlays/all-in-one | $(KUBECTL) delete -f - --ignore-not-found=true
+
 .PHONY: deploy
 deploy: manifests kustomize ## 根据 ENV 部署 (usage: make deploy ENV=production)
 	# 1. 强制创建 Namespace (如果已存在则忽略错误)
@@ -360,7 +412,7 @@ CONTROLLER_TOOLS_VERSION ?= v0.18.0
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 #ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
-GOLANGCI_LINT_VERSION ?= v2.1.0
+GOLANGCI_LINT_VERSION ?= v1.64.5
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -388,7 +440,7 @@ $(ENVTEST): $(LOCALBIN)
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist

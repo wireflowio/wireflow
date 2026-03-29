@@ -213,7 +213,7 @@ func startDaemon(flags *config.Config, logger *log.Logger) error {
 	if err = process.Release(); err != nil {
 		return fmt.Errorf("failed to release process: %w", err)
 	}
-	
+
 	logger.Info("daemon started", "pid", process.Pid)
 	os.Exit(0)
 	return nil // unreachable
