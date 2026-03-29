@@ -26,7 +26,6 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
-  - web.yaml
   - ip_pool.yaml
 
 images:

@@ -311,6 +311,27 @@ docker-all: docker-build-all docker-push-all ## 构建并推送所有镜像
 .PHONY: docker
 docker: docker-build docker-push ## 构建并推送单个镜像
 
+INSTALLER_IMG ?= wireflow/installer
+INSTALLER_PLATFORMS ?= linux/amd64,linux/arm64
+
+.PHONY: docker-installer
+docker-installer: ## 构建 installer 镜像 (本地 load，仅当前平台)
+	$(CONTAINER_TOOL) build \
+		-t $(INSTALLER_IMG):latest \
+		-f deploy/installer/Dockerfile \
+		deploy/installer/
+	@echo "✅ Built: $(INSTALLER_IMG):latest"
+
+.PHONY: docker-installer-push
+docker-installer-push: ## 构建并推送多架构 installer 镜像 (buildx)
+	$(CONTAINER_TOOL) buildx build \
+		--platform $(INSTALLER_PLATFORMS) \
+		-t $(INSTALLER_IMG):latest \
+		--push \
+		-f deploy/installer/Dockerfile \
+		deploy/installer/
+	@echo "✅ Pushed: $(INSTALLER_IMG):latest ($(INSTALLER_PLATFORMS))"
+
 # PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
 # architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
 # - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
@@ -329,10 +350,11 @@ docker-buildx: ## Build and push docker image for the manager for cross-platform
 	rm Dockerfile.cross
 
 .PHONY: build-installer
-build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
-	mkdir -p dist
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default > dist/install.yaml
+build-installer: manifests generate kustomize ## Build kustomize manifests into deploy/quickstart/ for installer to fetch via GITHUB_RAW.
+	mkdir -p deploy/quickstart
+	$(KUSTOMIZE) build config/crd > deploy/quickstart/wireflow-crds.yaml
+	$(KUSTOMIZE) build config/wireflow/overlays/all-in-one > deploy/quickstart/wireflow-all-in-one.yaml
+	@echo "✅ Manifests written to deploy/quickstart/"
 
 ##@ Deployment
 
