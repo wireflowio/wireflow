@@ -52,6 +52,12 @@ type iceDialer struct {
 	localPeer      *infra.Peer
 	onPeerReceived func(peer infra.Peer)
 
+	// onSynOnActiveAgent is called after the old ICE session is torn down when a
+	// SYN arrives while an agent is already active (remote restarted mid-session).
+	// The probe uses this to immediately re-dispatch the SYN to the new dialer
+	// instead of waiting for the remote's next retry (up to 2 s later).
+	onSynOnActiveAgent func(ctx context.Context, remoteId infra.PeerIdentity, packet *grpc.SignalPacket)
+
 	// offerReady start Dial() after receiving offer
 	offerReady chan struct{}
 	// closeChan is closed when the dialer is closed, unblocking any pending Dial().
@@ -73,6 +79,9 @@ type ICEDialerConfig struct {
 	OnPeerReceived          func(peer infra.Peer)
 	ShowLog                 bool
 	OnConnectionStateChange func(state ice.ConnectionState)
+	// OnSynOnActiveAgent is called (after the old session is closed) when a SYN
+	// arrives while an ICE agent is already running, indicating the remote restarted.
+	OnSynOnActiveAgent func(ctx context.Context, remoteId infra.PeerIdentity, packet *grpc.SignalPacket)
 }
 
 func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, packet *grpc.SignalPacket) error {
@@ -108,10 +117,15 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 
 		// If an agent already exists the remote restarted before we detected the
 		// disconnect (fast restart, keepalive not yet timed out).  Force-close the
-		// current dialer so probe.restart() creates a fresh one.
+		// current dialer so probe.restart() creates a fresh one, then immediately
+		// re-dispatch this SYN to the new dialer to avoid waiting for the remote's
+		// next 2-second retry cycle.
 		if existingAgent != nil {
 			i.log.Debug("SYN on active agent — remote restarted, forcing close", "remoteId", remoteId)
-			go i.close()
+			i.close()
+			if i.onSynOnActiveAgent != nil {
+				i.onSynOnActiveAgent(ctx, remoteId, packet)
+			}
 			return nil
 		}
 
@@ -175,6 +189,7 @@ func NewIceDialer(cfg *ICEDialerConfig) infra.Dialer {
 		showLog:                cfg.ShowLog,
 		localPeer:              cfg.LocalPeer,
 		onPeerReceived:         cfg.OnPeerReceived,
+		onSynOnActiveAgent:     cfg.OnSynOnActiveAgent,
 		offerReady:             make(chan struct{}),
 		closeChan:              make(chan struct{}),
 		cancel:                 func() {}, // no-op until Prepare sets a real one
@@ -183,19 +198,21 @@ func NewIceDialer(cfg *ICEDialerConfig) infra.Dialer {
 
 // Prepare sends handshake SYN when localId > remoteId (lexicographic on PeerID string).
 func (i *iceDialer) Prepare(ctx context.Context, remoteId infra.PeerIdentity) error {
-	// init agent
+	i.log.Debug("prepare ice", "localId", i.localId, "remoteId", remoteId, "shouldSync", i.localId.String() > remoteId.String())
+	// only send syn when localId > remoteId
+	// passive side returns early without pre-creating the agent;
+	// the agent will be created in Handle() upon receiving SYN.
+	if i.localId.String() < remoteId.String() {
+		i.log.Debug("localId < remoteId, ignore prepare")
+		return nil
+	}
+	// init agent (initiator side only)
 	if i.agent == nil {
 		agent, err := i.getAgent(remoteId)
 		if err != nil {
 			panic(err)
 		}
 		i.agent = agent
-	}
-	i.log.Debug("prepare ice", "localId", i.localId, "remoteId", remoteId, "shouldSync", i.localId.String() > remoteId.String())
-	// only send syn when localId > remoteId
-	if i.localId.String() < remoteId.String() {
-		i.log.Debug("localId < remoteId, ignore prepare")
-		return nil
 	}
 
 	// send syn
@@ -264,14 +281,18 @@ func (i *iceDialer) getAgent(remoteId infra.PeerIdentity) (*AgentWrapper, error)
 	} else {
 		f.DefaultLogLevel = logging.LogLevelError
 	}
+	disconnectedTimeout := 3 * time.Second
+	failedTimeout := 8 * time.Second
 	iceAgent, err := ice.NewAgent(&ice.AgentConfig{
-		UDPMux:         i.universalUdpMuxDefault.UDPMuxDefault,
-		UDPMuxSrflx:    i.universalUdpMuxDefault,
-		NetworkTypes:   []ice.NetworkType{ice.NetworkTypeUDP4},
-		Urls:           []*stun.URI{{Scheme: stun.SchemeTypeSTUN, Host: "stun.wireflow.run", Port: 3478}},
-		Tiebreaker:     uint64(ice.NewTieBreaker()),
-		LoggerFactory:  f,
-		CandidateTypes: []ice.CandidateType{ice.CandidateTypeHost, ice.CandidateTypeServerReflexive},
+		UDPMux:              i.universalUdpMuxDefault.UDPMuxDefault,
+		UDPMuxSrflx:         i.universalUdpMuxDefault,
+		NetworkTypes:        []ice.NetworkType{ice.NetworkTypeUDP4},
+		Urls:                []*stun.URI{{Scheme: stun.SchemeTypeSTUN, Host: "stun.wireflow.run", Port: 3478}},
+		Tiebreaker:          uint64(ice.NewTieBreaker()),
+		LoggerFactory:       f,
+		CandidateTypes:      []ice.CandidateType{ice.CandidateTypeHost, ice.CandidateTypeServerReflexive},
+		DisconnectedTimeout: &disconnectedTimeout,
+		FailedTimeout:       &failedTimeout,
 	})
 
 	var agent *AgentWrapper
@@ -306,6 +327,9 @@ func (i *iceDialer) getAgent(remoteId infra.PeerIdentity) (*AgentWrapper, error)
 // sendPacket sends a signal packet to remoteId.
 // PeerIdentity.ID() is used for NATS routing; PublicKey is used in OFFER payload.
 func (i *iceDialer) sendPacket(ctx context.Context, remoteId infra.PeerIdentity, packetType grpc.PacketType, candidate ice.Candidate) error {
+	if i.closed.Load() {
+		return nil
+	}
 	p := &grpc.SignalPacket{
 		Type:     packetType,
 		SenderId: i.localId.ID().ToUint64(),
@@ -325,6 +349,7 @@ func (i *iceDialer) sendPacket(ctx context.Context, remoteId infra.PeerIdentity,
 		if err != nil {
 			return err
 		}
+
 		ufrag, pwd, err := agent.GetLocalUserCredentials()
 		if err != nil {
 			return err
@@ -362,13 +387,17 @@ func (i *iceDialer) close() error {
 		// Unblock any Dial() waiting on offerReady or closeChan.
 		close(i.closeChan)
 
+		// Notify the probe before closing the ICE agent so probe.restart() can
+		// create a fresh dialer immediately, without waiting for agent.Close() to
+		// finish (which can block briefly waiting for ICE goroutines to stop).
+		if i.onClose != nil {
+			i.onClose(i.remoteId)
+		}
+
 		if agent != nil {
 			if err := agent.Close(); err != nil {
 				i.log.Error("close agent", err)
 			}
-		}
-		if i.onClose != nil {
-			i.onClose(i.remoteId)
 		}
 	})
 	return nil

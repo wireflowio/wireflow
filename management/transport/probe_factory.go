@@ -210,6 +210,14 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 			OnClose: func(_ infra.PeerIdentity) {
 				probe.restart()
 			},
+			// After the old session is torn down (remote restarted mid-session),
+			// immediately re-dispatch the triggering SYN to the newly created
+			// dialer so we don't wait for the remote's next 2-second retry cycle.
+			OnSynOnActiveAgent: func(ctx context.Context, rid infra.PeerIdentity, packet *grpc.SignalPacket) {
+				if err := probe.Handle(ctx, rid, packet); err != nil {
+					p.log.Error("re-dispatch SYN to restarted dialer", err)
+				}
+			},
 		})
 	}
 	probe.newIceDialer = makeIceDialer

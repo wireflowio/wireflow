@@ -1,5 +1,5 @@
 1. K8s 控制循环与幂等性 (Idempotency)
-   [ ] 逻辑闭环： Reconcile 函数是否覆盖了资源的所有状态（Created, Updated, Deleted）？
+[ ] 逻辑闭环： Reconcile 函数是否覆盖了资源的所有状态（Created, Updated, Deleted）？
 
 [ ] 状态重入： 如果程序在任意一行崩溃并重启，再次执行 Reconcile 是否会产生副作用（如重复创建接口）？
 

@@ -1,32 +1,51 @@
-version: '3.8'
-
 services:
-  # 1. 流量/状态采集
-  wg-exporter:
-    image: mindflavor/prometheus-wireguard-exporter
-    cap_add: [NET_ADMIN]
-    network_mode: "host" # 必须直接访问宿主机 wg 网卡
-
-  # 2. 延迟/丢包采集
-  fping-exporter:
-    image: schose/fping-exporter
-    command: ["-targets", "10.0.0.2,10.0.0.3"] # 替换为你 Peer 的内网 IP
-    ports: ["9605:9605"]
-
-  # 3. 统一数据上报
-  vmagent:
-    image: victoriametrics/vmagent
-    volumes: ["vdata:/vmagentdata"]
-    command:
-      - "-remoteWrite.url=http://中心服务器IP:8428/api/v1/write"
-      - "-remoteWrite.label=node_id=edge-01"
-      - "-promscrape.config.inline='
-        scrape_configs:
-          - job_name: edge
-            static_configs:
-              - targets: [\"localhost:9586\", \"localhost:9605\"]
-        '"
+  # 1. Wireflow Agent (被测主体)
+  wf-agent:
+    image: ghcr.io/winstonfly/wireflow:e2e
+    container_name: wf-agent
+    privileged: true
     network_mode: "host"
+    restart: always
+    volumes:
+      - ./config.yaml:/etc/wireflow/config.yaml
+    # 假设你的 Agent 支持通过命令行指定 Metrics 监听端口
+    command: ["/usr/local/bin/wireflow-agent", "--config", "/etc/wireflow/config.yaml", "--metrics-addr", ":9100"]
+
+  # 2. vmagent (数据采集器)
+  # 它负责从 wf-agent 抓取数据并推送到后端
+  vmagent:
+    image: victoriametrics/vmagent:v1.99.0
+    container_name: wf-vmagent
+    depends_on:
+      - wf-agent
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "-promscrape.config=/etc/prometheus/prometheus.yml"
+      - "-remoteWrite.url=http://victoria-metrics:8428/api/v1/write"
+    restart: always
+
+  # 3. VictoriaMetrics (时序数据库)
+  # 存数据的地方，比 Prometheus 占用更少的内存和磁盘
+  victoria-metrics:
+    image: victoriametrics/victoria-metrics:v1.99.0
+    container_name: wf-storage
+    ports:
+      - "8428:8428"
+    volumes:
+      - vmdata:/storage
+    restart: always
+
+  # 4. Grafana (可视化面板)
+  # 你的“临时 UI”，用来观察延迟和流量波动
+  grafana:
+    image: grafana/grafana:latest
+    container_name: wf-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # 默认账号 admin/admin
+    restart: always
 
 volumes:
-  vdata:
+  vmdata:
