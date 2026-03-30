@@ -154,9 +154,6 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		return nil, err
 	}
 
-	// start monitor
-	s.StartStatusTick()
-
 	return s, nil
 }
 

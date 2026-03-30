@@ -28,11 +28,12 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 	"wireflow/dns"
 	"wireflow/internal/config"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
-	"wireflow/monitor"
+	"wireflow/internal/telemetry"
 
 	"golang.org/x/sync/errgroup"
 	wg "golang.zx2c4.com/wireguard/device"
@@ -102,11 +103,26 @@ func Start(flags *config.Config) error {
 
 	logger.Debug("Interface name", "name", c.Name)
 
-	if flags.EnableMetric {
-		g.Go(func() error {
-			runner := monitor.NewMonitorRunner(c.GetPeerManager(), c.GetDeviceName())
-			return runner.Run(gCtx)
-		})
+	if flags.Telemetry.VMEndpoint != "" {
+		tc := telemetry.Config{
+			VMEndpoint: flags.Telemetry.VMEndpoint,
+			Interval:   time.Duration(flags.Telemetry.IntervalSeconds) * time.Second,
+		}
+		networkID := ""
+		if c.current != nil {
+			networkID = c.current.NetworkId
+		}
+		collector, err := telemetry.New(tc, c.GetPeerManager(), logger)
+		if err != nil {
+			logger.Warn("telemetry init failed, skipping", "err", err)
+		} else {
+			collector.SetIdentity(telemetry.Identity{
+				PeerID:    flags.AppId,
+				NetworkID: networkID,
+				Interface: flags.InterfaceName,
+			})
+			g.Go(func() error { return collector.Run(gCtx) })
+		}
 	}
 
 	fileUAPI, err := ipc.UAPIOpen(c.Name)

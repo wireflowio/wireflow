@@ -270,9 +270,9 @@ docker-build: ## 构建单个服务的 Docker 镜像 (使用: make docker-build 
 		exit 1; \
 	fi
 	@echo " Building Docker image for $(SERVICE)..."
-	@# 如果构建的是 manager，先执行 UI 构建
-	@if [ "$(SERVICE)" = "manager" ]; then \
-		echo "📦 Service is manager, building UI first..."; \
+	@# 如果构建的是 manager 或 wireflowd，先执行 UI 构建
+	@if [ "$(SERVICE)" = "manager" ] || [ "$(SERVICE)" = "wireflowd" ]; then \
+		echo "📦 Service is $(SERVICE), building UI first..."; \
 		$(MAKE) build-ui; \
 	fi
 	$(CONTAINER_TOOL) build \

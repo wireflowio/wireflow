@@ -23,14 +23,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 	"wireflow/dns"
 	"wireflow/internal/config"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
-	"wireflow/monitor"
-	"wireflow/monitor/collector"
-
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -146,19 +142,6 @@ func Start(ctx context.Context, flags *config.Config) error {
 			process.Release()
 			os.Exit(0) // exit parent
 		}
-	}
-
-	// enable metrics
-	if flags.EnableMetric {
-		go func() {
-			metric := monitor.NewNodeMonitor(10*time.Second, collector.NewPrometheusStorage(""), nil)
-			metric.AddCollector(&collector.CPUCollector{})
-			metric.AddCollector(&collector.MemoryCollector{})
-			metric.AddCollector(&collector.DiskCollector{})
-			metric.AddCollector(&collector.TrafficCollector{})
-			metric.Start()
-			fmt.Println("Metrics started")
-		}()
 	}
 
 	// enable DNS
