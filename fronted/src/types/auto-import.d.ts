@@ -21,6 +21,8 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
+  const getWsColor: typeof import('../stores/workspace').getWsColor
+  const getWsInitials: typeof import('../stores/workspace').getWsInitials
   const h: typeof import('vue').h
   const hasToken: typeof import('../stores/user').hasToken
   const inject: typeof import('vue').inject
@@ -106,4 +108,7 @@ declare global {
   // @ts-ignore
   export type { User } from '../stores/user'
   import('../stores/user')
+  // @ts-ignore
+  export type { Workspace } from '../stores/workspace'
+  import('../stores/workspace')
 }

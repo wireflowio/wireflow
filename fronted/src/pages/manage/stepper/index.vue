@@ -58,20 +58,20 @@ function copyCommand() {
 </script>
 
 <template>
-  <div class="flex items-start justify-center p-6 min-h-full animate-in fade-in duration-300">
+  <div class="flex items-start justify-center p-6 xl:p-10 2xl:p-16 min-h-full animate-in fade-in duration-300">
 
     <!-- ── Success ─────────────────────────────────────────────────── -->
-    <div v-if="isDone" class="w-full max-w-2xl mt-8 animate-in zoom-in-95 duration-500">
-      <div class="bg-card border border-border rounded-2xl p-12 text-center shadow-sm space-y-6">
-        <div class="relative mx-auto size-24 flex items-center justify-center">
+    <div v-if="isDone" class="w-full max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mt-8 animate-in zoom-in-95 duration-500">
+      <div class="bg-card border border-border rounded-2xl p-12 xl:p-16 2xl:p-20 text-center shadow-sm space-y-6">
+        <div class="relative mx-auto size-24 xl:size-32 flex items-center justify-center">
           <div class="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping opacity-40" />
           <div class="absolute inset-2 rounded-full bg-emerald-500/10 animate-ping opacity-20 animation-delay-150" />
-          <div class="relative size-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Check class="size-10 text-emerald-500 stroke-[2.5]" />
+          <div class="relative size-24 xl:size-32 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <Check class="size-10 xl:size-14 text-emerald-500 stroke-[2.5]" />
           </div>
         </div>
         <div class="space-y-2">
-          <h2 class="text-3xl font-black tracking-tighter">接入成功</h2>
+          <h2 class="text-3xl xl:text-4xl 2xl:text-5xl font-black tracking-tighter">接入成功</h2>
           <p class="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
             加密隧道建立完毕，节点
             <code class="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{{ form.nodeLabel }}</code>
@@ -104,26 +104,26 @@ function copyCommand() {
     </div>
 
     <!-- ── Wizard ──────────────────────────────────────────────────── -->
-    <div v-else class="w-full max-w-4xl">
-      <div class="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex min-h-[520px]">
+    <div v-else class="w-full max-w-4xl xl:max-w-5xl 2xl:max-w-6xl">
+      <div class="bg-card border border-border rounded-2xl shadow-sm overflow-hidden flex min-h-[520px] xl:min-h-[640px] 2xl:min-h-[760px]">
 
         <!-- ── Left: Step rail ──────────────────────────────────────── -->
-        <div class="w-64 shrink-0 border-r border-border bg-muted/20 flex flex-col">
+        <div class="w-64 xl:w-72 2xl:w-80 shrink-0 border-r border-border bg-muted/20 flex flex-col">
           <!-- Rail header -->
-          <div class="px-6 py-6 border-b border-border">
+          <div class="px-6 py-6 xl:px-8 xl:py-7 border-b border-border">
             <div class="flex items-center gap-2.5">
-              <div class="size-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-                <Network class="size-4 text-primary-foreground" />
+              <div class="size-8 xl:size-10 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <Network class="size-4 xl:size-5 text-primary-foreground" />
               </div>
               <div>
-                <p class="text-xs font-black uppercase tracking-wider">快速接入</p>
-                <p class="text-[10px] text-muted-foreground/60">Node Onboarding</p>
+                <p class="text-xs xl:text-sm font-black uppercase tracking-wider">快速接入</p>
+                <p class="text-[10px] xl:text-xs text-muted-foreground/60">Node Onboarding</p>
               </div>
             </div>
           </div>
 
           <!-- Step list -->
-          <nav class="flex-1 px-3 py-4 space-y-0.5">
+          <nav class="flex-1 px-3 xl:px-4 py-4 xl:py-5 space-y-0.5 xl:space-y-1">
             <div v-for="(step, i) in steps" :key="step.id" class="relative">
               <!-- Connecting line -->
               <div
@@ -133,7 +133,7 @@ function copyCommand() {
               />
 
               <button
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-left"
+                class="w-full flex items-center gap-3 px-3 xl:px-4 py-2.5 xl:py-3 rounded-lg transition-all duration-200 text-left"
                 :class="currentStep === step.id
                   ? 'bg-primary/10 text-primary'
                   : currentStep > step.id
@@ -143,27 +143,27 @@ function copyCommand() {
               >
                 <!-- Icon / Done indicator -->
                 <div
-                  class="size-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
+                  class="size-5 xl:size-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
                   :class="currentStep > step.id
                     ? 'bg-primary text-primary-foreground'
                     : currentStep === step.id
                       ? 'bg-primary/15 text-primary ring-2 ring-primary/20'
                       : 'bg-muted text-muted-foreground/30'"
                 >
-                  <Check v-if="currentStep > step.id" class="size-3 stroke-[3]" />
-                  <component v-else :is="step.icon" class="size-3" />
+                  <Check v-if="currentStep > step.id" class="size-3 xl:size-3.5 stroke-[3]" />
+                  <component v-else :is="step.icon" class="size-3 xl:size-3.5" />
                 </div>
 
                 <div class="min-w-0">
-                  <p class="text-xs font-semibold leading-none truncate">{{ step.title }}</p>
-                  <p class="text-[10px] mt-0.5 truncate opacity-70">{{ step.desc }}</p>
+                  <p class="text-xs xl:text-sm font-semibold leading-none truncate">{{ step.title }}</p>
+                  <p class="text-[10px] xl:text-xs mt-0.5 truncate opacity-70">{{ step.desc }}</p>
                 </div>
               </button>
             </div>
           </nav>
 
           <!-- Progress indicator -->
-          <div class="px-6 py-5 border-t border-border">
+          <div class="px-6 xl:px-8 py-5 xl:py-6 border-t border-border">
             <div class="flex justify-between text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
               <span>进度</span>
               <span>{{ Math.round(((currentStep - 1) / steps.length) * 100) }}%</span>
@@ -181,20 +181,20 @@ function copyCommand() {
         <div class="flex-1 flex flex-col min-w-0">
 
           <!-- Content header -->
-          <div class="px-8 pt-8 pb-6 border-b border-border/60">
+          <div class="px-8 xl:px-12 2xl:px-16 pt-8 xl:pt-10 pb-6 xl:pb-8 border-b border-border/60">
             <div class="flex items-center gap-2 mb-3">
-              <span class="text-[10px] font-black tracking-[0.2em] uppercase text-muted-foreground/40 tabular-nums">
+              <span class="text-[10px] xl:text-xs font-black tracking-[0.2em] uppercase text-muted-foreground/40 tabular-nums">
                 STEP {{ String(currentStep).padStart(2, '0') }} / {{ String(steps.length).padStart(2, '0') }}
               </span>
             </div>
-            <h2 class="text-2xl font-black tracking-tight">
+            <h2 class="text-2xl xl:text-3xl 2xl:text-4xl font-black tracking-tight">
               <span v-if="currentStep === 1">命名您的工作空间</span>
               <span v-else-if="currentStep === 2">生成接入凭证</span>
               <span v-else-if="currentStep === 3">执行 Wireflow Join</span>
               <span v-else-if="currentStep === 4">配置节点元数据</span>
               <span v-else>验证节点状态</span>
             </h2>
-            <p class="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+            <p class="mt-1.5 text-sm xl:text-base text-muted-foreground leading-relaxed">
               <span v-if="currentStep === 1">工作空间是节点和策略的逻辑边界，名称将用作路由标识符。</span>
               <span v-else-if="currentStep === 2">Token 是节点握手的唯一凭证，请妥善保管，不要泄露。</span>
               <span v-else-if="currentStep === 3">在目标机器终端执行以下命令，完成节点注册。</span>
@@ -204,7 +204,7 @@ function copyCommand() {
           </div>
 
           <!-- Content body -->
-          <div class="flex-1 px-8 py-7">
+          <div class="flex-1 px-8 xl:px-12 2xl:px-16 py-7 xl:py-10">
 
             <!-- Step 1: Workspace -->
             <div v-if="currentStep === 1" class="space-y-5 animate-in slide-in-from-right-3 duration-300">
@@ -338,7 +338,7 @@ function copyCommand() {
           </div>
 
           <!-- Content footer / Navigation -->
-          <div class="border-t border-border/60 px-8 py-4 flex items-center justify-between bg-muted/10">
+          <div class="border-t border-border/60 px-8 xl:px-12 2xl:px-16 py-4 xl:py-5 flex items-center justify-between bg-muted/10">
             <Button
               variant="ghost"
               :disabled="currentStep === 1"

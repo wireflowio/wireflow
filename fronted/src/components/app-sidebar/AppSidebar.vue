@@ -2,7 +2,7 @@
 import type {SidebarProps} from "@/components/ui/sidebar"
 import {Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarRail,} from "@/components/ui/sidebar"
 
-import {AudioWaveform, Command, GalleryVerticalEnd, LayoutDashboard, Server, Settings2, Zap,} from "lucide-vue-next"
+import { LayoutDashboard, Server, Settings2, Zap } from "lucide-vue-next"
 import NavMain from "@/components/app-sidebar/NavMain.vue"
 import NavUser from "@/components/app-sidebar/NavUser.vue"
 import TeamSwitcher from "@/components/app-sidebar/TeamSwitcher.vue"
@@ -20,23 +20,6 @@ const navUser = computed(() => ({
 }))
 
 const data = {
-  teams: [
-    {
-      name: "北京测试空间",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMain: [
     {
       title: "Quickstart",
@@ -112,7 +95,7 @@ const data = {
 <template>
   <Sidebar v-bind="props">
     <SidebarHeader>
-      <TeamSwitcher :teams="data.teams"/>
+      <TeamSwitcher />
     </SidebarHeader>
     <SidebarContent>
       <NavMain :items="data.navMain"/>
