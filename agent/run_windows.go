@@ -173,6 +173,9 @@ func Start(ctx context.Context, flags *config.Config) error {
 
 	err = c.Start(ctx)
 
+	// Start heartbeat so the management server can track online status.
+	go c.StartHeartbeat(ctx)
+
 	// open UAPI file
 	logger.Debug("Interface name", "name", c.Name)
 

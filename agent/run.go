@@ -101,6 +101,9 @@ func Start(flags *config.Config) error {
 		return err
 	}
 
+	// Start heartbeat so the management server can track online status.
+	go c.StartHeartbeat(gCtx)
+
 	logger.Debug("Interface name", "name", c.Name)
 
 	if flags.Telemetry.VMEndpoint != "" {

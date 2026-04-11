@@ -7,7 +7,7 @@ import {
   Search, RefreshCw, MoreHorizontal, X, Tag,
   Server, Wifi, WifiOff, Clock, MapPin, Network,
   KeyRound, ChevronRight, ChevronLeft, Trash2, Pencil,
-  Globe, ArrowUpRight, ArrowDownRight,
+  Globe, ArrowUpRight, ArrowDownRight, Copy, Check,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  Card, CardContent,
+} from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -58,6 +62,16 @@ function labelColor(label: string) {
   for (const c of label) h = (h * 31 + c.charCodeAt(0)) & 0xff
   return labelColors[h % labelColors.length]
 }
+
+// Format an RFC3339 timestamp as a Chinese relative time string.
+function formatLastSeen(isoStr: string | undefined | null): string {
+  if (!isoStr) return '—'
+  const diff = Date.now() - new Date(isoStr).getTime()
+  if (diff < 60_000)        return '刚刚'
+  if (diff < 3_600_000)     return `${Math.floor(diff / 60_000)} 分钟前`
+  if (diff < 86_400_000)    return `${Math.floor(diff / 3_600_000)} 小时前`
+  return `${Math.floor(diff / 86_400_000)} 天前`
+}
 const regionFlag: Record<string, string> = {
   'us-west-2': '🇺🇸', 'us-east-1': '🇺🇸',
   'eu-central-1': '🇩🇪', 'eu-west-1': '🇬🇧',
@@ -86,25 +100,6 @@ const stats = computed(() => {
     onlineRate: total ? Math.round((online / total) * 100) : 0,
   }
 })
-
-// ── Sparklines (mock trend data) ──────────────────────────────────
-function buildPath(data: number[], w: number, h: number, pad = 2) {
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const range = max - min || 1
-  const xStep = (w - pad * 2) / (data.length - 1)
-  const pts = data.map((v, i) => ({
-    x: pad + i * xStep,
-    y: h - pad - ((v - min) / range) * (h - pad * 2),
-  }))
-  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
-}
-const sparklines = {
-  total:   [10, 12, 11, 14, 13, 15, 14, 16, 15, 17, 16, 18],
-  online:  [8,  10,  9, 12, 11, 13, 12, 14, 13, 15, 14, 16],
-  offline: [3,   2,  3,  2,  2,  1,  2,  1,  2,  1,  1,  2],
-  pending: [2,   3,  2,  3,  3,  2,  2,  2,  2,  2,  2,  2],
-}
 
 // ── Search / filter (client-side over loaded page) ─────────────────
 const searchValue = ref('')
@@ -236,10 +231,12 @@ const columns: ColumnDef<PeerRow>[] = [
     header: '最后在线',
     cell: ({ row }) => {
       const n = row.original as any
-      if (!n.lastSeen) return h('span', { class: 'text-[11px] text-muted-foreground/40' }, '—')
+      const text = formatLastSeen(n.lastSeen)
+      if (text === '—') return h('span', { class: 'text-[11px] text-muted-foreground/40' }, '—')
       return h('span', {
         class: `text-xs ${n.status === 'offline' ? 'text-rose-500/70' : 'text-muted-foreground'}`,
-      }, n.lastSeen)
+        title: n.lastSeen ?? '',
+      }, text)
     },
   },
   {
@@ -272,6 +269,14 @@ const columns: ColumnDef<PeerRow>[] = [
     },
   },
 ]
+
+// ── Copy helper ──────────────────────────────────────────────────
+const copiedKey = ref<string | null>(null)
+async function copyText(text: string, key: string) {
+  await navigator.clipboard.writeText(text)
+  copiedKey.value = key
+  setTimeout(() => { copiedKey.value = null }, 1500)
+}
 
 // ── TanStack Table ────────────────────────────────────────────────
 const table = useVueTable({
@@ -308,9 +313,6 @@ const table = useVueTable({
           <Globe class="text-muted-foreground size-4 shrink-0" />
           <span class="text-muted-foreground">覆盖 <span class="font-semibold text-foreground">{{ stats.regions }}</span> 个地域</span>
         </div>
-        <svg class="mt-3 w-full" viewBox="0 0 80 28" preserveAspectRatio="none" style="height:28px">
-          <path :d="buildPath(sparklines.total, 80, 28)" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
       </button>
 
       <!-- 在线 -->
@@ -333,9 +335,6 @@ const table = useVueTable({
           <span class="text-emerald-600 font-semibold">{{ stats.onlineRate }}%</span>
           <span class="text-muted-foreground">在线率</span>
         </div>
-        <svg class="mt-3 w-full" viewBox="0 0 80 28" preserveAspectRatio="none" style="height:28px">
-          <path :d="buildPath(sparklines.online, 80, 28)" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
       </button>
 
       <!-- 离线 -->
@@ -364,9 +363,6 @@ const table = useVueTable({
           </span>
           <span class="text-muted-foreground">{{ stats.offline === 0 ? '网络健康' : '需要检查' }}</span>
         </div>
-        <svg class="mt-3 w-full" viewBox="0 0 80 28" preserveAspectRatio="none" style="height:28px">
-          <path :d="buildPath(sparklines.offline, 80, 28)" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
       </button>
 
       <!-- 待接入 -->
@@ -395,9 +391,6 @@ const table = useVueTable({
           </span>
           <span class="text-muted-foreground">{{ stats.pending === 0 ? '接入完成' : '等待配置' }}</span>
         </div>
-        <svg class="mt-3 w-full" viewBox="0 0 80 28" preserveAspectRatio="none" style="height:28px">
-          <path :d="buildPath(sparklines.pending, 80, 28)" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
       </button>
 
     </div>
@@ -497,130 +490,210 @@ const table = useVueTable({
 
   <!-- ── Node Detail / Edit Dialog ──────────────────────────────── -->
   <Dialog :open="store.isDrawerOpen" @update:open="v => { if (!v) store.isDrawerOpen = false }">
-    <DialogContent class="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle>
-          <div class="flex items-center gap-3">
+    <DialogContent class="sm:max-w-md p-0 gap-0 overflow-hidden">
+
+      <!-- ── Header ─────────────────────────────────────────────── -->
+      <DialogHeader class="px-6 pt-6 pb-5 border-b gap-0">
+        <div class="flex items-start gap-3 pr-6">
+          <!-- Status icon -->
+          <div class="relative shrink-0 mt-0.5">
             <div
-              class="size-9 rounded-xl flex items-center justify-center shrink-0"
-              :class="store.selectedNode?.status === 'online' ? 'bg-emerald-500/10' : store.selectedNode?.status === 'offline' ? 'bg-rose-500/10' : 'bg-amber-400/10'"
+              class="size-10 rounded-lg border flex items-center justify-center"
+              :class="store.selectedNode?.status === 'online'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                : store.selectedNode?.status === 'offline'
+                  ? 'bg-rose-500/10 border-rose-500/20 text-rose-500'
+                  : 'bg-muted border-border text-muted-foreground'"
             >
-              <Server class="size-4"
-                :class="store.selectedNode?.status === 'online' ? 'text-emerald-500' : store.selectedNode?.status === 'offline' ? 'text-rose-500' : 'text-amber-400'"
-              />
+              <Server class="size-4" />
             </div>
-            <div class="flex flex-col gap-1">
-              <span class="text-base font-bold leading-none">{{ store.selectedNode?.name ?? store.selectedNode?.appId }}</span>
-              <span v-if="store.selectedNode?.status"
-                class="text-xs font-medium px-2 py-0.5 rounded-full w-fit"
-                :class="statusBadge[store.selectedNode.status] ?? statusBadge.pending">
+            <!-- live pulse dot -->
+            <span
+              class="absolute -bottom-1 -right-1 size-3 rounded-full border-2 border-background"
+              :class="statusDot[store.selectedNode?.status ?? 'pending']"
+            >
+              <span
+                v-if="store.selectedNode?.status === 'online'"
+                class="absolute inset-0 rounded-full animate-ping opacity-75"
+                :class="statusDot['online']"
+              />
+            </span>
+          </div>
+
+          <!-- Name + meta -->
+          <div class="flex-1 min-w-0">
+            <DialogTitle class="text-sm font-semibold leading-snug truncate">
+              {{ store.selectedNode?.name ?? store.selectedNode?.appId }}
+            </DialogTitle>
+            <p v-if="store.selectedNode?.namespace" class="text-xs text-muted-foreground font-mono mt-0.5 truncate">
+              {{ store.selectedNode.namespace }}
+            </p>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+              <span
+                v-if="store.selectedNode?.status"
+                class="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md"
+                :class="statusBadge[store.selectedNode.status] ?? statusBadge.pending"
+              >
                 {{ statusLabel[store.selectedNode.status] ?? store.selectedNode.status }}
               </span>
-            </div>
-          </div>
-        </DialogTitle>
-      </DialogHeader>
-
-      <div v-if="store.selectedNode" class="space-y-5 pt-1 max-h-[65vh] overflow-y-auto pr-1">
-        <!-- Identity -->
-        <div>
-          <h3 class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2 flex items-center gap-1.5">
-            <KeyRound class="size-3" /> 身份信息
-          </h3>
-          <div class="rounded-lg border border-border overflow-hidden">
-            <div class="flex items-center justify-between px-4 py-2.5 border-b border-border/60">
-              <span class="text-xs text-muted-foreground">App ID</span>
-              <span class="font-mono text-xs">{{ store.selectedNode.appId }}</span>
-            </div>
-            <div class="flex items-start justify-between px-4 py-2.5 gap-4">
-              <span class="text-xs text-muted-foreground shrink-0">公钥</span>
-              <span class="font-mono text-xs text-right break-all opacity-70">{{ store.selectedNode.publicKey || '—' }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Network -->
-        <div v-if="store.selectedNode.region || store.selectedNode.network || store.selectedNode.address || store.selectedNode.namespace">
-          <h3 class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2 flex items-center gap-1.5">
-            <Network class="size-3" /> 网络信息
-          </h3>
-          <div class="rounded-lg border border-border overflow-hidden divide-y divide-border/60">
-            <div v-if="store.selectedNode.region" class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-xs text-muted-foreground flex items-center gap-1"><MapPin class="size-3" /> 区域</span>
-              <span class="text-xs">{{ regionFlag[store.selectedNode.region] ?? '🌐' }} {{ store.selectedNode.region }}</span>
-            </div>
-            <div v-if="store.selectedNode.network || store.selectedNode.namespace" class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-xs text-muted-foreground">命名空间</span>
-              <span class="text-xs font-mono">{{ store.selectedNode.network ?? store.selectedNode.namespace }}</span>
-            </div>
-            <div v-if="store.selectedNode.address" class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-xs text-muted-foreground">IP 地址</span>
-              <span class="font-mono text-xs">{{ store.selectedNode.address }}</span>
-            </div>
-            <div v-if="store.selectedNode.lastSeen" class="flex items-center justify-between px-4 py-2.5">
-              <span class="text-xs text-muted-foreground flex items-center gap-1"><Clock class="size-3" /> 最后在线</span>
-              <span class="text-xs" :class="store.selectedNode.status === 'offline' ? 'text-rose-500' : 'text-muted-foreground'">
-                {{ store.selectedNode.lastSeen }}
+              <span
+                v-if="store.selectedNode?.lastSeen"
+                class="inline-flex items-center gap-1 text-[11px] text-muted-foreground"
+                :title="store.selectedNode.lastSeen"
+              >
+                <Clock class="size-3" />
+                <span :class="store.selectedNode.status === 'offline' ? 'text-destructive/70' : ''">
+                  {{ store.selectedNode.status === 'online' ? '在线中' : formatLastSeen(store.selectedNode.lastSeen) }}
+                </span>
               </span>
             </div>
           </div>
         </div>
+      </DialogHeader>
+
+      <!-- ── Body ─────────────────────────────────────────────────── -->
+      <div v-if="store.selectedNode" class="px-6 py-5 space-y-4 max-h-[55vh] overflow-y-auto">
+
+        <!-- IP highlight (Card component) -->
+        <Card v-if="store.selectedNode.address" class="rounded-lg shadow-none py-0">
+          <CardContent class="px-4 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="size-8 rounded-md bg-muted flex items-center justify-center shrink-0">
+                <Network class="size-3.5 text-muted-foreground" />
+              </div>
+              <div class="min-w-0">
+                <p class="text-[10px] text-muted-foreground leading-none mb-1">分配 IP</p>
+                <p class="font-mono text-sm font-semibold leading-none truncate">
+                  {{ store.selectedNode.address }}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              class="size-7 shrink-0 text-muted-foreground"
+              :title="copiedKey === 'ip' ? '已复制' : '复制 IP'"
+              @click="copyText(store.selectedNode.address!, 'ip')"
+            >
+              <Check v-if="copiedKey === 'ip'" class="size-3.5 text-emerald-500" />
+              <Copy v-else class="size-3.5" />
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        <!-- Identity -->
+        <div class="space-y-1">
+          <p class="text-[11px] font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+            <KeyRound class="size-3" /> 身份信息
+          </p>
+
+          <!-- App ID -->
+          <div class="flex items-center justify-between rounded-md bg-muted px-3 py-2 gap-3">
+            <span class="text-xs text-muted-foreground shrink-0">App ID</span>
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span class="font-mono text-xs truncate">{{ store.selectedNode.appId }}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-5 shrink-0 text-muted-foreground hover:text-foreground"
+                @click="copyText(store.selectedNode.appId, 'appId')"
+              >
+                <Check v-if="copiedKey === 'appId'" class="size-3 text-emerald-500" />
+                <Copy v-else class="size-3" />
+              </Button>
+            </div>
+          </div>
+
+          <!-- Public key -->
+          <div v-if="store.selectedNode.publicKey" class="rounded-md bg-muted px-3 py-2">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs text-muted-foreground">公钥</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                class="size-5 text-muted-foreground hover:text-foreground"
+                @click="copyText(store.selectedNode.publicKey, 'pubkey')"
+              >
+                <Check v-if="copiedKey === 'pubkey'" class="size-3 text-emerald-500" />
+                <Copy v-else class="size-3" />
+              </Button>
+            </div>
+            <p class="font-mono text-[11px] text-muted-foreground break-all leading-relaxed">
+              {{ store.selectedNode.publicKey }}
+            </p>
+          </div>
+        </div>
+
+        <Separator />
 
         <!-- Labels -->
-        <div>
-          <h3 class="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/50 mb-2 flex items-center gap-1.5">
+        <div class="space-y-2">
+          <p class="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
             <Tag class="size-3" /> 标签
-          </h3>
-          <div class="flex flex-wrap gap-1.5 mb-2 min-h-6">
+          </p>
+
+          <div class="flex flex-wrap gap-1.5 min-h-7">
             <span
               v-for="(label, i) in store.selectedNode.labels" :key="i"
-              class="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
+              class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md"
               :class="labelColor(label)"
             >
               {{ label }}
               <button
                 v-if="store.drawerType === 'edit'"
-                class="opacity-60 hover:opacity-100 hover:text-destructive transition-colors"
+                class="opacity-50 hover:opacity-100 hover:text-destructive transition-colors"
                 type="button"
                 @click="store.actions.removeLabel(i)"
               >
-                <X class="size-3" />
+                <X class="size-2.5" />
               </button>
             </span>
-            <span v-if="!store.selectedNode.labels.length" class="text-xs text-muted-foreground/40">暂无标签</span>
+            <span v-if="!store.selectedNode.labels.length" class="text-xs text-muted-foreground/50 py-0.5">
+              暂无标签
+            </span>
           </div>
-          <div v-if="store.drawerType === 'edit'" class="flex gap-2">
+
+          <div v-if="store.drawerType === 'edit'" class="flex gap-2 pt-1">
             <Input
               v-model="store.newLabelInput"
-              placeholder="key=value 后按 Enter..."
+              placeholder="key=value，回车添加"
               class="h-8 text-xs"
               @keydown.enter="store.actions.addLabel()"
             />
-            <Button size="sm" variant="outline" class="shrink-0" @click="store.actions.addLabel()">添加</Button>
+            <Button size="sm" variant="outline" class="shrink-0" @click="store.actions.addLabel()">
+              添加
+            </Button>
           </div>
         </div>
+
       </div>
 
-      <DialogFooter>
-        <Button variant="outline" @click="store.isDrawerOpen = false">
+      <!-- ── Footer ────────────────────────────────────────────────── -->
+      <DialogFooter class="px-6 py-4 border-t bg-muted/30 sm:justify-between">
+        <Button variant="ghost" size="sm" @click="store.isDrawerOpen = false">
           {{ store.drawerType === 'view' ? '关闭' : '取消' }}
         </Button>
         <Button
           v-if="store.drawerType === 'edit'"
+          size="sm"
           :disabled="store.isUpdating"
           @click="store.actions.handleSave()"
         >
-          <RefreshCw v-if="store.isUpdating" class="size-3.5 animate-spin mr-2" />
+          <RefreshCw v-if="store.isUpdating" class="size-3.5 animate-spin mr-1.5" />
           保存更改
         </Button>
         <Button
           v-else
-          variant="secondary"
+          size="sm"
+          variant="outline"
           @click="store.actions.openDrawer('edit', store.selectedNode)"
         >
           <Pencil class="size-3.5 mr-1.5" /> 编辑标签
         </Button>
       </DialogFooter>
+
     </DialogContent>
   </Dialog>
 </template>
