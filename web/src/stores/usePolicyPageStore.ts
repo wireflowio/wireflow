@@ -10,7 +10,6 @@ export const usePolicyPageStore = defineStore('policyPage', () => {
     // --- 1. State ---
     const { rows, total, loading, params, refresh } = useTable(listPolicy, {
         successMsg: '刷新列表成功',
-        errorMsg: '刷新列表失败',
         // 显式声明初始参数，防止 0, 0 出现
         initialParams: {
             page: 1,

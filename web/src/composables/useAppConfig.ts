@@ -2,7 +2,7 @@ import { ref, watch } from 'vue'
 
 export type Theme = 'light' | 'dark' | 'system'
 export type ColorScheme = 'zinc' | 'blue' | 'violet' | 'green' | 'orange' | 'rose'
-export type RadiusValue = '0' | '0.25' | '0.5' | '0.625' | '1'
+export type RadiusValue = '0' | '0.25' | '0.5' | '0.625' | '0.75' | '1'
 export type FontFamily = 'system' | 'mono' | 'serif'
 
 export interface AppConfig {

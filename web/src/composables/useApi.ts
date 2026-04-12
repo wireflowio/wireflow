@@ -3,14 +3,16 @@ import { toast } from 'vue-sonner'
 
 interface UseTableOptions {
   successMsg?: string
+  errorMsg?: string
   immediate?: boolean
+  initialParams?: Record<string, any>
 }
 
 export function useTable(apiFn: (params?: any) => Promise<any>, options: UseTableOptions = {}) {
   const rows = ref<any[]>([])
   const total = ref(0)
   const loading = ref(false)
-  const params = reactive({ page: 1, pageSize: 20 })
+  const params = reactive<{ page: number; pageSize: number; search?: string; [key: string]: any }>({ page: 1, pageSize: 20, ...options.initialParams })
 
   async function refresh(extraParams?: Record<string, any>) {
     loading.value = true

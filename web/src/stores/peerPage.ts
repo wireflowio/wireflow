@@ -8,9 +8,7 @@ export const usePeerPageStore = defineStore('peerPage', () => {
 
     // ── State ──────────────────────────────────────────────────────
     const { rows, total, loading, params, refresh } = useTable(listPeer, {
-        successMsg: '刷新列表成功',
-        errorMsg: '刷新列表失败',
-        initialParams: { page: 1, pageSize: 10 }
+        successMsg: '刷新列表成功'
     })
 
     const isDrawerOpen  = ref(false)
@@ -113,7 +111,7 @@ export const usePeerPageStore = defineStore('peerPage', () => {
             }
         },
 
-        async handleDelete(node: any, confirmFn: () => Promise<boolean>) {
+        async handleDelete(_node: any, confirmFn: () => Promise<boolean>) {
             const ok = await confirmFn()
             if (!ok) return
             loading.value = true

@@ -10,7 +10,7 @@ definePage({
 
 import {
   Activity, Server, ShieldCheck, AlertTriangle,
-  ArrowUpRight, ArrowDownRight, Globe, Zap, Terminal
+  ArrowUpRight, ArrowDownRight, Zap,
 } from 'lucide-vue-next'
 
 // ── 1. 颜色映射表 (用于审计日志小圆点) ───────────────────────────────────

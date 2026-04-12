@@ -3,7 +3,7 @@ import { confirmState } from '@/composables/useConfirm'
 import { AlertTriangle, Info } from 'lucide-vue-next'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
-  DialogDescription, DialogFooter, DialogClose,
+  DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 

@@ -251,7 +251,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: build-ui
 build-ui: ## 打包前端 Vue3 产物（输出到 internal/web/dist，供 go:embed 使用）
 	@echo ">>> Building UI..."
-	cd web && npm install --prefer-offline && npm run build
+	cd web && pnpm install && pnpm build
 	@echo ">>> UI built → internal/web/dist"
 
 

@@ -62,7 +62,7 @@ const userStore = useUserStore()
               </AvatarFallback>
             </Avatar>
             <div class="grid flex-1 text-left text-sm leading-tight">
-              <span class="truncate font-medium">{{ userStore.userInfo.username }}</span>
+              <span class="truncate font-medium">{{ userStore.userInfo?.username }}</span>
               <span class="truncate text-xs">{{ user.email }}</span>
             </div>
             <ChevronsUpDown class="ml-auto size-4" />

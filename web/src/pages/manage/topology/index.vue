@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import {
-  ZoomIn, ZoomOut, Maximize2, X, Wifi, WifiOff,
+  ZoomIn, ZoomOut, Maximize2, X, Wifi,
   Globe, Cpu, ArrowUp, ArrowDown, Radio, Server,
 } from 'lucide-vue-next'
 
@@ -209,6 +209,7 @@ function onWheel(e: WheelEvent) {
 onMounted(() => {
   window.addEventListener('mousemove', onMouseMove)
   window.addEventListener('mouseup', onMouseUp)
+  svgEl.value?.setAttribute('data-ready', 'true')
 })
 onUnmounted(() => {
   window.removeEventListener('mousemove', onMouseMove)

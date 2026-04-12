@@ -1,19 +1,19 @@
-import { request } from './http'
+import request from './request'
 
 export const api = {
     nodes: {
-        list: () => request('/api/nodes'),
+        list: () => request.get('/api/nodes'),
     },
     tokens: {
-        list: () => request('/api/tokens'),
+        list: () => request.get('/api/tokens'),
     },
     policies: {
-        list: () => request('/api/policies'),
+        list: () => request.get('/api/policies'),
     },
     dns: {
-        list: () => request('/api/dns/records'),
+        list: () => request.get('/api/dns/records'),
     },
     me: {
-        get: () => request('/api/me'),
+        get: () => request.get('/api/me'),
     },
 }

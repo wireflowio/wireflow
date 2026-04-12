@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -23,7 +23,7 @@ const userStore = useUserStore()
 const { userInfo, logout } = userStore
 
 const avatarFallback = computed(() => {
-  const name = userInfo.value?.username ?? userInfo.value?.email ?? '?'
+  const name = userInfo?.username ?? userInfo?.email ?? '?'
   return name.slice(0, 2).toUpperCase()
 })
 

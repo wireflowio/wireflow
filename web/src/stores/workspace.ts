@@ -4,21 +4,12 @@ import { useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { add, listWs, updateWs, deleteWs } from '@/api/workspace'
 import type { Workspace, ListWsParams } from '@/api/workspace'
-import {getWsColor} from "@/utils/color";
 
 export type { Workspace }
 
 // ── Shared display helpers (exported for use across components) ───────────────
 // Uses chart-1…chart-5 CSS variables so colors follow the global theme.
 // Pattern: tinted bg + matching foreground — same as status badges, always readable.
-
-const WS_COLOR_CLASSES = [
-    'bg-chart-1/20 text-chart-1',
-    'bg-chart-2/20 text-chart-2',
-    'bg-chart-3/20 text-chart-3',
-    'bg-chart-4/20 text-chart-4',
-    'bg-chart-5/20 text-chart-5',
-] as const
 
 
 export function getWsInitials(name: string): string {
@@ -51,7 +42,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const allLoading   = ref(false)
 
     // ── Getters ──────────────────────────────────────────────────────
-    const activeId = computed(() => (route?.params?.wsId as string) || '')
+    const activeId = computed(() => ((route?.params as any)?.wsId as string) || '')
 
     // ── Actions ──────────────────────────────────────────────────────
 
@@ -176,7 +167,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     }
 
     // 路由变化时同步 currentWorkspace（从 allRows 或 rows 中查找）
-    watch(() => route.params.wsId, (newId) => {
+    watch(() => (route.params as any).wsId, (newId) => {
         if (newId && newId !== currentWorkspace.value?.id) {
             const found = allRows.value.find(w => w.id === newId)
                        ?? rows.value.find(w => w.id === newId)

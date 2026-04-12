@@ -166,7 +166,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 			return nil, err
 		}
 
-		logger.Debug("Success get net map")
+		logger.Debug("network map fetched")
 
 		return msg, err
 	}
@@ -181,7 +181,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 
 	uapi, err := ipc.UAPIListen(c.Name)
 	if err != nil {
-		logger.Error("Failed to listen on uapi socket: %v", err)
+		logger.Error("failed to listen on UAPI socket", err)
 		os.Exit(-1)
 	}
 
@@ -200,7 +200,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 	uapi.Close()
 
 	c.close()
-	logger.Warn("wireflow shutting down")
+	logger.Info("wireflow shutting down")
 	return err
 }
 

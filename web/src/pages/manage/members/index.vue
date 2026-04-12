@@ -7,7 +7,7 @@ import {
   Users, Plus, RefreshCw, MoreHorizontal, Pencil,
   Trash2, ChevronLeft, ChevronRight, Search,
   Shield, UserCheck, Clock, Key, Server,
-  TrendingUp, CheckCircle2, AlertCircle,
+  CheckCircle2, AlertCircle,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

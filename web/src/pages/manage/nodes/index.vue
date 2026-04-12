@@ -5,7 +5,7 @@ import {
 } from '@tanstack/vue-table'
 import {
   Search, RefreshCw, MoreHorizontal, X, Tag,
-  Server, Wifi, WifiOff, Clock, MapPin, Network,
+  Server, Wifi, WifiOff, Clock, Network,
   KeyRound, ChevronRight, ChevronLeft, Trash2, Pencil,
   Globe, ArrowUpRight, ArrowDownRight, Copy, Check,
 } from 'lucide-vue-next'

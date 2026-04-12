@@ -28,6 +28,7 @@ const radiusPreviewClass: Record<RadiusValue, string> = {
   '0.25':  'rounded-sm',
   '0.5':   'rounded-md',
   '0.625': 'rounded-lg',
+  '0.75':  'rounded-xl',
   '1':     'rounded-2xl',
 }
 </script>

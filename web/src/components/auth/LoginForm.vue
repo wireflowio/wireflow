@@ -17,22 +17,23 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { useRouter } from 'vue-router'
-import { useAction } from '@/composables/useApi'
-import { login } from '@/api/user'
-import {useUserStore} from "@/stores/user";
+import { reactive, ref } from 'vue'
+import { useUserStore } from "@/stores/user";
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]
 }>()
-
-const router = useRouter()
 
 const form = reactive({
   username: '',
   password: '',
 })
 const useStore = useUserStore()
+const isLoading = ref(false)
+
+function handleSocialLogin(_provider: string) {
+  // Social login not yet implemented
+}
 </script>
 
 <template>

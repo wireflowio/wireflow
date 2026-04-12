@@ -8,11 +8,6 @@
       "path": "./tsconfig.node.json"
     }
   ],
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.d.ts", // 👈 确保包含了声明文件
-    "src/**/*.vue"
-  ],
   "compilerOptions": {
     "baseUrl": ".",
     "moduleResolution": "Bundler",

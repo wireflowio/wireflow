@@ -33,6 +33,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GHCR_PAT }}
 
+      # --- Node.js & pnpm 环境初始化 ---
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.32.1 # 精确匹配你的本地版本
+
       - name: Build and Push Images
         run: |
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')

@@ -6,7 +6,7 @@ export function setupAuthGuard(router: Router) {
     // 1. 定义免登录白名单
     const whiteList = ['/', '/auth/login', '/auth/signup']
 
-    router.beforeEach(async (to, from, next) => {
+    router.beforeEach(async (to, _from, next) => {
         const userStore = useUserStore()
         const tokenExists = hasToken()
 
