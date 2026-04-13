@@ -17,7 +17,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"wireflow/cmd/wireflow/cmd/policy"
 	"wireflow/cmd/wireflow/cmd/token"
+	"wireflow/cmd/wireflow/cmd/workspace"
 	"wireflow/internal/config"
 
 	"github.com/spf13/cobra"
@@ -70,4 +72,6 @@ func init() {
 
 	rootCmd.AddCommand(upCmd())
 	rootCmd.AddCommand(token.NewTokenCommand())
+	rootCmd.AddCommand(workspace.NewWorkspaceCommand())
+	rootCmd.AddCommand(policy.NewPolicyCommand())
 }

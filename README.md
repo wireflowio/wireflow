@@ -103,23 +103,38 @@ kubectl apply -k https://github.com/wireflowio/wireflow/config/wireflow/overlays
 
 ## Connecting an Agent
 
-### 1. Create an enrollment token
+All management commands below use `--signaling-url` to reach the embedded NATS server (default port 4222).
+
+### 1. Create a workspace
 
 ```bash
-wfctl token create dev-team \
-  --namespace default \
+wireflow workspace add dev \
+  --display-name "Development" \
+  --signaling-url nats://localhost:4222
+```
+
+```bash
+# List all workspaces (shows namespace values used in subsequent commands)
+wireflow workspace list --signaling-url nats://localhost:4222
+```
+
+### 2. Create an enrollment token
+
+```bash
+wireflow token create dev-team \
+  -n <namespace> \
   --limit 10 \
   --expiry 168h \
-  --server-url http://localhost:8080
+  --signaling-url nats://localhost:4222
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--namespace` | Workspace the token is scoped to |
-| `--limit` | Max concurrent agent connections |
-| `--expiry` | Token lifetime (e.g. `24h`, `168h`, `0` = never) |
+| `-n` / `--namespace` | Workspace namespace (from `workspace list`) |
+| `--limit` | Max agent connections (0 = unlimited) |
+| `--expiry` | Token lifetime (e.g. `24h`, `168h`, omit = never) |
 
-### 2. Start an agent
+### 3. Start an agent
 
 ```bash
 wireflow up --signaling-url nats://localhost:4222 --token <token>
@@ -137,17 +152,29 @@ docker run -d \
   up --signaling-url nats://localhost:4222 --token <token>
 ```
 
-### 3. Allow traffic between peers
+### 4. Allow traffic between peers
 
 Wireflow enforces a **default-deny** policy — agents can establish tunnels but cannot exchange traffic until a policy explicitly permits it. This prevents accidental exposure in multi-tenant environments.
 
-**Quick option — allow all traffic in a workspace (development / single-tenant):**
+**CLI — allow all traffic in a workspace (development / single-tenant):**
 
 ```bash
-wfctl policy allow-all --namespace default --server-url http://localhost:8080
+wireflow policy allow-all \
+  -n <namespace> \
+  --signaling-url nats://localhost:4222
 ```
 
-**Dashboard — fine-grained control:**
+**CLI — fine-grained policy:**
+
+```bash
+wireflow policy add my-policy \
+  -n <namespace> \
+  --action ALLOW \
+  --desc "allow all peer traffic" \
+  --signaling-url nats://localhost:4222
+```
+
+**Dashboard — visual policy editor:**
 
 Navigate to `http://localhost:8080` → **Policies** → **Create Policy**.
 
@@ -177,29 +204,43 @@ spec:
 kubectl apply -f policy-allow-all.yaml
 ```
 
-### 4. Verify connectivity
+### 5. Verify connectivity
 
 ```bash
-# List connected peers
-wfctl network node list --server-url http://localhost:8080
-
+# List connected peers (Dashboard → Nodes)
 # Check agent status
 wireflow status
 ```
 
 ---
 
-## Token Management
+## CLI Reference
+
+All commands accept `--signaling-url nats://<host>:4222` to target the control plane.
+
+### Workspace
 
 ```bash
-# Create a token
-wfctl token create <name> --namespace <ns> --limit <n> --expiry <duration> --server-url <url>
+wireflow workspace add <slug> [--display-name <name>] [-n <namespace>]
+wireflow workspace list
+wireflow workspace remove <namespace>
+```
 
-# List tokens
-wfctl token list --server-url http://localhost:8080
+### Token
 
-# Revoke a token
-wfctl token delete <name> --server-url http://localhost:8080
+```bash
+wireflow token create <name> [-n <namespace>] [--limit <n>] [--expiry <duration>]
+wireflow token list  [-n <namespace>]
+wireflow token delete <token>
+```
+
+### Policy
+
+```bash
+wireflow policy allow-all -n <namespace>
+wireflow policy add <name>  -n <namespace> [--action ALLOW|DENY] [--desc <text>]
+wireflow policy list  -n <namespace>
+wireflow policy remove <name> -n <namespace>
 ```
 
 ---

@@ -165,12 +165,13 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 	var vos []vo.PeerVo
 	for _, n := range filteredPeers[start:end] {
 		pv := vo.PeerVo{
-			Namespace: n.namespace,
-			Name:      n.name,
-			AppID:     n.appId,
-			PublicKey: n.publicKey,
-			Address:   n.address,
-			Labels:    n.labels,
+			Namespace:           n.namespace,
+			Name:                n.name,
+			AppID:               n.appId,
+			PublicKey:           n.publicKey,
+			Address:             n.address,
+			Labels:              n.labels,
+			WorkspaceDisplayName: workspace.DisplayName, // 添加 workspace 显示名称
 		}
 		if p.presence != nil {
 			status, lastSeen := p.presence.GetStatus(n.appId)
@@ -197,10 +198,6 @@ func (p *peerService) CreateToken(ctx context.Context, tokenDto *dto.TokenDto) (
 		if errors.IsNotFound(err) {
 			duration, err := time.ParseDuration(tokenDto.Expiry)
 			if err != nil {
-				return nil, err
-			}
-
-			if err = p.bootstrap(ctx, tokenDto.Namespace); err != nil {
 				return nil, err
 			}
 
