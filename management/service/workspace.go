@@ -381,12 +381,12 @@ func (w *workspaceService) createDefaultNetwork(ctx context.Context, nsName stri
 				},
 				Spec: v1alpha1.WireflowNetworkSpec{
 					Name: "wireflow-default-net", // 使用固定的默认名称
-					CIDR: "100.64.0.0/16", // 设置默认 CIDR，使用 CGNAT 地址段
+					CIDR: "100.64.0.0/16",        // 设置默认 CIDR，使用 CGNAT 地址段
 				},
 			}
 
-			if err := w.client.Create(ctx, &defaultNet); err != nil {
-				return fmt.Errorf("failed to create default network: %v", err)
+			if k8serr := w.client.Create(ctx, &defaultNet); k8serr != nil {
+				return fmt.Errorf("failed to create default network: %v", k8serr)
 			}
 		} else {
 			return err
@@ -411,8 +411,8 @@ func (w *workspaceService) createDefaultPolicy(ctx context.Context, nsName strin
 				},
 			}
 
-			if err := w.client.Create(ctx, &defaultPolicy); err != nil {
-				return fmt.Errorf("failed to create default policy: %v", err)
+			if k8serr := w.client.Create(ctx, &defaultPolicy); k8serr != nil {
+				return fmt.Errorf("failed to create default policy: %v", k8serr)
 			}
 		} else {
 			return err

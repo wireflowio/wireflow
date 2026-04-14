@@ -218,14 +218,21 @@ func (s *Server) NatsListTokens(data []byte) ([]byte, error) {
 	if err := json.Unmarshal(data, &req); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
+	if req.Namespace == "" {
+		return nil, fmt.Errorf("namespace is required")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	tokens, err := s.store.Tokens().List(ctx, req.Namespace)
+	ctx, err := s.workspaceCtxByNs(ctx, req.Namespace)
 	if err != nil {
 		return nil, err
 	}
-	return marshal(tokens)
+	tokens, err := s.networkController.ListTokens(ctx, &dto.PageRequest{Page: 1, PageSize: 200})
+	if err != nil {
+		return nil, err
+	}
+	return marshal(tokens.List)
 }
 
 func (s *Server) NatsRemoveToken(data []byte) ([]byte, error) {
@@ -239,9 +246,15 @@ func (s *Server) NatsRemoveToken(data []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	// Look up the token record to find which workspace namespace it belongs to.
 	t, err := s.store.Tokens().GetByToken(ctx, req.Token)
 	if err != nil {
 		return nil, fmt.Errorf("token not found: %w", err)
 	}
-	return nil, s.store.Tokens().Delete(ctx, t.ID)
+
+	ctx, err = s.workspaceCtxByNs(ctx, t.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	return nil, s.tokenController.Delete(ctx, req.Token)
 }

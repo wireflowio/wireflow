@@ -12,5 +12,4 @@ var Cmd = &cobra.Command{
 
 func init() {
 	// 注册子命令
-	Cmd.AddCommand(FixCmd)
 }

@@ -9,7 +9,7 @@ import {
 import {
   Search, Plus, RefreshCw, MoreHorizontal,
   Layers, Key, ArrowRight, Pencil, Trash2,
-  ChevronLeft, ChevronRight, Server, CheckCircle2,
+  ChevronLeft, ChevronRight, Server,
   Wifi, WifiOff, Network, ArrowUpRight, ArrowDownRight,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'

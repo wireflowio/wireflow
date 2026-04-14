@@ -84,9 +84,9 @@ func (c *Client) ListWorkspaces() error {
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tNAMESPACE\tDISPLAY-NAME\tNODES\tSTATUS")
+	fmt.Fprintln(w, "NAME\tNAMESPACE\tDISPLAY-NAME\tNODES\tSTATUS") //nolint:errcheck
 	for _, ws := range list {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", //nolint:errcheck
 			ws.Slug, ws.Namespace, ws.DisplayName, ws.NodeCount, ws.Status)
 	}
 	return w.Flush()
@@ -148,9 +148,9 @@ func (c *Client) ListPolicies(namespace string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tACTION\tTYPES\tDESCRIPTION")
+	fmt.Fprintln(w, "NAME\tACTION\tTYPES\tDESCRIPTION") //nolint:errcheck
 	for _, p := range list {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", //nolint:errcheck
 			p.Name, p.Action, strings.Join(p.PolicyTypes, ","), p.Description)
 	}
 	return w.Flush()
@@ -173,7 +173,7 @@ func (c *Client) ListTokens(namespace string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-	fmt.Fprintln(w, "TOKEN\tNAMESPACE\tLIMIT\tEXPIRY")
+	fmt.Fprintln(w, "TOKEN\tNAMESPACE\tLIMIT\tEXPIRY") //nolint:errcheck
 	for _, t := range list {
 		expiry := t.Expiry
 		if expiry == "" {
@@ -183,7 +183,7 @@ func (c *Client) ListTokens(namespace string) error {
 		if t.UsageLimit == 0 {
 			limit = "unlimited"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.Token, t.Namespace, limit, expiry)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", t.Token, t.Namespace, limit, expiry) //nolint:errcheck
 	}
 	return w.Flush()
 }

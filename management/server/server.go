@@ -181,16 +181,16 @@ func (s *Server) Start(ctx context.Context) error {
 		"wireflow.signals.peer.heartbeat": s.Heartbeat,
 
 		// CLI ↔ server (service/admin plane)
-		"wireflow.signals.service.info":              s.Info,
-		"wireflow.signals.service.createToken":       s.CreateToken,
-		"wireflow.signals.service.workspace.add":     s.NatsAddWorkspace,
-		"wireflow.signals.service.workspace.remove":  s.NatsRemoveWorkspace,
-		"wireflow.signals.service.workspace.list":    s.NatsListWorkspaces,
-		"wireflow.signals.service.policy.add":        s.NatsAddPolicy,
-		"wireflow.signals.service.policy.remove":     s.NatsRemovePolicy,
-		"wireflow.signals.service.policy.list":       s.NatsListPolicies,
-		"wireflow.signals.service.token.list":        s.NatsListTokens,
-		"wireflow.signals.service.token.remove":      s.NatsRemoveToken,
+		"wireflow.signals.service.info":             s.Info,
+		"wireflow.signals.service.createToken":      s.CreateToken,
+		"wireflow.signals.service.workspace.add":    s.NatsAddWorkspace,
+		"wireflow.signals.service.workspace.remove": s.NatsRemoveWorkspace,
+		"wireflow.signals.service.workspace.list":   s.NatsListWorkspaces,
+		"wireflow.signals.service.policy.add":       s.NatsAddPolicy,
+		"wireflow.signals.service.policy.remove":    s.NatsRemovePolicy,
+		"wireflow.signals.service.policy.list":      s.NatsListPolicies,
+		"wireflow.signals.service.token.list":       s.NatsListTokens,
+		"wireflow.signals.service.token.remove":     s.NatsRemoveToken,
 	}
 
 	for route, handler := range routes {
@@ -236,7 +236,27 @@ func (s *Server) Info(content []byte) ([]byte, error) {
 func (s *Server) CreateToken(content []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return s.peerController.CreateToken(ctx, content)
+
+	var req struct {
+		Namespace string `json:"namespace"`
+	}
+	if err := json.Unmarshal(content, &req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+	if req.Namespace == "" {
+		return nil, fmt.Errorf("namespace is required")
+	}
+
+	ctx, err := s.workspaceCtxByNs(ctx, req.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := s.tokenController.Create(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(map[string]string{"token": token})
 }
 
 // Heartbeat handles periodic heartbeat requests from agent nodes and updates

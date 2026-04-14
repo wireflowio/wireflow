@@ -77,11 +77,11 @@ The namespace is auto-generated from the workspace UUID if not provided.`,
 // workspaceRemoveCmd: wireflow workspace remove <namespace>
 func workspaceRemoveCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "remove <namespace>",
-		Short: "Delete a workspace",
-		Long:  `Delete a workspace by its K8s namespace (shown in 'wireflow workspace list').`,
+		Use:     "remove <namespace>",
+		Short:   "Delete a workspace",
+		Long:    `Delete a workspace by its K8s namespace (shown in 'wireflow workspace list').`,
 		Example: `  wireflow workspace remove wf-550e8400-e29b-41d4-a716-446655440000`,
-		Args: cobra.ExactArgs(1),
+		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			client, err := newClient()
 			if err != nil {

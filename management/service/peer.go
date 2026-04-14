@@ -165,12 +165,12 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 	var vos []vo.PeerVo
 	for _, n := range filteredPeers[start:end] {
 		pv := vo.PeerVo{
-			Namespace:           n.namespace,
-			Name:                n.name,
-			AppID:               n.appId,
-			PublicKey:           n.publicKey,
-			Address:             n.address,
-			Labels:              n.labels,
+			Namespace:            n.namespace,
+			Name:                 n.name,
+			AppID:                n.appId,
+			PublicKey:            n.publicKey,
+			Address:              n.address,
+			Labels:               n.labels,
 			WorkspaceDisplayName: workspace.DisplayName, // 添加 workspace 显示名称
 		}
 		if p.presence != nil {
@@ -225,7 +225,11 @@ func (p *peerService) CreateToken(ctx context.Context, tokenDto *dto.TokenDto) (
 		}
 	}
 
-	return []byte(token.Spec.Token), nil
+	actualToken := token.Status.Token
+	if actualToken == "" {
+		actualToken = token.Spec.Token
+	}
+	return []byte(actualToken), nil
 }
 
 func NewPeerService(client *resource.Client, st store.Store, presence *managementnats.NodePresenceStore) PeerService {
@@ -263,7 +267,11 @@ func (p *peerService) Register(ctx context.Context, dto *dto.PeerDto) (*infra.Pe
 		return nil, err
 	}
 
-	node.Token = token.Spec.Token
+	actualToken := token.Status.Token
+	if actualToken == "" {
+		actualToken = token.Spec.Token
+	}
+	node.Token = actualToken
 	return node, nil
 }
 
@@ -273,9 +281,16 @@ func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v
 	}
 
 	var list v1alpha1.WireflowEnrollmentTokenList
-	err := p.client.List(ctx, &list, client.MatchingFields{"spec.token": tokenStr})
+	err := p.client.List(ctx, &list, client.MatchingFields{"status.token": tokenStr})
 	if err != nil {
 		return false, nil, fmt.Errorf("get token failed: %v", err)
+	}
+	if len(list.Items) == 0 {
+		// 兼容旧数据：回退到 spec.token
+		err = p.client.List(ctx, &list, client.MatchingFields{"spec.token": tokenStr})
+		if err != nil {
+			return false, nil, fmt.Errorf("get token failed: %v", err)
+		}
 	}
 
 	if len(list.Items) == 0 {
@@ -284,7 +299,7 @@ func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v
 
 	var token *v1alpha1.WireflowEnrollmentToken
 	for _, t := range list.Items {
-		if t.Spec.Token == tokenStr {
+		if t.Status.Token == tokenStr || t.Spec.Token == tokenStr {
 			token = &t
 		}
 	}
