@@ -285,7 +285,7 @@ spec:
     targetPort: 8080
   selector:
     app.kubernetes.io/name: wireflowd
-  type: ClusterIP
+  type: LoadBalancer
 ---
 apiVersion: v1
 kind: Service
@@ -294,7 +294,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: wireflowd
     app.kubernetes.io/part-of: wireflow
-  name: wireflow-nats
+  name: wireflow-nats-service
   namespace: wireflow-system
 spec:
   ports:
