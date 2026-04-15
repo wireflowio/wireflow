@@ -4,8 +4,8 @@ name: Test README Scripts
 # simulating exactly what a real user would run on a fresh machine.
 #
 # Uses published wireflowio images — no build or image import required.
-# Setup:  bash hack/quickstart.sh  (installs k3d, creates cluster with port
-#         mappings 8080/4222, deploys wireflowd, waits for ready)
+# Setup:  bash hack/quickstart.sh  (installs k3d, creates cluster, deploys
+#         wireflowd, kubectl port-forward 8080/4222, waits for ready)
 # Test:   README Steps 1-6
 
 on:
@@ -44,13 +44,33 @@ jobs:
           version: 10.32.1
 
       # ── Run quickstart.sh ──────────────────────────────────────────────────
-      # Installs k3d, creates cluster with -p "8080:8080@loadbalancer"
-      # and -p "4222:4222@loadbalancer", applies CRDs, deploys
-      # ghcr.io/wireflowio/wireflowd:latest, waits for pod Ready + API probe.
-      # After this step localhost:8080 and localhost:4222 are reachable.
+      # Installs k3d, creates cluster, applies CRDs, deploys
+      # ghcr.io/wireflowio/wireflowd:latest, waits for pod Ready.
 
       - name: "Run hack/quickstart.sh (README Quick Start)"
         run: bash hack/quickstart.sh
+
+      # ── Port-forward ClusterIP services to localhost ───────────────────────
+      # Services are ClusterIP; port-forward makes them reachable at
+      # localhost:8080 (API) and localhost:4222 (NATS) for all subsequent steps.
+
+      - name: "Port-forward API and NATS to localhost"
+        run: |
+          kubectl port-forward -n wireflow-system \
+            svc/wireflow-api-service 8080:8080 >/dev/null 2>&1 &
+          kubectl port-forward -n wireflow-system \
+            svc/wireflow-nats-service 4222:4222 >/dev/null 2>&1 &
+
+          echo "Waiting for ports to be ready..."
+          for port in 8080 4222; do
+            for i in $(seq 1 20); do
+              nc -z 127.0.0.1 "$port" 2>/dev/null && break || true
+              sleep 1
+            done
+            nc -z 127.0.0.1 "$port" 2>/dev/null \
+              && echo "✅ localhost:$port ready" \
+              || { echo "❌ localhost:$port not reachable"; exit 1; }
+          done
 
       # ── Build wireflow CLI from source ────────────────────────────────────
 

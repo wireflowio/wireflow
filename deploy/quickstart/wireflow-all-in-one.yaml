@@ -285,7 +285,7 @@ spec:
     targetPort: 8080
   selector:
     app.kubernetes.io/name: wireflowd
-  type: LoadBalancer
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
