@@ -82,6 +82,21 @@ func (p *Probe) restart() {
 	_ = p.Start(context.Background(), p.remoteId)
 }
 
+// Close permanently stops this probe and releases all resources.
+// Setting newIceDialer to nil prevents restart() from spinning up a new
+// dialer after the underlying iceDialer's close triggers the onClose callback.
+func (p *Probe) Close() {
+	p.mu.Lock()
+	p.newIceDialer = nil
+	d := p.iceDialer
+	p.iceDialer = nil
+	p.mu.Unlock()
+
+	if d != nil {
+		d.Close() //nolint:errcheck
+	}
+}
+
 func (p *Probe) OnConnectionStateChange(state ice.ConnectionState) {
 	p.updateState(state)
 	p.log.Debug("Setting new connection status", "state", state)

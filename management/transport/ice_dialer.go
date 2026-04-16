@@ -122,7 +122,7 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 		// next 2-second retry cycle.
 		if existingAgent != nil {
 			i.log.Debug("SYN on active agent — remote restarted, forcing close", "remoteId", remoteId)
-			i.close() //nolint:errcheck
+			i.Close() //nolint:errcheck
 			if i.onSynOnActiveAgent != nil {
 				i.onSynOnActiveAgent(ctx, remoteId, packet)
 			}
@@ -318,7 +318,7 @@ func (i *iceDialer) getAgent(remoteId infra.PeerIdentity) (*AgentWrapper, error)
 		err = agent.OnConnectionStateChange(func(s ice.ConnectionState) {
 			i.log.Debug("ice state changed", "state", s)
 			if s == ice.ConnectionStateDisconnected || s == ice.ConnectionStateFailed {
-				i.close() //nolint:errcheck
+				i.Close() //nolint:errcheck
 			}
 		})
 		if err != nil {
@@ -392,7 +392,7 @@ func (i *iceDialer) sendPacket(ctx context.Context, remoteId infra.PeerIdentity,
 	return i.sender(ctx, remoteId.ID(), data)
 }
 
-func (i *iceDialer) close() error {
+func (i *iceDialer) Close() error {
 	i.log.Debug("closing ice", "remoteId", i.remoteId)
 	i.closeOnce.Do(func() {
 		i.closed.Store(true)
