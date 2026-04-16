@@ -245,13 +245,18 @@ jobs:
       # Step 4: Allow traffic between peers
       # ════════════════════════════════════════════════════════════════════════
 
-      - name: "[Step 4a] wireflow policy allow-all"
+      - name: "[Step 4a] wireflow peer list (verify labels)"
+        run: |
+          echo ">>> wireflow peer list -n $NAMESPACE --signaling-url $SIGNALING_URL"
+          $WIREFLOW peer list -n "$NAMESPACE" --signaling-url "$SIGNALING_URL"
+
+      - name: "[Step 4b-policy] wireflow policy allow-all"
         run: |
           echo ">>> wireflow policy allow-all -n $NAMESPACE --signaling-url $SIGNALING_URL"
           $WIREFLOW policy allow-all -n "$NAMESPACE" --signaling-url "$SIGNALING_URL"
-          echo "✅ allow-all policy applied"
+          echo "✅ allow-all policy applied (uses wireflow.run/network-{name}=true label selector)"
 
-      - name: "[Step 4b] wireflow policy add"
+      - name: "[Step 4c] wireflow policy add"
         run: |
           echo ">>> wireflow policy add my-policy -n $NAMESPACE --action ALLOW --signaling-url $SIGNALING_URL"
           $WIREFLOW policy add my-policy \
@@ -261,7 +266,7 @@ jobs:
             --signaling-url "$SIGNALING_URL"
           echo "✅ my-policy added"
 
-      - name: "[Step 4c] wireflow policy list"
+      - name: "[Step 4d] wireflow policy list"
         run: |
           echo ">>> wireflow policy list -n $NAMESPACE --signaling-url $SIGNALING_URL"
           POLICIES=$($WIREFLOW policy list -n "$NAMESPACE" --signaling-url "$SIGNALING_URL")
