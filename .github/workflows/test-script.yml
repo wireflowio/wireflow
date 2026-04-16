@@ -38,11 +38,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.32.1
-
       # ── Run quickstart.sh ──────────────────────────────────────────────────
       # Installs k3d, creates cluster, applies CRDs, deploys
       # ghcr.io/wireflowio/wireflowd:latest, waits for pod Ready.
@@ -56,10 +51,38 @@ jobs:
 
       - name: "Port-forward API and NATS to localhost"
         run: |
-          kubectl port-forward -n wireflow-system \
-            svc/wireflow-api-service 8080:8080 >/dev/null 2>&1 &
-          kubectl port-forward -n wireflow-system \
-            svc/wireflow-nats-service 4222:4222 >/dev/null 2>&1 &
+          # Verify endpoints are populated before port-forwarding
+          echo "Checking service endpoints..."
+          for i in $(seq 1 20); do
+            EP=$(kubectl get endpoints wireflow-api-service -n wireflow-system \
+              -o jsonpath='{.subsets[0].addresses[0].ip}' 2>/dev/null || true)
+            if [[ -n "$EP" ]]; then
+              echo "✅ wireflow-api-service endpoint ready: $EP"
+              break
+            fi
+            echo "  Waiting for endpoints... ($i/20)"
+            sleep 3
+          done
+          kubectl get endpoints -n wireflow-system
+
+          # Start self-restarting port-forward wrappers so they survive pod
+          # restarts or network blips throughout the entire CI job.
+          # Bind to 0.0.0.0 so Docker bridge containers can reach via host gateway.
+          (while true; do
+            kubectl port-forward --address 0.0.0.0 -n wireflow-system \
+              svc/wireflow-api-service 8080:8080 >>/tmp/pf-api.log 2>&1 || true
+            echo "[pf-api] restarting..." >>/tmp/pf-api.log
+            sleep 1
+          done) &
+
+          (while true; do
+            kubectl port-forward --address 0.0.0.0 -n wireflow-system \
+              svc/wireflow-nats-service 4222:4222 >>/tmp/pf-nats.log 2>&1 || true
+            echo "[pf-nats] restarting..." >>/tmp/pf-nats.log
+            sleep 1
+          done) &
+
+          sleep 3
 
           echo "Waiting for ports to be ready..."
           for port in 8080 4222; do
@@ -69,17 +92,26 @@ jobs:
             done
             nc -z 127.0.0.1 "$port" 2>/dev/null \
               && echo "✅ localhost:$port ready" \
-              || { echo "❌ localhost:$port not reachable"; exit 1; }
+              || {
+                echo "❌ localhost:$port not reachable"
+                echo "--- port-forward API log ---"; cat /tmp/pf-api.log || true
+                echo "--- port-forward NATS log ---"; cat /tmp/pf-nats.log || true
+                echo "--- pods ---"; kubectl get pods -n wireflow-system -o wide || true
+                echo "--- endpoints ---"; kubectl get endpoints -n wireflow-system || true
+                exit 1
+              }
           done
 
-      # ── Build wireflow CLI from source ────────────────────────────────────
+      # ── Use published image as CLI ─────────────────────────────────────────
+      # ENTRYPOINT is /app/wireflow, so `docker run image <subcommand>` works
+      # directly as a CLI. --network host lets it reach localhost:8080 / 4222.
 
-      - name: "Build wireflow CLI"
+      - name: "Set WIREFLOW to published image"
         run: |
-          make build SERVICE=wireflow
-          ./bin/wireflow --help | head -5
-          echo "WIREFLOW=./bin/wireflow" >> $GITHUB_ENV
-          echo "✅ wireflow CLI ready"
+          docker pull "${AGENT_IMAGE}"
+          docker run --rm --network host "${AGENT_IMAGE}" --help | head -5
+          echo "WIREFLOW=docker run --rm --network host ${AGENT_IMAGE}" >> $GITHUB_ENV
+          echo "✅ wireflow CLI via image: ${AGENT_IMAGE}"
 
       # ════════════════════════════════════════════════════════════════════════
       # Step 1: Create a workspace
@@ -127,7 +159,7 @@ jobs:
           TOKEN_LIST=$($WIREFLOW token list -n "$NAMESPACE" --signaling-url "$SIGNALING_URL")
           echo "$TOKEN_LIST"
 
-          TOKEN=$(echo "$TOKEN_LIST" | awk 'NR==2 {print $1}')
+          TOKEN=$(echo "$TOKEN_LIST" | awk '/^TOKEN/{found=1; next} found && NF>0 {print $1; exit}')
           [[ -n "$TOKEN" ]] || { echo "❌ Failed to extract token"; exit 1; }
           echo "TOKEN=$TOKEN" >> $GITHUB_ENV
           echo "✅ Token extracted: ${TOKEN:0:8}..."
@@ -153,33 +185,44 @@ jobs:
 
       - name: "[Step 3] Start Agent A and Agent B"
         run: |
-          echo ">>> docker run -d --name wf-agent-a --privileged --network host $AGENT_IMAGE up ..."
+          # Each agent gets its own network namespace → no wf0 interface conflict.
+          # A dedicated bridge lets the two containers reach each other for WireGuard
+          # UDP traffic. host.docker.internal resolves to the Docker host gateway so
+          # containers can reach the kubectl port-forwards on the host.
+          docker network create wf-test-net
+
+          AGENT_NATS="nats://host.docker.internal:4222"
+          AGENT_API="http://host.docker.internal:8080"
+
+          echo ">>> docker run -d --name wf-agent-a --privileged --network wf-test-net $AGENT_IMAGE up ..."
           docker run -d \
             --name wf-agent-a \
             --restart unless-stopped \
             --privileged \
-            --network host \
+            --network wf-test-net \
+            --add-host=host.docker.internal:host-gateway \
             -e WIREFLOW_APP_ID=ci-wf-agent-a \
             "$AGENT_IMAGE" \
             up \
-            --signaling-url "$SIGNALING_URL" \
-            --server-url "$SERVER_URL" \
+            --signaling-url "$AGENT_NATS" \
+            --server-url "$AGENT_API" \
             --token "$TOKEN"
 
-          echo ">>> docker run -d --name wf-agent-b --privileged --network host $AGENT_IMAGE up ..."
+          echo ">>> docker run -d --name wf-agent-b --privileged --network wf-test-net $AGENT_IMAGE up ..."
           docker run -d \
             --name wf-agent-b \
             --restart unless-stopped \
             --privileged \
-            --network host \
+            --network wf-test-net \
+            --add-host=host.docker.internal:host-gateway \
             -e WIREFLOW_APP_ID=ci-wf-agent-b \
             "$AGENT_IMAGE" \
             up \
-            --signaling-url "$SIGNALING_URL" \
-            --server-url "$SERVER_URL" \
+            --signaling-url "$AGENT_NATS" \
+            --server-url "$AGENT_API" \
             --token "$TOKEN"
 
-          echo "✅ Both agent containers started"
+          echo "✅ Both agent containers started on wf-test-net"
 
       - name: "Wait for both agents to register"
         run: |
@@ -237,36 +280,77 @@ jobs:
           echo "Waiting 20s for WireGuard handshake to complete..."
           sleep 20
 
-          echo ">>> docker exec wf-agent-a wireflow status"
-          STATUS=$(docker exec wf-agent-a wireflow status 2>&1)
+          echo "--- agent-a container state ---"
+          docker inspect wf-agent-a --format '{{.State.Status}} exitCode={{.State.ExitCode}} restarting={{.State.Restarting}}'
+
+          echo "--- agent-b container state ---"
+          docker inspect wf-agent-b --format '{{.State.Status}} exitCode={{.State.ExitCode}} restarting={{.State.Restarting}}'
+
+          echo "--- agent-a logs (last 50 lines) ---"
+          docker logs wf-agent-a --tail=50 2>&1
+
+          echo "--- agent-b logs (last 50 lines) ---"
+          docker logs wf-agent-b --tail=50 2>&1
+
+          echo "--- WireGuard interfaces inside agent-a ---"
+          docker exec wf-agent-a ip link show type wireguard 2>&1 || true
+
+          echo "--- ip addr inside agent-a ---"
+          docker exec wf-agent-a ip addr 2>&1 || true
+
+          echo "--- WireGuard peers (wg show) inside agent-a ---"
+          docker exec wf-agent-a wg show 2>&1 || true
+
+          echo ">>> docker exec wf-agent-a /app/wireflow status"
+          STATUS=$(docker exec wf-agent-a /app/wireflow status 2>&1)
+          echo "$STATUS"
+          
+          echo "$STATUS" | grep -q "Interface" \
+            && echo "✅ Interface present" \
+            || { echo "❌ No interface info in status output"; exit 1; }
+          
+          echo "--- ip addr inside agent-b ---"
+          docker exec wf-agent-b ip addr 2>&1 || true
+
+          echo "--- WireGuard peers (wg show) inside agent-b ---"
+          docker exec wf-agent-b wg show 2>&1 || true
+
+          echo ">>> docker exec wf-agent-b /app/wireflow status"
+          STATUS=$(docker exec wf-agent-b /app/wireflow status 2>&1)
           echo "$STATUS"
 
           echo "$STATUS" | grep -q "Interface" \
             && echo "✅ Interface present" \
             || { echo "❌ No interface info in status output"; exit 1; }
 
-      - name: "[Step 5b] Ping Agent A → Agent B"
+      - name: "[Step 5b] Ping Agent A → Agent B via WireGuard"
         run: |
-          STATUS_B=$(docker exec wf-agent-b wireflow status 2>/dev/null || true)
+          # Get Agent B's WireGuard address from the wf0 interface inside the container.
+          # wireflow status prints: Address  10.x.x.x/24  (field 2 of Address line)
+          STATUS_B=$(docker exec wf-agent-b /app/wireflow status 2>&1 || true)
+          echo "--- agent-b status ---"
           echo "$STATUS_B"
 
-          IP_B=$(echo "$STATUS_B" | awk '/^Address/ {print $3}' | head -1 | cut -d'/' -f1)
+          WG_IP_B=$(echo "$STATUS_B" | awk '/^Address/{print $2}' | head -1 | cut -d'/' -f1)
 
-          if [[ -z "$IP_B" ]]; then
-            IP_B=$(docker exec wf-agent-b \
-              sh -c 'ip addr show | awk "/inet / && !/127\./ && !/172\./ && !/10\.96\./{print \$2}" | head -1 | cut -d/ -f1' \
-              2>/dev/null || true)
+          if [[ -z "$WG_IP_B" ]]; then
+            # Fallback: read wf0 addr directly from inside the container
+            WG_IP_B=$(docker exec wf-agent-b \
+              ip -4 addr show wf0 2>/dev/null \
+              | awk '/inet /{print $2}' | cut -d'/' -f1 || true)
           fi
 
-          echo "Agent B WireGuard IP: ${IP_B:-(unknown)}"
+          echo "Agent B WireGuard IP: ${WG_IP_B:-(unknown)}"
 
-          if [[ -n "$IP_B" ]]; then
-            echo ">>> docker exec wf-agent-a ping -c 5 -W 3 $IP_B"
-            docker exec wf-agent-a ping -c 5 -W 3 "$IP_B" \
+          if [[ -n "$WG_IP_B" ]]; then
+            echo ">>> docker exec wf-agent-a ping -c 5 -W 3 $WG_IP_B"
+            docker exec wf-agent-a ping -c 5 -W 3 "$WG_IP_B" \
               && echo "✅ Ping succeeded — WireGuard tunnel is working" \
-              || echo "⚠️  Ping failed (non-fatal in CI)"
+              || { echo "❌ Ping failed"; docker logs wf-agent-a --tail=30; docker logs wf-agent-b --tail=30; exit 1; }
           else
-            echo "⚠️  Could not determine Agent B WireGuard IP — skipping ping"
+            echo "❌ Could not determine Agent B WireGuard IP"
+            docker logs wf-agent-b --tail=30
+            exit 1
           fi
 
       # ════════════════════════════════════════════════════════════════════════
@@ -303,10 +387,12 @@ jobs:
             && { echo "❌ Workspace still present"; exit 1; } \
             || echo "✅ Workspace removed"
 
-      - name: "[Step 6d] Delete cluster"
+      - name: "[Step 6d] Delete cluster and agent network"
         run: |
+          docker rm -f wf-agent-a wf-agent-b 2>/dev/null || true
+          docker network rm wf-test-net 2>/dev/null || true
           k3d cluster delete wireflow
-          echo "✅ Cluster deleted"
+          echo "✅ Cluster and agent network deleted"
 
       # ── Failure diagnostics ───────────────────────────────────────────────
 
