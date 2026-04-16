@@ -254,9 +254,16 @@ func (i *iceDialer) Prepare(ctx context.Context, remoteId infra.PeerIdentity) er
 }
 
 func (i *iceDialer) Dial(ctx context.Context) (infra.Transport, error) {
+	// Use a timeout slightly longer than the SYN window (60 s) so that if no
+	// offer arrives before the initiator gives up sending SYNs, Dial returns
+	// an error.  This causes discover() to fail, which triggers onFailure →
+	// probe.restart() → a fresh SYN cycle, preventing a permanent deadlock
+	// when the passive side stays offline for more than ~71 s.
+	dialCtx, cancel := context.WithTimeout(ctx, 65*time.Second)
+	defer cancel()
 	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case <-dialCtx.Done():
+		return nil, fmt.Errorf("iceDialer: timed out waiting for offer: %w", dialCtx.Err())
 	case <-i.closeChan:
 		return nil, fmt.Errorf("iceDialer closed before offer received")
 	case <-i.offerReady:
