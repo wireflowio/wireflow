@@ -622,7 +622,9 @@ func (r *PeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicate.And(configMapPredicate, ownedCMPredicate))).
 		Watches(&v1alpha1.WireflowPolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.mapPolicyForNodes),
-			builder.WithPredicates(predicate.And(onlyUpdatePredicate, predicate.GenerationChangedPredicate{}))).
+			// 不加 onlyUpdatePredicate：新建策略（Create）必须触发 peer reconcile 才能下发配置；
+			// GenerationChangedPredicate 默认放行 Create/Delete，只过滤 generation 未变的 Update。
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("node").WithOptions(controller.Options{
 		MaxConcurrentReconciles: 5,
 	}).Complete(r)
