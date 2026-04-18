@@ -4,13 +4,43 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
+    types: [labeled, opened, synchronize, reopened]
+    branches:
+      - master
+      - main
 
 permissions:
   contents: write
   packages: write
 
+# 触发条件：push tag 或 PR 带有 ok-release 标签
+# is_release=true  → tag push，跑正式 release
+# is_release=false → PR ok-release，跑 snapshot（不发布 GitHub Release）
+env:
+  IS_RELEASE: ${{ github.event_name == 'push' }}
+
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check trigger condition
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "pull_request" ] && \
+               [ "${{ contains(github.event.pull_request.labels.*.name, 'ok-release') }}" = "true" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          fi
+
   goreleaser:
+    needs: check
+    if: needs.check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,16 +59,20 @@ jobs:
         with:
           version: 10.32.1
 
+      # PR: snapshot 模式（不需要 tag，不发布 GitHub Release，不推送 artifacts）
+      # Tag: 正式 release
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean
+          args: ${{ github.event_name == 'push' && 'release --clean' || 'release --snapshot --clean' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   docker-image:
+    needs: check
+    if: needs.check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -65,6 +99,20 @@ jobs:
       - name: Build UI
         run: make build-ui
 
+      - name: Determine image tag
+        id: meta
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # tag push: 用 git tag 作为版本号，同时打 latest
+            echo "tags=ghcr.io/${OWNER}/wireflowd:${{ github.ref_name }},ghcr.io/${OWNER}/wireflowd:latest" >> $GITHUB_OUTPUT
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            # PR: 用 pr-{number} 作为 tag，不覆盖 latest
+            echo "tags=ghcr.io/${OWNER}/wireflowd:pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+            echo "version=pr-${{ github.event.number }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and push wireflowd image
         uses: docker/build-push-action@v5
         with:
@@ -74,12 +122,10 @@ jobs:
           push: true
           build-args: |
             TARGETSERVICE=wireflowd
-            VERSION=${{ github.ref_name }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/wireflowd:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/wireflowd:latest
+            VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=wireflowd
-            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
