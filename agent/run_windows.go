@@ -27,7 +27,6 @@ import (
 	"wireflow/internal/config"
 	"wireflow/internal/infra"
 	"wireflow/internal/log"
-	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -50,13 +49,6 @@ func Start(ctx context.Context, flags *config.Config) error {
 		InterfaceName: flags.InterfaceName,
 		Token:         flags.Token,
 		ShowLog:       flags.EnableSysLog,
-		WgLogger: func() *wg.Logger {
-			level := wg.LogLevelError
-			if flags.EnableSysLog {
-				level = wg.LogLevelVerbose
-			}
-			return wg.NewLogger(level, fmt.Sprintf("(%s) ", flags.InterfaceName))
-		}(),
 		Flags: flags,
 	}
 
