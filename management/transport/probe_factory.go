@@ -177,9 +177,19 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 				return fmt.Errorf("remote peer info not yet received for %s", remoteId.AppID)
 			}
 			p.log.Info("connection established", "transportType", transport.Type(), "remoteAddr", transport.RemoteAddr())
+			// Only the ICE initiator (localId > remoteId, i.e. the SYN sender)
+			// drives WireGuard keepalives.  If both ends set PersistentKeepalive
+			// they simultaneously send Handshake Initiations, continuously
+			// overwriting each other's session state and causing all Responses
+			// to be rejected (~90 s before one side gives up and the other can
+			// finally complete the handshake).
+			persistentKA := 0
+			if p.localId.String() > remoteId.String() {
+				persistentKA = infra.PersistentKeepalive
+			}
 			setPeer := &infra.SetPeer{
 				PublicKey:            remoteId.PublicKey.String(),
-				PersistentKeepalived: infra.PersistentKeepalive,
+				PersistentKeepalived: persistentKA,
 				AllowedIPs:           rp.AllowedIPs,
 			}
 			if transport.Type() == infra.WRRP {
