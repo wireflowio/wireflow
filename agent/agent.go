@@ -142,6 +142,7 @@ func NewAgent(ctx context.Context, cfg *AgentConfig) (*Agent, error) {
 		PeerManager:            agent.manager.peerManager,
 		UniversalUdpMuxDefault: universalUdpMuxDefault,
 		Provisioner:            agent.provisioner,
+		ShowLog:                cfg.ShowLog,
 	})
 
 	//subscribe

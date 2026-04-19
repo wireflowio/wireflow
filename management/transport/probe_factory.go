@@ -45,6 +45,7 @@ type ProbeFactory struct {
 	onMessage   func(context.Context, *infra.Message) error
 	peerManager *infra.PeerManager
 	wrrp        infra.Wrrp
+	showLog     bool
 
 	UniversalUdpMuxDefault *ice.UniversalUDPMuxDefault
 }
@@ -57,6 +58,7 @@ type ProbeFactoryConfig struct {
 	Wrrp                   infra.Wrrp
 	UniversalUdpMuxDefault *ice.UniversalUDPMuxDefault
 	Provisioner            infra.Provisioner
+	ShowLog                bool
 }
 
 type ProbeFactoryOptions func(*ProbeFactory)
@@ -93,6 +95,7 @@ func NewProbeFactory(cfg *ProbeFactoryConfig) *ProbeFactory {
 		probes:                 make(map[string]*Probe),
 		peerManager:            cfg.PeerManager,
 		wrrp:                   cfg.Wrrp,
+		showLog:                cfg.ShowLog,
 		UniversalUdpMuxDefault: cfg.UniversalUdpMuxDefault,
 	}
 }
@@ -247,6 +250,7 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 			LocalPeer:              localPeer,
 			OnPeerReceived:         onPeerReceived,
 			UniversalUdpMuxDefault: p.UniversalUdpMuxDefault,
+			ShowLog:                p.showLog,
 		})
 	}
 	probe.newIceDialer = makeIceDialer

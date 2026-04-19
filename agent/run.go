@@ -56,7 +56,13 @@ func Start(ctx context.Context, flags *config.Config) error {
 		InterfaceName: flags.InterfaceName,
 		Token:         flags.Token,
 		ShowLog:       flags.EnableSysLog,
-		WgLogger:      wg.NewLogger(wg.LogLevelError, fmt.Sprintf("(%s) ", flags.InterfaceName)),
+		WgLogger: func() *wg.Logger {
+			level := wg.LogLevelError
+			if flags.EnableSysLog {
+				level = wg.LogLevelVerbose
+			}
+			return wg.NewLogger(level, fmt.Sprintf("(%s) ", flags.InterfaceName))
+		}(),
 		Flags:         flags,
 	}
 
