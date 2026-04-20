@@ -301,7 +301,7 @@ func (i *iceDialer) getAgent(remoteId infra.PeerIdentity) (*AgentWrapper, error)
 		UDPMuxSrflx:  i.universalUdpMuxDefault,
 		NetworkTypes: []ice.NetworkType{ice.NetworkTypeUDP4},
 		Urls: []*stun.URI{
-			{Scheme: stun.SchemeTypeSTUN, Host: "101.36.119.12", Port: 3478},
+			{Scheme: stun.SchemeTypeSTUN, Host: "stun.wireflow.run", Port: 3478},
 		},
 		Tiebreaker:          uint64(ice.NewTieBreaker()),
 		LoggerFactory:       f,
