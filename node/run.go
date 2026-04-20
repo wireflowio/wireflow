@@ -14,7 +14,7 @@
 
 //go:build !windows
 
-package agent
+package node
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 		return startDaemon(flags, logger)
 	}
 
-	agentCfg := &AgentConfig{
+	agentCfg := &NodeConfig{
 		Logger:        logger,
 		Port:          51820,
 		InterfaceName: flags.InterfaceName,
@@ -77,7 +77,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 		}()
 	}
 
-	c, err := NewAgent(gCtx, agentCfg)
+	c, err := NewNode(gCtx, agentCfg)
 	if err != nil {
 		return err
 	}

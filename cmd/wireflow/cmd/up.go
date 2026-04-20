@@ -20,7 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"wireflow/agent"
+	"wireflow/node"
 	"wireflow/internal/config"
 	wflog "wireflow/internal/log"
 	"wireflow/pkg/utils"
@@ -28,14 +28,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var log = wflog.GetLogger("agent")
+var log = wflog.GetLogger("node")
 
 func upCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "up",
-		Short: "Connect this agent to a Wireflow workspace",
-		Long: `Start the Wireflow agent and establish a WireGuard tunnel to the workspace
-identified by the enrollment token. The agent will register with the management
+		Short: "Connect this node to a Wireflow workspace",
+		Long: `Start the Wireflow node and establish a WireGuard tunnel to the workspace
+identified by the enrollment token. The node will register with the management
 server, negotiate peer connections via the signaling server, and apply the
 workspace's network policies.
 
@@ -95,7 +95,7 @@ Use --save to persist the current flags back to the config file.`,
 				config.Conf.Telemetry.VMEndpoint = ep
 			}
 
-			return agent.Start(ctx, config.Conf)
+			return node.Start(ctx, config.Conf)
 		},
 	}
 
