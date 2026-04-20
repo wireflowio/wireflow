@@ -55,8 +55,8 @@ type Node struct {
 	// GetNetworkMap is set externally after NewAgent returns and before Start
 	// is called. It fetches the current network topology from the control plane.
 	GetNetworkMap func() (*infra.Message, error)
-	ctrClient    *ctrclient.Client
-	probeFactory *transport.ProbeFactory
+	ctrClient     *ctrclient.Client
+	probeFactory  *transport.ProbeFactory
 
 	manager struct {
 		keyManager  infra.KeyManager
@@ -84,7 +84,7 @@ type NodeConfig struct {
 	Flags         *config.Config
 }
 
-// NewAgent constructs and wires a fully operational Agent instance.
+// NewNode constructs and wires a fully operational Node instance.
 //
 // Initialization is split into three strictly ordered phases:
 //
@@ -111,7 +111,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	var (
 		iface      tun.Device
 		err        error
-		agent      *Node
+		node       *Node
 		v4conn     *net.UDPConn
 		v6conn     *net.UDPConn
 		wrrp       *wrrper.WRRPClient
@@ -120,13 +120,13 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 
 	// ── Phase 1: Network foundation ──────────────────────────────────────────
 
-	agent = new(Node)
-	agent.manager.peerManager = infra.NewPeerManager()
-	agent.logger = cfg.Logger
-	agent.manager.turnManager = new(internal.TurnManager)
+	node = new(Node)
+	node.manager.peerManager = infra.NewPeerManager()
+	node.logger = cfg.Logger
+	node.manager.turnManager = new(internal.TurnManager)
 
 	// TUN device: the OS virtual NIC that serves as WireGuard's L3 ingress/egress.
-	agent.Name, iface, err = infra.CreateTUN(infra.DefaultMTU, cfg.Logger)
+	node.Name, iface, err = infra.CreateTUN(infra.DefaultMTU, cfg.Logger)
 	if err != nil {
 		return nil, err
 	}
@@ -151,82 +151,98 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent.natsService = natsSignalService
+	node.natsService = natsSignalService
 
 	// ── Phase 2: Identity and signaling ──────────────────────────────────────
 
 	// ControlClient communicates with the management service for registration
-	// and network topology retrieval.
-	agent.ctrClient, err = ctrclient.NewClient(natsSignalService)
+	// and network topology retrieval. GetKeyManager and GetProbeFactory are
+	// closures on the node pointer; they resolve lazily after their targets
+	// are assigned later in phase 2, eliminating the Configure() call.
+	node.ctrClient, err = ctrclient.NewClient(&ctrclient.ClientConfig{
+		Nats: natsSignalService,
+		GetKeyManager: func() infra.KeyManager {
+			return node.manager.keyManager
+		},
+		GetProbeFactory: func() *transport.ProbeFactory {
+			return node.probeFactory
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	// Register announces this node to the control plane and receives back the
 	// assigned WireGuard private key, allocated IP, and WRRP relay URL.
-	agent.current, err = agent.ctrClient.Register(ctx, cfg.Token, agent.Name)
+	node.current, err = node.ctrClient.Register(ctx, cfg.Token, node.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	privateKey, err = utils.ParseKey(agent.current.PrivateKey)
+	privateKey, err = utils.ParseKey(node.current.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 	// KeyManager holds the WireGuard private key and exposes it to the Bind
 	// layer so it can perform AEAD peer matching during the handshake.
-	agent.manager.keyManager = infra.NewKeyManager(privateKey)
+	node.manager.keyManager = infra.NewKeyManager(privateKey)
 
 	// PeerIdentity is this node's unique signaling identity: AppID + PublicKey.
 	// It is used as the ICE tiebreaker to deterministically elect the ICE
 	// initiator when two peers attempt to connect simultaneously.
-	localIdentity := infra.NewPeerIdentity(agent.current.AppID, privateKey.PublicKey())
+	localIdentity := infra.NewPeerIdentity(node.current.AppID, privateKey.PublicKey())
 
 	// Register this node in the PeerManager so hole-punching logic can look up
 	// local peer info during ICE negotiation.
-	agent.manager.peerManager.AddPeer(agent.current.AppID, agent.current)
+	node.manager.peerManager.AddPeer(node.current.AppID, node.current)
 
 	// ProbeFactory manages the lifecycle of per-peer connection probes (ICE
-	// hole-punching, WRRP relay fallback). Provisioner is nil here and will be
-	// injected in phase 3 via Configure() once the WireGuard device exists.
-	agent.probeFactory = transport.NewProbeFactory(&transport.ProbeFactoryConfig{
+	// hole-punching, WRRP relay fallback). GetProvisioner and GetOnMessage are
+	// closures that capture the node pointer: they resolve lazily at call time
+	// so they always see the values assigned in phase 3, without any two-phase
+	// Configure() call.
+	node.probeFactory = transport.NewProbeFactory(&transport.ProbeFactoryConfig{
 		LocalId:                localIdentity,
 		Signal:                 natsSignalService,
-		PeerManager:            agent.manager.peerManager,
+		PeerManager:            node.manager.peerManager,
 		UniversalUdpMuxDefault: universalUdpMuxDefault,
-		Provisioner:            agent.provisioner, // nil; wired in phase 3
 		ShowLog:                cfg.ShowLog,
+		GetProvisioner: func() infra.Provisioner {
+			return node.provisioner
+		},
+		GetOnMessage: func() func(context.Context, *infra.Message) error {
+			if node.messageHandler == nil {
+				return nil
+			}
+			return node.messageHandler.HandleEvent
+		},
+		GetWrrp: func() infra.Wrrp {
+			return wrrp
+		},
 	})
 
 	// Subscribe to this node's NATS signaling subject. All incoming ICE and
 	// WRRP signal packets are routed to probeFactory.Handle for dispatch.
-	if err = natsSignalService.Subscribe(fmt.Sprintf("%s.%s", "wireflow.signals.peers", localIdentity), agent.probeFactory.Handle); err != nil {
+	if err = natsSignalService.Subscribe(fmt.Sprintf("%s.%s", "wireflow.signals.peers", localIdentity), node.probeFactory.Handle); err != nil {
 		return nil, err
 	}
 
-	// Wire ControlClient: inject KeyManager and ProbeFactory so that when the
-	// control plane pushes a PeersAdded event, ControlClient can trigger
-	// hole-punching immediately.
-	agent.ctrClient.Configure(
-		ctrclient.WithSignalHandler(natsSignalService),
-		ctrclient.WithKeyManager(agent.manager.keyManager),
-		ctrclient.WithProbeFactory(agent.probeFactory))
 
 	// WRRP is an optional relay channel used as a fallback when ICE traversal
 	// fails (e.g. symmetric NAT on both sides).
 	if cfg.Flags.EnableWrrp {
 		wrrpUrl := cfg.Flags.WrrperURL
 		if wrrpUrl == "" {
-			wrrpUrl = agent.current.WrrpUrl
+			wrrpUrl = node.current.WrrpUrl
 		}
 
 		if wrrpUrl != "" {
-			wrrp, err = wrrper.NewWrrpClient(localIdentity.ID(), wrrpUrl)
+			// probeFactory.Handle is passed directly: probeFactory already exists
+			// at this point so no closure is needed on this side of the circular dep.
+			wrrp, err = wrrper.NewWrrpClient(localIdentity.ID(), wrrpUrl, node.probeFactory.Handle)
 			if err != nil {
 				return nil, err
 			}
-			// Route inbound WRRP signal packets through the same probeFactory handler.
-			wrrp.Configure(wrrper.WithOnMessage(agent.probeFactory.Handle))
 		}
 	}
 
@@ -236,13 +252,13 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// packets to the correct transport channel (ICE direct path or WRRP relay)
 	// and uses KeyManager to match inbound packets to the right WireGuard peer
 	// during the handshake.
-	agent.bind = infra.NewBind(&infra.BindConfig{
+	node.bind = infra.NewBind(&infra.BindConfig{
 		Logger:          cfg.Logger,
 		UniversalUDPMux: universalUdpMuxDefault,
 		V4Conn:          v4conn,
 		V6Conn:          v6conn,
 		WrrpClient:      wrrp,
-		KeyManager:      agent.manager.keyManager,
+		KeyManager:      node.manager.keyManager,
 	})
 
 	wgLogLevel := wg.LogLevelError
@@ -251,60 +267,52 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	}
 	// WireGuard Device: the data-plane core. It encrypts/decrypts packets and
 	// hands them off to the TUN device or Bind layer as appropriate.
-	agent.iface = wg.NewDevice(iface, agent.bind, wg.NewLogger(wgLogLevel, fmt.Sprintf("(%s) ", cfg.InterfaceName)))
+	node.iface = wg.NewDevice(iface, node.bind, wg.NewLogger(wgLogLevel, fmt.Sprintf("(%s) ", cfg.InterfaceName)))
 
 	// Provisioner abstracts all OS network-stack mutations: IP address assignment,
 	// routing table entries, iptables rules, and WireGuard peer configuration.
 	// It must be created after the WireGuard device because it holds a reference to it.
-	agent.provisioner = infra.NewProvisioner(infra.NewRouteProvisioner(cfg.Logger),
-		infra.NewRuleProvisioner(cfg.Logger, agent.Name), &infra.Params{
-			Device:    agent.iface,
-			IfaceName: agent.Name,
+	node.provisioner = infra.NewProvisioner(infra.NewRouteProvisioner(cfg.Logger),
+		infra.NewRuleProvisioner(cfg.Logger, node.Name), &infra.Params{
+			Device:    node.iface,
+			IfaceName: node.Name,
 		})
 
 	// MessageHandler processes topology change events pushed by the control plane
 	// (peers added/removed, configuration updates) and applies them via Provisioner.
-	agent.messageHandler = NewMessageHandler(agent, log.GetLogger("event-handler"), agent.provisioner)
+	node.messageHandler = NewMessageHandler(node, log.GetLogger("event-handler"), node.provisioner)
 
-	// Wire ProbeFactory: inject the Provisioner and MessageHandler that were
-	// unavailable during phase 2. After a successful hole-punch, ProbeFactory
-	// calls onMessage so MessageHandler can install the new direct route.
-	agent.probeFactory.Configure(
-		transport.WithOnMessage(agent.messageHandler.HandleEvent),
-		transport.WithWrrp(wrrp),
-		transport.WithProvisioner(agent.provisioner),
-	)
 
-	agent.DeviceManager = NewDeviceManager(log.GetLogger("device-manager"), agent.iface, make(chan struct{}))
-	agent.token = cfg.Token
+	node.DeviceManager = NewDeviceManager(log.GetLogger("device-manager"), node.iface, make(chan struct{}))
+	node.token = cfg.Token
 
 	// Re-register and re-apply the network map whenever NATS reconnects.
-	// This covers the case where wireflow-aio restarts and loses all agent state.
+	// This covers the case where wireflow-aio restarts and loses all node state.
 	// The handler reads GetNetworkMap at call time (not at setup time), so it
 	// works even though GetNetworkMap is assigned externally after NewAgent returns.
 	natsSignalService.SetReconnectedHandler(func() {
 		ctx := context.Background()
-		peer, err := agent.ctrClient.Register(ctx, agent.token, agent.Name)
+		peer, err := node.ctrClient.Register(ctx, node.token, node.Name)
 		if err != nil {
-			agent.logger.Error("NATS reconnect: re-register failed", err)
+			node.logger.Error("NATS reconnect: re-register failed", err)
 			return
 		}
-		agent.current = peer
+		node.current = peer
 
-		if agent.GetNetworkMap == nil {
+		if node.GetNetworkMap == nil {
 			return
 		}
-		remoteCfg, err := agent.GetNetworkMap()
+		remoteCfg, err := node.GetNetworkMap()
 		if err != nil {
-			agent.logger.Error("NATS reconnect: re-fetch network map failed", err)
+			node.logger.Error("NATS reconnect: re-fetch network map failed", err)
 			return
 		}
-		if err = agent.messageHandler.ApplyFullConfig(ctx, remoteCfg); err != nil {
-			agent.logger.Error("NATS reconnect: re-apply config failed", err)
+		if err = node.messageHandler.ApplyFullConfig(ctx, remoteCfg); err != nil {
+			node.logger.Error("NATS reconnect: re-apply config failed", err)
 		}
 	})
 
-	return agent, err
+	return node, err
 }
 
 // Start brings up the WireGuard data plane and applies the initial network
