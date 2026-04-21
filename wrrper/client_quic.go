@@ -35,11 +35,14 @@ var _ infra.Wrrp = (*QUICWRRPClient)(nil)
 // and a QUIC control stream for registration. App-level keepalive is not needed
 // because quic.Config.KeepAlivePeriod handles connection liveness.
 type QUICWRRPClient struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	log       *log.Logger
 	localId   infra.PeerID
 	serverURL string
-	conn    *quic.Conn
-	control *quic.Stream
+	conn      *quic.Conn
+	control   *quic.Stream
 
 	onMessage func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error
 	probeChan chan *Task
@@ -47,11 +50,15 @@ type QUICWRRPClient struct {
 
 // NewQUICWrrpClient creates a QUIC WRRP client, connects, and registers.
 func NewQUICWrrpClient(
+	ctx context.Context,
 	localID infra.PeerID,
 	url string,
 	onMessage func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error,
 ) (*QUICWRRPClient, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	c := &QUICWRRPClient{
+		ctx:       ctx,
+		cancel:    cancel,
 		log:       log.GetLogger("wrrper-quic"),
 		localId:   localID,
 		serverURL: url,
@@ -64,6 +71,7 @@ func NewQUICWrrpClient(
 	}
 
 	if err := c.Connect(); err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -82,12 +90,12 @@ func (c *QUICWRRPClient) Connect() error {
 		KeepAlivePeriod: 25 * time.Second,
 	}
 
-	conn, err := quic.DialAddr(context.Background(), c.serverURL, tlsCfg, quicCfg)
+	conn, err := quic.DialAddr(c.ctx, c.serverURL, tlsCfg, quicCfg)
 	if err != nil {
 		return err
 	}
 
-	ctrl, err := conn.OpenStreamSync(context.Background())
+	ctrl, err := conn.OpenStreamSync(c.ctx)
 	if err != nil {
 		conn.CloseWithError(0, "open stream failed") //nolint:errcheck
 		return err
@@ -97,6 +105,16 @@ func (c *QUICWRRPClient) Connect() error {
 	c.control = ctrl
 
 	return c.register()
+}
+
+// Close cancels the client context and closes the underlying QUIC connection,
+// which unblocks ReceiveFunc and causes all probeWorker goroutines to exit.
+func (c *QUICWRRPClient) Close() error {
+	c.cancel()
+	if c.conn != nil {
+		return c.conn.CloseWithError(0, "closed")
+	}
+	return nil
 }
 
 func (c *QUICWRRPClient) register() error {
@@ -134,7 +152,7 @@ func (c *QUICWRRPClient) Send(ctx context.Context, targetId uint64, wrrpType uin
 func (c *QUICWRRPClient) ReceiveFunc() wgconn.ReceiveFunc {
 	return func(packets [][]byte, sizes []int, eps []wgconn.Endpoint) (n int, err error) {
 		for {
-			data, recvErr := c.conn.ReceiveDatagram(context.Background())
+			data, recvErr := c.conn.ReceiveDatagram(c.ctx)
 			if recvErr != nil {
 				c.log.Error("QUIC datagram receive error", recvErr)
 				return 0, recvErr
@@ -185,15 +203,19 @@ func (c *QUICWRRPClient) ReceiveFunc() wgconn.ReceiveFunc {
 }
 
 func (c *QUICWRRPClient) probeWorker() {
-	for task := range c.probeChan {
-		var packet grpc.SignalPacket
-		if err := proto.Unmarshal(task.Data, &packet); err != nil {
-			c.log.Error("failed to unmarshal probe packet", err)
-			continue
-		}
-
-		if err := c.onMessage(context.Background(), infra.FromUint64(packet.SenderId), &packet); err != nil {
-			c.log.Error("probe handler returned error", err)
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case task := <-c.probeChan:
+			var packet grpc.SignalPacket
+			if err := proto.Unmarshal(task.Data, &packet); err != nil {
+				c.log.Error("failed to unmarshal probe packet", err)
+				continue
+			}
+			if err := c.onMessage(c.ctx, infra.FromUint64(packet.SenderId), &packet); err != nil {
+				c.log.Error("probe handler returned error", err)
+			}
 		}
 	}
 }

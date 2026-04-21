@@ -37,6 +37,9 @@ var (
 )
 
 type WRRPClient struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	mu        sync.Mutex // nolint
 	log       *log.Logger
 	localId   infra.PeerID
@@ -59,8 +62,11 @@ type Task struct {
 	Data      []byte
 }
 
-func NewWrrpClient(localID infra.PeerID, url string, onMessage func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error) (*WRRPClient, error) {
+func NewWrrpClient(ctx context.Context, localID infra.PeerID, url string, onMessage func(ctx context.Context, remoteId infra.PeerID, packet *grpc.SignalPacket) error) (*WRRPClient, error) {
+	ctx, cancel := context.WithCancel(ctx)
 	c := &WRRPClient{
+		ctx:       ctx,
+		cancel:    cancel,
 		log:       log.GetLogger("wrrper"),
 		ServerURL: url,
 		probeChan: make(chan *Task, 1024),
@@ -73,22 +79,37 @@ func NewWrrpClient(localID infra.PeerID, url string, onMessage func(ctx context.
 	}
 
 	if err := c.Connect(); err != nil {
+		cancel()
 		return nil, err
 	}
 
 	return c, nil
 }
 
-func (c *WRRPClient) probeWorker() {
-	for task := range c.probeChan {
-		var packet grpc.SignalPacket
-		if err := proto.Unmarshal(task.Data, &packet); err != nil {
-			c.log.Error("failed to unmarshal probe packet", err)
-			continue
-		}
+// Close cancels the client context and closes the underlying TCP connection,
+// which unblocks ReceiveFunc's io.ReadFull and causes probeWorker goroutines to exit.
+func (c *WRRPClient) Close() error {
+	c.cancel()
+	if c.Conn != nil {
+		return c.Conn.Close()
+	}
+	return nil
+}
 
-		if err := c.onMessage(context.Background(), infra.FromUint64(packet.SenderId), &packet); err != nil {
-			c.log.Error("probe handler returned error", err)
+func (c *WRRPClient) probeWorker() {
+	for {
+		select {
+		case <-c.ctx.Done():
+			return
+		case task := <-c.probeChan:
+			var packet grpc.SignalPacket
+			if err := proto.Unmarshal(task.Data, &packet); err != nil {
+				c.log.Error("failed to unmarshal probe packet", err)
+				continue
+			}
+			if err := c.onMessage(c.ctx, infra.FromUint64(packet.SenderId), &packet); err != nil {
+				c.log.Error("probe handler returned error", err)
+			}
 		}
 	}
 }

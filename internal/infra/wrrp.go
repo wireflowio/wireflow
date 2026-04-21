@@ -30,6 +30,7 @@ type Wrrp interface {
 	Send(ctx context.Context, remoteId uint64, wrrpType uint8, data []byte) error
 	Connect() error
 	RemoteAddr() net.Addr
+	Close() error
 }
 
 var (
