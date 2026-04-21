@@ -109,8 +109,8 @@ func (e *WRRPEndpoint) DstToString() string {
 	if e.Addr.IsValid() {
 		return e.Addr.String()
 	}
-	// Fallback for receive-path endpoints that have no Addr (e.g. constructed
-	// in ReceiveFunc with only RemoteId).  These are never queried by wg show.
+	// Fallback: should not normally be reached because ReceiveFunc always sets
+	// Addr to WrrpFakeAddrPort(RemoteId).
 	return fmt.Sprintf("wrrp://%d", e.RemoteId)
 }
 

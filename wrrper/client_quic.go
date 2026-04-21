@@ -66,9 +66,7 @@ func NewQUICWrrpClient(
 		onMessage: onMessage,
 	}
 
-	for i := 0; i < 3; i++ {
-		go c.probeWorker()
-	}
+	go c.probeWorker()
 
 	if err := c.Connect(); err != nil {
 		cancel()
@@ -177,6 +175,7 @@ func (c *QUICWRRPClient) ReceiveFunc() wgconn.ReceiveFunc {
 				copy(packets[0], payload)
 				sizes[0] = len(payload)
 				eps[0] = &infra.WRRPEndpoint{
+					Addr:          infra.WrrpFakeAddrPort(header.FromID),
 					RemoteId:      header.FromID,
 					TransportType: infra.WRRP,
 				}
