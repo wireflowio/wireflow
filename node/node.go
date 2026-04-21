@@ -114,7 +114,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 		node       *Node
 		v4conn     *net.UDPConn
 		v6conn     *net.UDPConn
-		wrrp       *wrrper.WRRPClient
+		wrrp       infra.Wrrp
 		privateKey wgtypes.Key
 	)
 
@@ -231,18 +231,22 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// WRRP is an optional relay channel used as a fallback when ICE traversal
 	// fails (e.g. symmetric NAT on both sides).
 	if cfg.Flags.EnableWrrp {
-		wrrpUrl := cfg.Flags.WrrperURL
-		if wrrpUrl == "" {
-			wrrpUrl = node.current.WrrpUrl
-		}
-
-		if wrrpUrl != "" {
-			// probeFactory.Handle is passed directly: probeFactory already exists
-			// at this point so no closure is needed on this side of the circular dep.
-			wrrp, err = wrrper.NewWrrpClient(localIdentity.ID(), wrrpUrl, node.probeFactory.Handle)
-			if err != nil {
-				return nil, err
+		if cfg.Flags.WrrpQuicURL != "" {
+			wrrp, err = wrrper.NewQUICWrrpClient(localIdentity.ID(), cfg.Flags.WrrpQuicURL, node.probeFactory.Handle)
+		} else {
+			wrrpUrl := cfg.Flags.WrrperURL
+			if wrrpUrl == "" {
+				wrrpUrl = node.current.WrrpUrl
 			}
+
+			if wrrpUrl != "" {
+				// probeFactory.Handle is passed directly: probeFactory already exists
+				// at this point so no closure is needed on this side of the circular dep.
+				wrrp, err = wrrper.NewWrrpClient(localIdentity.ID(), wrrpUrl, node.probeFactory.Handle)
+			}
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 
