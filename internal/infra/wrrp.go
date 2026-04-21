@@ -62,10 +62,16 @@ func (e *WRRPEndpoint) ClearSrc() {
 
 func (e *WRRPEndpoint) Clear() {}
 func (e *WRRPEndpoint) DstToString() string {
-	if e.TransportType == WRRP {
-		return fmt.Sprintf("wrrp://%d", e.RemoteId)
+	// For display purposes (wg show / UAPI GET), always prefer the physical
+	// relay address when available.  Routing is driven by DstToBytes() (which
+	// uses RemoteId for WRRP) and Send() (which checks TransportType), so
+	// returning the relay IP:port here does not affect the data plane.
+	if e.Addr.IsValid() {
+		return e.Addr.String()
 	}
-	return e.Addr.String()
+	// Fallback for receive-path endpoints that have no Addr (e.g. constructed
+	// in ReceiveFunc with only RemoteId).  These are never queried by wg show.
+	return fmt.Sprintf("wrrp://%d", e.RemoteId)
 }
 
 func (e *WRRPEndpoint) DstToBytes() []byte {
