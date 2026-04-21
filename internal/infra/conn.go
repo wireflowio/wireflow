@@ -159,6 +159,14 @@ func (b *DefaultBind) ParseEndpoint(s string) (conn.Endpoint, error) {
 		return nil, err
 	}
 
+	if IsWrrpFakeAddr(e.Addr()) {
+		return &WRRPEndpoint{
+			Addr:          e,
+			RemoteId:      RemoteIdFromWrrpFakeAddr(e.Addr()),
+			TransportType: WRRP,
+		}, nil
+	}
+
 	return &WRRPEndpoint{
 		Addr:          e,
 		TransportType: ICE,

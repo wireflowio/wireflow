@@ -174,7 +174,7 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 				AllowedIPs:           rp.AllowedIPs,
 			}
 			if transport.Type() == infra.WRRP {
-				setPeer.Endpoint = fmt.Sprintf("wrrp://%d", remoteId.ID().ToUint64())
+				setPeer.Endpoint = infra.WrrpFakeAddrPort(remoteId.ID().ToUint64()).String()
 			} else {
 				setPeer.Endpoint = transport.RemoteAddr()
 			}
