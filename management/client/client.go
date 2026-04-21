@@ -111,7 +111,7 @@ func (c *Client) Register(ctx context.Context, token, interfaceName string) (*in
 		Platform:            runtime.GOOS,
 		AppID:               config.Conf.AppId,
 		PersistentKeepalive: 25,
-		Port:                51820,
+		Port:                config.Conf.WgPort,
 		Token:               token,
 	}
 

@@ -107,5 +107,6 @@ Use --save to persist the current flags back to the config file.`,
 	fs.StringP("vm-endpoint", "", "", "use to push tele")
 	fs.BoolP("enable-metric", "", false, "expose Prometheus metrics endpoint")
 	fs.BoolP("enable-sys-log", "", false, "enable verbose WireGuard and ICE debug logging")
+	fs.IntP("wg-port", "", 51820, "UDP port for WireGuard and ICE (default 51820)")
 	return cmd
 }

@@ -45,11 +45,11 @@ func Start(ctx context.Context, flags *config.Config) error {
 	// peers config to wireGuard
 	agentCfg := &NodeConfig{
 		Logger:        logger,
-		Port:          51820,
+		Port:          flags.WgPort,
 		InterfaceName: flags.InterfaceName,
 		Token:         flags.Token,
 		ShowLog:       flags.EnableSysLog,
-		Flags: flags,
+		Flags:         flags,
 	}
 
 	if flags.EnableDaemon {

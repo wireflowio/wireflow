@@ -51,7 +51,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 
 	agentCfg := &NodeConfig{
 		Logger:        logger,
-		Port:          51820,
+		Port:          flags.WgPort,
 		InterfaceName: flags.InterfaceName,
 		Token:         flags.Token,
 		ShowLog:       flags.EnableSysLog,

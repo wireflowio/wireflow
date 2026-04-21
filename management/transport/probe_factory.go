@@ -190,7 +190,7 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 				return err
 			}
 
-			return provisioner.SetupNAT(rp.InterfaceName)
+			return provisioner.SetupNAT(provisioner.GetIfaceName())
 		},
 		onFailure: func(err error) error {
 			// ErrDialerClosed: the iceDialer was explicitly shut down because
