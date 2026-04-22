@@ -73,6 +73,8 @@ func (s *Server) apiRouter() error {
 
 	s.relayRouter()
 
+	s.memberRouter()
+
 	s.invitationRouter()
 
 	s.monitorRouter()

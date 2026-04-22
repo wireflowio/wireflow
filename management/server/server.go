@@ -53,6 +53,7 @@ type Server struct {
 	policyController  controller.PolicyController
 
 	workspaceController  controller.WorkspaceController
+	memberController     controller.WorkspaceMemberController
 	tokenController      controller.TokenController
 	relayController      controller.RelayController
 	invitationController controller.InvitationController
@@ -151,6 +152,7 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		userController:       controller.NewUserController(st),
 		policyController:     controller.NewPolicyController(client, st),
 		workspaceController:  controller.NewWorkspaceController(client, st),
+		memberController:     controller.NewWorkspaceMemberController(st),
 		tokenController:      controller.NewTokenController(client, st),
 		relayController:      controller.NewRelayController(client, st),
 		invitationController: controller.NewInvitationController(st),
