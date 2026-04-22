@@ -80,6 +80,7 @@ func NewMonitorServiceWithOptions(opts MonitorServiceOptions) (MonitorService, e
 		api:     v1.NewAPI(client),
 		log:     opts.Logger,
 		timeout: opts.Timeout,
+		cache:   cache.New(5*time.Minute, 10*time.Minute),
 	}, nil
 }
 
