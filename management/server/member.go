@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Server) memberRouter() {
-	g := s.Group("/api/v1/workspaces/:wsID/members")
+	g := s.Group("/api/v1/workspaces/:id/members")
 	g.Use(middleware.AuthMiddleware())
 	{
 		g.GET("", s.handleListMembers())
@@ -20,7 +20,7 @@ func (s *Server) memberRouter() {
 
 func (s *Server) handleListMembers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		wsID := c.Param("wsID")
+		wsID := c.Param("id")
 		members, err := s.memberController.List(c.Request.Context(), wsID)
 		if err != nil {
 			resp.Error(c, err.Error())
@@ -32,7 +32,7 @@ func (s *Server) handleListMembers() gin.HandlerFunc {
 
 func (s *Server) handleUpdateMemberRole() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		wsID := c.Param("wsID")
+		wsID := c.Param("id")
 		userID := c.Param("userID")
 
 		var req struct {
@@ -53,7 +53,7 @@ func (s *Server) handleUpdateMemberRole() gin.HandlerFunc {
 
 func (s *Server) handleRemoveMember() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		wsID := c.Param("wsID")
+		wsID := c.Param("id")
 		userID := c.Param("userID")
 
 		if err := s.memberController.Remove(c.Request.Context(), wsID, userID); err != nil {

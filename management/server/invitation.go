@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Server) invitationRouter() {
-	g := s.Group("/api/v1/workspaces/:wsID/invitations")
+	g := s.Group("/api/v1/workspaces/:id/invitations")
 	g.Use(middleware.AuthMiddleware())
 	{
 		g.POST("", s.handleCreateInvitation())
@@ -27,7 +27,7 @@ func (s *Server) invitationRouter() {
 
 func (s *Server) handleCreateInvitation() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		wsID := c.Param("wsID")
+		wsID := c.Param("id")
 		inviterID := c.GetString("user_id")
 
 		var req struct {
@@ -50,7 +50,7 @@ func (s *Server) handleCreateInvitation() gin.HandlerFunc {
 
 func (s *Server) handleListInvitations() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		wsID := c.Param("wsID")
+		wsID := c.Param("id")
 		invs, err := s.invitationController.List(c.Request.Context(), wsID)
 		if err != nil {
 			resp.Error(c, err.Error())
