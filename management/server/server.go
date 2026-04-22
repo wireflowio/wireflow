@@ -28,6 +28,7 @@ import (
 	managementnats "wireflow/management/nats"
 	"wireflow/management/resource"
 	"wireflow/management/server/middleware"
+	"wireflow/management/service"
 	"wireflow/pkg/version"
 
 	"github.com/gin-gonic/gin"
@@ -60,8 +61,10 @@ type Server struct {
 
 	monitorController controller.MonitorController
 	profileController controller.ProfileController
+	auditController   controller.AuditController
 
 	tenantMiddleware *middleware.TenantMiddleware
+	auditService     service.AuditService
 
 	store    store.Store
 	presence *managementnats.NodePresenceStore
@@ -137,6 +140,9 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 
 	presence := managementnats.NewNodePresenceStore()
 
+	auditSvc := service.NewAuditService(st)
+	auditSvc.Start(ctx)
+
 	s := &Server{
 		Engine:               gin.Default(),
 		logger:               logger,
@@ -158,7 +164,9 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		invitationController: controller.NewInvitationController(st),
 		monitorController:    controller.NewMonitorController(cfg.Monitor.Address),
 		profileController:    controller.NewProfileController(st),
+		auditController:      controller.NewAuditController(auditSvc),
 		tenantMiddleware:     middleware.NewTenantMiddleware(st),
+		auditService:         auditSvc,
 		store:                st,
 	}
 

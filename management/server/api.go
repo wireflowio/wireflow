@@ -16,6 +16,8 @@ import (
 func (s *Server) apiRouter() error {
 	// 跨域处理（对接 Vite 开发环境）
 	s.Use(middleware.CORSMiddleware())
+	// 审计中间件：记录所有非 GET 写操作
+	s.Use(middleware.AuditMiddleware(s.auditService))
 
 	// Dex OIDC 为可选依赖：providerUrl 为空时跳过初始化，注册降级 handler。
 	if s.cfg.Dex.ProviderUrl != "" {
@@ -82,6 +84,8 @@ func (s *Server) apiRouter() error {
 	s.profileRouter()
 
 	s.dashboardRouter()
+
+	s.auditRouter()
 
 	// SPA 静态资源：必须最后注册，通过 NoRoute 捕获所有未匹配路径
 	s.logger.Info("Registering SPA static files")

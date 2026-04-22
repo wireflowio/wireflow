@@ -79,6 +79,10 @@ const data = {
           url: "/settings/relays",
         },
         {
+          title: "Audit Logs",
+          url: "/settings/audit",
+        },
+        {
           title: "General",
           url: "#",
         },

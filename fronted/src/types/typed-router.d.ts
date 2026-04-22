@@ -140,6 +140,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/settings/audit/': RouteRecordInfo<
+      '/settings/audit/',
+      '/settings/audit',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/settings/relays/': RouteRecordInfo<
       '/settings/relays/',
       '/settings/relays',
@@ -283,6 +290,12 @@ declare module 'vue-router/auto-routes' {
     'src/pages/manage/workspaces/index.vue': {
       routes:
         | '/manage/workspaces/'
+      views:
+        | never
+    }
+    'src/pages/settings/audit/index.vue': {
+      routes:
+        | '/settings/audit/'
       views:
         | never
     }

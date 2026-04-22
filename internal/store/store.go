@@ -21,6 +21,7 @@ type Store interface {
 	Profiles() ProfileRepository
 	UserIdentities() UserIdentityRepository
 	WorkspaceInvitations() WorkspaceInvitationRepository
+	AuditLogs() AuditLogRepository
 
 	// Tx 在同一个数据库事务中执行 fn，fn 内通过参数 s 访问所有 Repository。
 	Tx(ctx context.Context, fn func(s Store) error) error
@@ -84,4 +85,24 @@ type WorkspaceInvitationRepository interface {
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*models.WorkspaceInvitation, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
 	GetPendingByEmailAndWorkspace(ctx context.Context, email, workspaceID string) (*models.WorkspaceInvitation, error)
+}
+
+// AuditLogFilter defines query parameters for audit log listing.
+type AuditLogFilter struct {
+	WorkspaceID string
+	Action      string
+	Resource    string
+	Status      string
+	Keyword     string // searches UserName and ResourceName
+	From        string // RFC3339 or date string
+	To          string
+	Page        int
+	PageSize    int
+}
+
+// AuditLogRepository manages append-only audit log records.
+type AuditLogRepository interface {
+	Create(ctx context.Context, log *models.AuditLog) error
+	BatchCreate(ctx context.Context, logs []*models.AuditLog) error
+	List(ctx context.Context, filter AuditLogFilter) ([]*models.AuditLog, int64, error)
 }
