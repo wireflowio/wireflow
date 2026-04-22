@@ -8,6 +8,7 @@ import {
   Trash2, ChevronLeft, ChevronRight, Search,
   Shield, UserCheck, User, Eye, Clock, Mail,
   CheckCircle2, AlertCircle, XCircle,
+  ArrowUpRight, ArrowDownRight,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -364,87 +365,102 @@ const invTable = useVueTable({
   <div class="flex flex-col gap-5 p-6 animate-in fade-in duration-300">
 
     <!-- ── Stat cards ──────────────────────────────────────────────── -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 
       <!-- 全部成员 -->
-      <div class="relative bg-card border border-border rounded-xl p-4 overflow-hidden">
-        <div class="absolute -right-3 -top-3 size-16 rounded-full bg-primary/5" />
-        <div class="relative">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">全部成员</span>
-            <div class="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users class="size-3.5 text-primary" />
-            </div>
+      <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="text-muted-foreground text-sm font-medium">全部成员</span>
+            <span class="text-2xl font-bold tracking-tight">{{ stats.total }}</span>
           </div>
-          <p class="text-3xl font-black tracking-tighter tabular-nums">{{ stats.total }}</p>
-          <div class="flex -space-x-2 mt-3">
+          <div class="bg-muted rounded-lg p-2">
+            <Users class="text-muted-foreground size-4" />
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1 text-sm">
+          <div class="flex -space-x-1.5">
             <div
               v-for="(name, i) in stats.recentNames" :key="i"
-              class="size-6 rounded-full ring-2 ring-card flex items-center justify-center text-[9px] font-black text-white shrink-0"
+              class="size-5 rounded-full ring-2 ring-card flex items-center justify-center text-[8px] font-black text-white shrink-0"
               :class="avatarColor(name)"
             >{{ firstChar(name) }}</div>
           </div>
+          <span v-if="stats.total > 4" class="text-muted-foreground text-xs ml-1">
+            +{{ stats.total - 4 }} 人
+          </span>
         </div>
       </div>
 
       <!-- 管理员 -->
-      <div class="relative bg-card border border-border rounded-xl p-4 overflow-hidden">
-        <div class="absolute -right-3 -top-3 size-16 rounded-full bg-primary/5" />
-        <div class="relative">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">管理员</span>
-            <div class="size-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Shield class="size-3.5 text-primary" />
-            </div>
+      <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="text-muted-foreground text-sm font-medium">管理员</span>
+            <span class="text-2xl font-bold tracking-tight">{{ stats.admins }}</span>
           </div>
-          <p class="text-3xl font-black tracking-tighter tabular-nums text-primary">{{ stats.admins }}</p>
-          <p class="text-[11px] text-muted-foreground/60 mt-2">拥有完整管理权限</p>
+          <div class="bg-muted rounded-lg p-2">
+            <Shield class="text-muted-foreground size-4" />
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1 text-sm">
+          <ArrowUpRight class="text-muted-foreground size-4 shrink-0" />
+          <span class="text-muted-foreground">共 <span class="font-semibold text-foreground">{{ stats.admins }}</span> 人拥有管理权限</span>
         </div>
       </div>
 
       <!-- 活跃 -->
-      <div class="relative bg-card border border-border rounded-xl p-4 overflow-hidden">
-        <div class="absolute -right-3 -top-3 size-16 rounded-full bg-emerald-500/5" />
-        <div class="relative">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">活跃成员</span>
-            <div class="size-7 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <span class="relative flex size-2">
-                <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span class="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-            </div>
+      <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
+        <div class="flex items-start justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="text-muted-foreground text-sm font-medium">活跃成员</span>
+            <span class="text-2xl font-bold tracking-tight">{{ stats.active }}</span>
           </div>
-          <p class="text-3xl font-black tracking-tighter tabular-nums text-emerald-500">{{ stats.active }}</p>
-          <p class="text-[11px] text-muted-foreground/60 mt-2">已完成加入</p>
+          <div class="bg-muted rounded-lg p-2">
+            <UserCheck class="text-muted-foreground size-4" />
+          </div>
+        </div>
+        <div class="mt-3 flex items-center gap-1 text-sm">
+          <ArrowUpRight class="text-emerald-600 size-4 shrink-0" />
+          <span class="text-emerald-600 font-semibold">
+            {{ stats.total ? Math.round((stats.active / stats.total) * 100) : 0 }}%
+          </span>
+          <span class="text-muted-foreground">活跃率</span>
         </div>
       </div>
 
       <!-- 待接受邀请 -->
-      <div class="relative bg-card border border-border rounded-xl p-4 overflow-hidden">
-        <div class="absolute -right-3 -top-3 size-16 rounded-full bg-amber-400/5" />
-        <div class="relative">
-          <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">待接受邀请</span>
-            <div class="size-7 rounded-lg bg-amber-400/10 flex items-center justify-center">
-              <Clock class="size-3.5 text-amber-400" />
-            </div>
+      <button
+        class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm text-left hover:shadow-md transition-shadow"
+        :class="activeTab === 'invitations' ? 'ring-2 ring-amber-400/20 border-amber-400/30' : ''"
+        @click="activeTab = 'invitations'"
+      >
+        <div class="flex items-start justify-between">
+          <div class="flex flex-col gap-1">
+            <span class="text-muted-foreground text-sm font-medium">待接受邀请</span>
+            <span class="text-2xl font-bold tracking-tight">{{ stats.pendingInvitations }}</span>
           </div>
-          <p class="text-3xl font-black tracking-tighter tabular-nums text-amber-400">{{ stats.pendingInvitations }}</p>
-          <div class="mt-2">
-            <span v-if="stats.pendingInvitations > 0"
-              class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-amber-400/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-400/20"
-            ><AlertCircle class="size-3" /> 等待接受</span>
-            <span v-else
-              class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20"
-            ><CheckCircle2 class="size-3" /> 无待处理</span>
+          <div class="bg-muted rounded-lg p-2">
+            <Clock class="text-muted-foreground size-4" />
           </div>
         </div>
-      </div>
+        <div class="mt-3 flex items-center gap-1 text-sm">
+          <component
+            :is="stats.pendingInvitations === 0 ? ArrowUpRight : ArrowDownRight"
+            :class="stats.pendingInvitations === 0 ? 'text-emerald-600' : 'text-amber-500'"
+            class="size-4 shrink-0"
+          />
+          <span :class="stats.pendingInvitations === 0 ? 'text-emerald-600 font-semibold' : 'text-amber-500 font-semibold'">
+            {{ stats.pendingInvitations === 0 ? '全部已接受' : stats.pendingInvitations + ' 条待处理' }}
+          </span>
+          <span class="text-muted-foreground">{{ stats.pendingInvitations === 0 ? '无需处理' : '等待接受' }}</span>
+        </div>
+      </button>
+
     </div>
 
     <!-- ── Tabs + Toolbar ──────────────────────────────────────────── -->
-    <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center gap-2">
       <!-- Tabs -->
       <div class="flex bg-muted/50 rounded-lg p-1 border border-border gap-1">
         <button
@@ -473,8 +489,8 @@ const invTable = useVueTable({
       </div>
 
       <!-- Toolbar right -->
-      <div class="flex items-center gap-2">
-        <div v-if="activeTab === 'members'" class="relative w-56">
+      <div class="ml-auto flex items-center gap-2">
+        <div v-if="activeTab === 'members'" class="relative w-72">
           <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             v-model="searchValue"
