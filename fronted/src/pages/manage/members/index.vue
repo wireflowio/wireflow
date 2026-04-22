@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, watch, onMounted, h } from 'vue'
 import {
-  useVueTable, getCoreRowModel, FlexRender, type ColumnDef,
+  useVueTable, getCoreRowModel, getPaginationRowModel,
+  FlexRender, type ColumnDef,
 } from '@tanstack/vue-table'
 import {
   Users, Plus, RefreshCw, MoreHorizontal, Pencil,
-  Trash2, ChevronLeft, ChevronRight, Search,
+  Trash2, Search,
   Shield, UserCheck, User, Eye, Clock, Mail,
   CheckCircle2, AlertCircle, XCircle,
   ArrowUpRight, ArrowDownRight,
@@ -24,9 +25,10 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import AppAlertDialog from '@/components/AlertDialog.vue'
+import DataTablePagination from '@/components/DataTablePagination.vue'
 import { listMembers, updateMemberRole, removeMember } from '@/api/member'
 import { listInvitations, createInvitation, revokeInvitation } from '@/api/invitation'
-import { useTable, useAction } from '@/composables/useApi'
+import { useTable } from '@/composables/useApi'
 import { toast } from 'vue-sonner'
 
 definePage({
@@ -107,11 +109,6 @@ const stats = computed(() => {
 
 // ── Search ────────────────────────────────────────────────────────
 const searchValue = ref('')
-let searchTimer: ReturnType<typeof setTimeout>
-function onSearchInput() {
-  clearTimeout(searchTimer)
-  searchTimer = setTimeout(() => refreshMembers(), 400)
-}
 
 const filteredMembers = computed(() => {
   const q = searchValue.value.toLowerCase().trim()
@@ -120,6 +117,9 @@ const filteredMembers = computed(() => {
     m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q)
   )
 })
+
+// Reset to first page whenever the search filter changes.
+watch(searchValue, () => memberTable.setPageIndex(0))
 
 // ── Remove member ─────────────────────────────────────────────────
 const removeTarget = ref<any>(null)
@@ -352,12 +352,16 @@ const memberTable = useVueTable({
   get data() { return filteredMembers.value as any[] },
   columns: memberColumns,
   getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  initialState: { pagination: { pageSize: 10 } },
 })
 
 const invTable = useVueTable({
   get data() { return invitations.value as any[] },
   columns: invColumns,
   getCoreRowModel: getCoreRowModel(),
+  getPaginationRowModel: getPaginationRowModel(),
+  initialState: { pagination: { pageSize: 10 } },
 })
 </script>
 
@@ -545,6 +549,7 @@ const invTable = useVueTable({
           </TableRow>
         </TableBody>
       </Table>
+      <DataTablePagination :table="memberTable" />
     </div>
 
     <!-- ── Invitations Table ───────────────────────────────────────── -->
@@ -576,6 +581,7 @@ const invTable = useVueTable({
           </TableRow>
         </TableBody>
       </Table>
+      <DataTablePagination :table="invTable" />
     </div>
 
     <!-- ── Remove confirm ─────────────────────────────────────────── -->
