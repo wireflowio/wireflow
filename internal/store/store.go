@@ -19,6 +19,8 @@ type Store interface {
 	Workspaces() WorkspaceRepository
 	WorkspaceMembers() WorkspaceMemberRepository
 	Profiles() ProfileRepository
+	UserIdentities() UserIdentityRepository
+	WorkspaceInvitations() WorkspaceInvitationRepository
 
 	// Tx 在同一个数据库事务中执行 fn，fn 内通过参数 s 访问所有 Repository。
 	Tx(ctx context.Context, fn func(s Store) error) error
@@ -30,7 +32,7 @@ type Store interface {
 type UserRepository interface {
 	GetByID(ctx context.Context, id string) (*models.User, error)
 	GetByUsername(ctx context.Context, username string) (*models.User, error)
-	GetByExternalID(ctx context.Context, externalID string) (*models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	Login(ctx context.Context, username, password string) (*models.User, error)
 	Create(ctx context.Context, user *models.User) error
 	Update(ctx context.Context, user *models.User) error
@@ -66,4 +68,20 @@ type WorkspaceMemberRepository interface {
 type ProfileRepository interface {
 	Get(ctx context.Context, userID string) (*models.UserProfile, error)
 	Upsert(ctx context.Context, profile *models.UserProfile) error
+}
+
+// UserIdentityRepository manages external identity provider links.
+type UserIdentityRepository interface {
+	GetByProviderAndExternalID(ctx context.Context, provider, externalID string) (*models.UserIdentity, error)
+	ListByUser(ctx context.Context, userID string) ([]*models.UserIdentity, error)
+	Create(ctx context.Context, identity *models.UserIdentity) error
+}
+
+// WorkspaceInvitationRepository manages workspace invitations.
+type WorkspaceInvitationRepository interface {
+	Create(ctx context.Context, inv *models.WorkspaceInvitation) error
+	GetByToken(ctx context.Context, token string) (*models.WorkspaceInvitation, error)
+	ListByWorkspace(ctx context.Context, workspaceID string) ([]*models.WorkspaceInvitation, error)
+	UpdateStatus(ctx context.Context, id string, status string) error
+	GetPendingByEmailAndWorkspace(ctx context.Context, email, workspaceID string) (*models.WorkspaceInvitation, error)
 }

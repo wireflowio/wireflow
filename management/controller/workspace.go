@@ -4,7 +4,6 @@ import (
 	"context"
 	"wireflow/internal/store"
 	"wireflow/management/dto"
-	"wireflow/management/models"
 	"wireflow/management/resource"
 	"wireflow/management/service"
 	"wireflow/management/vo"
@@ -38,10 +37,6 @@ func (c *workspaceController) AddWorkspace(ctx context.Context, workspaceDto *dt
 // nolint:all
 type workspaceMemberController struct {
 	workspaceMemberService service.WorkspaceMemberService
-}
-
-func (c workspaceController) OnboardExternalUser(ctx context.Context, userId, extEmail string) (*models.User, error) {
-	return c.workspaceService.OnboardExternalUser(ctx, userId, extEmail)
 }
 
 func NewWorkspaceController(client *resource.Client, st store.Store) WorkspaceController {

@@ -27,6 +27,7 @@ import (
 	"wireflow/management/controller"
 	managementnats "wireflow/management/nats"
 	"wireflow/management/resource"
+	"wireflow/management/server/middleware"
 	"wireflow/pkg/version"
 
 	"github.com/gin-gonic/gin"
@@ -51,12 +52,15 @@ type Server struct {
 	userController    controller.UserController
 	policyController  controller.PolicyController
 
-	workspaceController controller.WorkspaceController
-	tokenController     controller.TokenController
-	relayController     controller.RelayController
+	workspaceController  controller.WorkspaceController
+	tokenController      controller.TokenController
+	relayController      controller.RelayController
+	invitationController controller.InvitationController
 
 	monitorController controller.MonitorController
 	profileController controller.ProfileController
+
+	tenantMiddleware *middleware.TenantMiddleware
 
 	store    store.Store
 	presence *managementnats.NodePresenceStore
@@ -133,25 +137,27 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 	presence := managementnats.NewNodePresenceStore()
 
 	s := &Server{
-		Engine:              gin.Default(),
-		logger:              logger,
-		listen:              cfg.Listen,
-		nats:                signal,
-		manager:             mgr,
-		cacheReady:          cacheReady,
-		client:              client,
-		cfg:                 cfg,
-		presence:            presence,
-		peerController:      controller.NewPeerController(client, st, presence),
-		networkController:   controller.NewNetworkController(client, st),
-		userController:      controller.NewUserController(st),
-		policyController:    controller.NewPolicyController(client, st),
-		workspaceController: controller.NewWorkspaceController(client, st),
-		tokenController:     controller.NewTokenController(client, st),
-		relayController:     controller.NewRelayController(client, st),
-		monitorController:   controller.NewMonitorController(cfg.Monitor.Address),
-		profileController:   controller.NewProfileController(st),
-		store:               st,
+		Engine:               gin.Default(),
+		logger:               logger,
+		listen:               cfg.Listen,
+		nats:                 signal,
+		manager:              mgr,
+		cacheReady:           cacheReady,
+		client:               client,
+		cfg:                  cfg,
+		presence:             presence,
+		peerController:       controller.NewPeerController(client, st, presence),
+		networkController:    controller.NewNetworkController(client, st),
+		userController:       controller.NewUserController(st),
+		policyController:     controller.NewPolicyController(client, st),
+		workspaceController:  controller.NewWorkspaceController(client, st),
+		tokenController:      controller.NewTokenController(client, st),
+		relayController:      controller.NewRelayController(client, st),
+		invitationController: controller.NewInvitationController(st),
+		monitorController:    controller.NewMonitorController(cfg.Monitor.Address),
+		profileController:    controller.NewProfileController(st),
+		tenantMiddleware:     middleware.NewTenantMiddleware(st),
+		store:                st,
 	}
 
 	// initAdmins：DB 已就绪后执行；失败只告警，不阻断启动。

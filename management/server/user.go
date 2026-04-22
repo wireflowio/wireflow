@@ -58,7 +58,7 @@ func (s *Server) login(c *gin.Context) {
 		return
 	}
 
-	businessToken, err := utils.GenerateBusinessJWT(user.ID, user.Username)
+	businessToken, err := utils.GenerateBusinessJWT(user.ID, user.Email, string(user.SystemRole))
 	if err != nil {
 		resp.Error(c, err.Error())
 		return

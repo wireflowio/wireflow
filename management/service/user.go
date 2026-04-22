@@ -21,7 +21,7 @@ type UserService interface {
 	GetMe(ctx context.Context, id string) (*models.User, error)
 	List(ctx context.Context, req *dto.PageRequest) (*dto.PageResult[vo.UserVo], error)
 
-	OnboardExternalUser(ctx context.Context, subject string, email string) (*models.User, error)
+	OnboardExternalUser(ctx context.Context, provider, subject, email string) (*models.User, error)
 	AddUser(ctx context.Context, dtos *dto.UserDto) error
 	DeleteUser(ctx context.Context, username string) error
 }
@@ -40,7 +40,6 @@ func (u *userService) AddUser(ctx context.Context, dto *dto.UserDto) error {
 		newUser := &models.User{
 			Username: dto.Username,
 			Password: dto.Password,
-			Role:     dto.Role,
 		}
 		if err := s.Users().Create(ctx, newUser); err != nil {
 			return err
@@ -58,16 +57,40 @@ func (u *userService) AddUser(ctx context.Context, dto *dto.UserDto) error {
 	})
 }
 
-func (u *userService) OnboardExternalUser(ctx context.Context, subject string, email string) (*models.User, error) {
-	existing, err := u.store.Users().GetByExternalID(ctx, subject)
+func (u *userService) OnboardExternalUser(ctx context.Context, provider, subject, email string) (*models.User, error) {
+	// Check if identity already exists
+	identity, err := u.store.UserIdentities().GetByProviderAndExternalID(ctx, provider, subject)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	if existing != nil {
-		return existing, nil
+	if identity != nil {
+		return u.store.Users().GetByID(ctx, identity.UserID)
 	}
-	user := &models.User{ExternalID: subject, Email: email}
-	return user, u.store.Users().Create(ctx, user)
+
+	// Look up user by email; create if not found
+	user, err := u.store.Users().GetByEmail(ctx, email)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	if user == nil {
+		user = &models.User{Email: email}
+		if err := u.store.Users().Create(ctx, user); err != nil {
+			return nil, err
+		}
+	}
+
+	// Create the identity link
+	newIdentity := &models.UserIdentity{
+		UserID:     user.ID,
+		Provider:   provider,
+		ExternalID: subject,
+		Email:      email,
+	}
+	if err := u.store.UserIdentities().Create(ctx, newIdentity); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (u *userService) List(ctx context.Context, req *dto.PageRequest) (*dto.PageResult[vo.UserVo], error) {
@@ -82,9 +105,9 @@ func (u *userService) InitAdmin(ctx context.Context, admins []config.AdminConfig
 		}
 		if existing == nil {
 			newUser := models.User{
-				Username: admin.Username,
-				Password: admin.Password,
-				Role:     dto.RoleAdmin,
+				Username:   admin.Username,
+				Password:   admin.Password,
+				SystemRole: dto.SystemRolePlatformAdmin,
 			}
 			if err = u.store.Users().Create(ctx, &newUser); err != nil {
 				u.log.Error("admin bootstrap failed", err, "username", admin.Username)

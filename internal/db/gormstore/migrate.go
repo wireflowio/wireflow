@@ -13,7 +13,9 @@ func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&models.User{},
 		&models.UserProfile{},
+		&models.UserIdentity{},
 		&models.Workspace{},
 		&models.WorkspaceMember{},
+		&models.WorkspaceInvitation{},
 	)
 }
