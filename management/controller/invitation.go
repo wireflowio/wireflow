@@ -6,12 +6,15 @@ import (
 	"wireflow/management/dto"
 	"wireflow/management/models"
 	"wireflow/management/service"
+	"wireflow/management/vo"
 )
 
 type InvitationController interface {
 	Create(ctx context.Context, workspaceID, inviterID, email string, role dto.WorkspaceRole) (*models.WorkspaceInvitation, error)
+	Preview(ctx context.Context, token string) (*vo.InvitePreviewVo, error)
 	Accept(ctx context.Context, token, userID string) error
-	Revoke(ctx context.Context, invitationID string) error
+	RegisterAndAccept(ctx context.Context, token, username, password string) (string, error)
+	Revoke(ctx context.Context, callerID, invitationID string) error
 	List(ctx context.Context, workspaceID string) ([]*models.WorkspaceInvitation, error)
 }
 
@@ -27,12 +30,20 @@ func (c *invitationController) Create(ctx context.Context, workspaceID, inviterI
 	return c.svc.Create(ctx, workspaceID, inviterID, email, role)
 }
 
+func (c *invitationController) Preview(ctx context.Context, token string) (*vo.InvitePreviewVo, error) {
+	return c.svc.Preview(ctx, token)
+}
+
 func (c *invitationController) Accept(ctx context.Context, token, userID string) error {
 	return c.svc.Accept(ctx, token, userID)
 }
 
-func (c *invitationController) Revoke(ctx context.Context, invitationID string) error {
-	return c.svc.Revoke(ctx, invitationID)
+func (c *invitationController) RegisterAndAccept(ctx context.Context, token, username, password string) (string, error) {
+	return c.svc.RegisterAndAccept(ctx, token, username, password)
+}
+
+func (c *invitationController) Revoke(ctx context.Context, callerID, invitationID string) error {
+	return c.svc.Revoke(ctx, callerID, invitationID)
 }
 
 func (c *invitationController) List(ctx context.Context, workspaceID string) ([]*models.WorkspaceInvitation, error) {

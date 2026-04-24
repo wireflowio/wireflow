@@ -46,6 +46,7 @@ func toAuditVo(l *models.AuditLog) vo.AuditLogVo {
 		CreatedAt:    l.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UserID:       l.UserID,
 		UserName:     l.UserName,
+		UserEmail:    l.UserEmail,
 		UserIP:       l.UserIP,
 		WorkspaceID:  l.WorkspaceID,
 		Action:       l.Action,

@@ -98,14 +98,14 @@ func (d *Dex) Login(c *gin.Context) {
 	//	return
 	//}
 
-	user, err := d.userService.OnboardExternalUser(ctx, "dex", dexClaims.Subject, dexClaims.Email)
+	user, err := d.userService.OnboardExternalUser(ctx, "dex", dexClaims.Subject, dexClaims.Email, config.GlobalConfig.Dex.AdminEmails)
 	if err != nil {
 		resp.Error(c, fmt.Sprintf("Failed to get user: %v", err))
 		return
 	}
 
 	// 6. 签发你自己的业务 JWT (给前端后续请求使用)
-	businessToken, _ := utils.GenerateBusinessJWT(user.ID, user.Email, string(user.SystemRole))
+	businessToken, _ := utils.GenerateBusinessJWT(user.ID, user.Email, user.Username, string(user.SystemRole))
 
 	// 7. 返回结果或重定向
 	// 私有云部署通常直接重定向回前端 Dashboard，带上 Token

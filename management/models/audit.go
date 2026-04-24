@@ -9,9 +9,10 @@ type AuditLog struct {
 	CreatedAt time.Time `gorm:"index"                       json:"createdAt"`
 
 	// 操作者
-	UserID   string `gorm:"index;size:36"  json:"userId"`
-	UserName string `gorm:"size:100"       json:"userName"` // denormalized for display
-	UserIP   string `gorm:"size:45"        json:"userIP"`
+	UserID    string `gorm:"index;size:36"  json:"userId"`
+	UserName  string `gorm:"size:100"       json:"userName"`  // denormalized for display
+	UserEmail string `gorm:"size:254"       json:"userEmail"` // fallback display when userName is empty
+	UserIP    string `gorm:"size:45"        json:"userIP"`
 
 	// 作用域
 	WorkspaceID string `gorm:"index;size:36" json:"workspaceId"` // empty = platform-level

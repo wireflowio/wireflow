@@ -9,6 +9,7 @@ export interface AuditLogVo {
   createdAt: string
   userId: string
   userName: string
+  userEmail: string
   userIP: string
   workspaceId: string
   action: string

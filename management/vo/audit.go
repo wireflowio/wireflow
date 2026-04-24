@@ -6,6 +6,7 @@ type AuditLogVo struct {
 	CreatedAt    string `json:"createdAt"`
 	UserID       string `json:"userId"`
 	UserName     string `json:"userName"`
+	UserEmail    string `json:"userEmail"`
 	UserIP       string `json:"userIP"`
 	WorkspaceID  string `json:"workspaceId"`
 	Action       string `json:"action"`

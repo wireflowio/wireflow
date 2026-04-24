@@ -21,8 +21,17 @@ func NewTenantMiddleware(st store.Store) *TenantMiddleware {
 
 func (m *TenantMiddleware) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		systemRole, _ := c.Get("system_role")
+		userID := c.GetString("user_id")
 		wsID := c.GetHeader("X-Workspace-Id")
+
+		// Query the DB for the user's current system_role so that role changes
+		// take effect immediately without requiring re-login.
+		var systemRole string
+		if userID != "" {
+			if user, err := m.store.Users().GetByID(c.Request.Context(), userID); err == nil {
+				systemRole = string(user.SystemRole)
+			}
+		}
 
 		// Platform admins may operate without a workspace, or across any workspace.
 		if systemRole == string(dto.SystemRolePlatformAdmin) {
@@ -39,7 +48,6 @@ func (m *TenantMiddleware) Handle() gin.HandlerFunc {
 			return
 		}
 
-		userID := c.GetString("user_id")
 		_, err := m.store.WorkspaceMembers().GetMembership(c.Request.Context(), wsID, userID)
 		if err != nil {
 			resp.Forbidden(c, "not a member of this workspace")

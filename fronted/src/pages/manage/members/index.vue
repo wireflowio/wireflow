@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, h } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   useVueTable, getCoreRowModel, getPaginationRowModel,
   FlexRender, type ColumnDef,
@@ -8,8 +9,9 @@ import {
   Users, Plus, RefreshCw, MoreHorizontal, Pencil,
   Trash2, Search,
   Shield, UserCheck, User, Eye, Clock, Mail,
-  CheckCircle2, AlertCircle, XCircle,
+  XCircle,
   ArrowUpRight, ArrowDownRight,
+  ChevronLeft, ChevronRight,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,27 +27,53 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import AppAlertDialog from '@/components/AlertDialog.vue'
-import DataTablePagination from '@/components/DataTablePagination.vue'
 import { listMembers, updateMemberRole, removeMember } from '@/api/member'
 import { listInvitations, createInvitation, revokeInvitation } from '@/api/invitation'
 import { useTable } from '@/composables/useApi'
 import { toast } from 'vue-sonner'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { useUserStore } from '@/stores/user'
 
 definePage({
-  meta: { title: '成员管理', description: '管理 Workspace 成员与邀请。' },
+  meta: { titleKey: 'manage.members.title', descKey: 'manage.members.desc' },
 })
+
+const { t, locale } = useI18n()
 
 // ── Active tab ────────────────────────────────────────────────────
 type Tab = 'members' | 'invitations'
 const activeTab = ref<Tab>('members')
 
 // ── Members API ───────────────────────────────────────────────────
-const { rows: members, total: memberTotal, loading: memberLoading, refresh: refreshMembers } = useTable(listMembers)
+const { rows: members, loading: memberLoading, refresh: refreshMembers } = useTable(listMembers)
 
 // ── Invitations API ───────────────────────────────────────────────
-const { rows: invitations, total: invTotal, loading: invLoading, refresh: refreshInvitations } = useTable(listInvitations)
+const { rows: invitations, total: invApiTotal, loading: invLoading, refresh: refreshInvitations } = useTable(listInvitations)
 
 onMounted(() => { refreshMembers(); refreshInvitations() })
+
+const workspaceStore = useWorkspaceStore()
+watch(() => workspaceStore.currentWorkspace?.id, (newId, oldId) => {
+  if (newId && newId !== oldId) { refreshMembers(); refreshInvitations() }
+})
+
+const userStore = useUserStore()
+
+// Current user's role in this workspace
+const currentUserRole = computed(() => {
+  const uid = String(userStore.userInfo?.id ?? '')
+  return (members.value as any[]).find(m => m.userId === uid)?.role ?? null
+})
+
+const canManageMembers = computed(() =>
+  userStore.isPlatformAdmin || currentUserRole.value === 'admin'
+)
+
+function canRevokeInv(inv: any): boolean {
+  return userStore.isPlatformAdmin ||
+    currentUserRole.value === 'admin' ||
+    inv.inviterId === String(userStore.userInfo?.id ?? '')
+}
 
 // ── Style helpers ─────────────────────────────────────────────────
 const roleStyle: Record<string, string> = {
@@ -54,9 +82,12 @@ const roleStyle: Record<string, string> = {
   member: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 ring-1 ring-violet-500/20',
   viewer: 'bg-muted text-muted-foreground ring-1 ring-border',
 }
-const roleLabel: Record<string, string> = {
-  admin: '管理员', editor: '编辑者', member: '成员', viewer: '访客',
-}
+const roleLabel = computed(() => ({
+  admin:  t('common.role.admin'),
+  editor: t('common.role.editor'),
+  member: t('common.role.member'),
+  viewer: t('common.role.viewer'),
+}))
 const roleIcon: Record<string, any> = {
   admin: Shield, editor: UserCheck, member: User, viewer: Eye,
 }
@@ -71,9 +102,12 @@ const invStatusStyle: Record<string, string> = {
   expired:  'bg-red-500/10 text-red-500 ring-1 ring-red-500/20',
   revoked:  'bg-muted text-muted-foreground ring-1 ring-border',
 }
-const invStatusLabel: Record<string, string> = {
-  pending: '待接受', accepted: '已接受', expired: '已过期', revoked: '已撤销',
-}
+const invStatusLabel = computed(() => ({
+  pending:  t('manage.members.invStatus.pending'),
+  accepted: t('manage.members.invStatus.accepted'),
+  expired:  t('manage.members.invStatus.expired'),
+  revoked:  t('manage.members.invStatus.revoked'),
+}))
 
 const avatarColors = [
   'bg-blue-500', 'bg-violet-500', 'bg-emerald-500',
@@ -89,7 +123,7 @@ function firstChar(name: string) {
 }
 function formatDate(iso?: string) {
   if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString(locale.value, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 // ── Stats ─────────────────────────────────────────────────────────
@@ -99,7 +133,7 @@ const stats = computed(() => {
   const activeCount = all.filter(m => m.status === 'active').length
   const pendingInvs = (invitations.value as any[]).filter(i => i.status === 'pending').length
   return {
-    total: memberTotal.value || all.length,
+    total: all.length,
     admins: adminCount,
     active: activeCount,
     pendingInvitations: pendingInvs,
@@ -118,7 +152,6 @@ const filteredMembers = computed(() => {
   )
 })
 
-// Reset to first page whenever the search filter changes.
 watch(searchValue, () => memberTable.setPageIndex(0))
 
 // ── Remove member ─────────────────────────────────────────────────
@@ -130,9 +163,9 @@ async function confirmRemove() {
   if (removeTarget.value) {
     try {
       await removeMember(removeTarget.value.userId)
-      toast.success('成员已移除')
+      toast.success(t('manage.members.toast.removed'))
       refreshMembers()
-    } catch { toast.error('移除失败') }
+    } catch { toast.error(t('manage.members.toast.removeFailed')) }
   }
   removeTarget.value = null
 }
@@ -153,10 +186,10 @@ async function confirmEditRole() {
   editLoading.value = true
   try {
     await updateMemberRole(editTarget.value.userId, editRole.value)
-    toast.success('角色已更新')
+    toast.success(t('manage.members.toast.roleUpdated'))
     editDialogOpen.value = false
     refreshMembers()
-  } catch { toast.error('更新失败') }
+  } catch { toast.error(t('manage.members.toast.roleFailed')) }
   editLoading.value = false
 }
 
@@ -170,15 +203,15 @@ function openInvite() {
   inviteDialogOpen.value = true
 }
 async function submitInvite() {
-  if (!inviteForm.value.email) { toast.error('请填写邮箱'); return }
+  if (!inviteForm.value.email) { toast.error(t('manage.members.inviteDialog.emailRequired')); return }
   inviteLoading.value = true
   try {
     await createInvitation(inviteForm.value)
-    toast.success('邀请已发送')
+    toast.success(t('manage.members.toast.invSent'))
     inviteDialogOpen.value = false
     refreshInvitations()
   } catch (e: any) {
-    toast.error(e?.response?.data?.message ?? '邀请失败')
+    toast.error(e?.response?.data?.message ?? t('manage.members.toast.invFailed'))
   }
   inviteLoading.value = false
 }
@@ -192,20 +225,18 @@ async function confirmRevoke() {
   if (revokeTarget.value) {
     try {
       await revokeInvitation(revokeTarget.value.id)
-      toast.success('邀请已撤销')
+      toast.success(t('manage.members.toast.invRevoked'))
       refreshInvitations()
-    } catch { toast.error('撤销失败') }
+    } catch { toast.error(t('manage.members.toast.invRevokeFailed')) }
   }
   revokeTarget.value = null
 }
 
 // ── Member columns ────────────────────────────────────────────────
-type MemberRow = (typeof members.value)[number]
-
-const memberColumns: ColumnDef<MemberRow>[] = [
+const memberColumns = computed<ColumnDef<any>[]>(() => [
   {
     id: 'member',
-    header: '成员',
+    header: t('manage.members.col.member'),
     cell: ({ row }) => {
       const m = row.original as any
       return h('div', { class: 'flex items-center gap-3' }, [
@@ -223,18 +254,18 @@ const memberColumns: ColumnDef<MemberRow>[] = [
   },
   {
     accessorKey: 'role',
-    header: '角色',
+    header: t('manage.members.col.role'),
     cell: ({ row }) => {
       const role: string = (row.original as any).role ?? 'viewer'
       const icon = roleIcon[role] ?? User
       return h('span', {
         class: `text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 w-fit ${roleStyle[role] ?? roleStyle.viewer}`,
-      }, [h(icon, { class: 'size-3' }), roleLabel[role] ?? role])
+      }, [h(icon, { class: 'size-3' }), roleLabel.value[role as keyof typeof roleLabel.value] ?? role])
     },
   },
   {
     accessorKey: 'provider',
-    header: '来源',
+    header: t('manage.members.col.provider'),
     cell: ({ row }) => {
       const provider: string = (row.original as any).provider ?? 'local'
       return h('span', {
@@ -244,12 +275,12 @@ const memberColumns: ColumnDef<MemberRow>[] = [
   },
   {
     accessorKey: 'joinedAt',
-    header: '加入时间',
+    header: t('manage.members.col.joinedAt'),
     cell: ({ row }) => {
-      const t = (row.original as any).joinedAt
+      const ts = (row.original as any).joinedAt
       return h('div', { class: 'flex items-center gap-1.5 text-xs text-muted-foreground' }, [
         h(Clock, { class: 'size-3 shrink-0' }),
-        formatDate(t),
+        formatDate(ts),
       ])
     },
   },
@@ -258,6 +289,8 @@ const memberColumns: ColumnDef<MemberRow>[] = [
     header: '',
     cell: ({ row }) => {
       const m = row.original as any
+      const isSelf = String(userStore.userInfo?.id ?? '') === m.userId
+      if (!canManageMembers.value && !isSelf) return h('span')
       return h(DropdownMenu, {}, {
         default: () => [
           h(DropdownMenuTrigger, { asChild: true }, () =>
@@ -265,29 +298,29 @@ const memberColumns: ColumnDef<MemberRow>[] = [
               h(MoreHorizontal, { class: 'size-4' })
             )
           ),
-          h(DropdownMenuContent, { align: 'end', class: 'w-36' }, () => [
-            h(DropdownMenuItem, { onClick: () => openEditRole(m) }, () => [
-              h(Pencil, { class: 'mr-2 size-3.5' }), '修改角色',
-            ]),
-            h(DropdownMenuSeparator),
+          h(DropdownMenuContent, { align: 'end', class: 'w-40' }, () => [
+            ...(canManageMembers.value ? [
+              h(DropdownMenuItem, { onClick: () => openEditRole(m) }, () => [
+                h(Pencil, { class: 'mr-2 size-3.5' }), t('manage.members.changeRole'),
+              ]),
+              h(DropdownMenuSeparator),
+            ] : []),
             h(DropdownMenuItem, {
               class: 'text-destructive focus:text-destructive',
               onClick: () => promptRemove(m),
-            }, () => [h(Trash2, { class: 'mr-2 size-3.5' }), '移除成员']),
+            }, () => [h(Trash2, { class: 'mr-2 size-3.5' }), isSelf ? t('manage.members.selfRemove') : t('common.action.remove')]),
           ]),
         ],
       })
     },
   },
-]
+])
 
 // ── Invitation columns ────────────────────────────────────────────
-type InvRow = (typeof invitations.value)[number]
-
-const invColumns: ColumnDef<InvRow>[] = [
+const invColumns = computed<ColumnDef<any>[]>(() => [
   {
     id: 'email',
-    header: '邮箱',
+    header: t('manage.members.invCol.invitee'),
     cell: ({ row }) => {
       const inv = row.original as any
       return h('div', { class: 'flex items-center gap-2' }, [
@@ -300,28 +333,28 @@ const invColumns: ColumnDef<InvRow>[] = [
   },
   {
     accessorKey: 'role',
-    header: '角色',
+    header: t('manage.members.invCol.role'),
     cell: ({ row }) => {
       const role: string = (row.original as any).role ?? 'member'
       const icon = roleIcon[role] ?? User
       return h('span', {
         class: `text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 w-fit ${roleStyle[role] ?? roleStyle.member}`,
-      }, [h(icon, { class: 'size-3' }), roleLabel[role] ?? role])
+      }, [h(icon, { class: 'size-3' }), roleLabel.value[role as keyof typeof roleLabel.value] ?? role])
     },
   },
   {
     accessorKey: 'status',
-    header: '状态',
+    header: t('manage.members.invCol.status'),
     cell: ({ row }) => {
       const status: string = (row.original as any).status ?? 'pending'
       return h('span', {
         class: `text-[11px] font-bold px-2.5 py-1 rounded-full w-fit ${invStatusStyle[status] ?? invStatusStyle.pending}`,
-      }, invStatusLabel[status] ?? status)
+      }, invStatusLabel.value[status as keyof typeof invStatusLabel.value] ?? status)
     },
   },
   {
     accessorKey: 'expiresAt',
-    header: '过期时间',
+    header: t('manage.members.invCol.expiry'),
     cell: ({ row }) => {
       const inv = row.original as any
       const expired = inv.status === 'expired' || new Date(inv.expiresAt) < new Date()
@@ -337,20 +370,35 @@ const invColumns: ColumnDef<InvRow>[] = [
     cell: ({ row }) => {
       const inv = row.original as any
       if (inv.status !== 'pending') return h('span')
-      return h(Button, {
-        variant: 'ghost',
-        size: 'sm',
-        class: 'text-destructive hover:text-destructive h-8 px-2 text-xs gap-1',
-        onClick: () => promptRevoke(inv),
-      }, () => [h(XCircle, { class: 'size-3.5' }), '撤销'])
+      const link = `${window.location.origin}/invite/${inv.token}`
+      const showRevoke = canRevokeInv(inv)
+      return h('div', { class: 'flex items-center gap-1' }, [
+        h(Button, {
+          variant: 'ghost',
+          size: 'sm',
+          class: 'h-8 px-2 text-xs gap-1 text-muted-foreground',
+          title: t('manage.members.copyLinkBtn'),
+          onClick: () => {
+            navigator.clipboard.writeText(link).then(() => {
+              toast.success(t('manage.members.toast.linkCopied'))
+            })
+          },
+        }, () => [h(Mail, { class: 'size-3.5' }), t('manage.members.copyLinkBtn')]),
+        ...(showRevoke ? [h(Button, {
+          variant: 'ghost',
+          size: 'sm',
+          class: 'text-destructive hover:text-destructive h-8 px-2 text-xs gap-1',
+          onClick: () => promptRevoke(inv),
+        }, () => [h(XCircle, { class: 'size-3.5' }), t('manage.members.revokeInv')])] : []),
+      ])
     },
   },
-]
+])
 
 // ── TanStack Tables ───────────────────────────────────────────────
 const memberTable = useVueTable({
   get data() { return filteredMembers.value as any[] },
-  columns: memberColumns,
+  get columns() { return memberColumns.value },
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
   initialState: { pagination: { pageSize: 10 } },
@@ -358,11 +406,28 @@ const memberTable = useVueTable({
 
 const invTable = useVueTable({
   get data() { return invitations.value as any[] },
-  columns: invColumns,
+  get columns() { return invColumns.value },
   getCoreRowModel: getCoreRowModel(),
   getPaginationRowModel: getPaginationRowModel(),
   initialState: { pagination: { pageSize: 10 } },
 })
+
+// ── Pagination helpers ────────────────────────────────────────────
+function visiblePages(current: number, total: number) {
+  const start = Math.max(1, Math.min(current - 1, total - 2))
+  const end   = Math.min(total, start + 2)
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+}
+
+const memberPage       = computed(() => memberTable.getState().pagination.pageIndex + 1)
+const memberTotalPages = computed(() => Math.max(1, memberTable.getPageCount()))
+const memberTotal      = computed(() => filteredMembers.value.length)
+const memberPages      = computed(() => visiblePages(memberPage.value, memberTotalPages.value))
+
+const invPage       = computed(() => invTable.getState().pagination.pageIndex + 1)
+const invTotalPages = computed(() => Math.max(1, invTable.getPageCount()))
+const invTotal      = computed(() => (invitations.value as any[]).length)
+const invPages      = computed(() => visiblePages(invPage.value, invTotalPages.value))
 </script>
 
 <template>
@@ -375,7 +440,7 @@ const invTable = useVueTable({
       <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
         <div class="flex items-start justify-between">
           <div class="flex flex-col gap-1">
-            <span class="text-muted-foreground text-sm font-medium">全部成员</span>
+            <span class="text-muted-foreground text-sm font-medium">{{ t('manage.members.stats.total') }}</span>
             <span class="text-2xl font-bold tracking-tight">{{ stats.total }}</span>
           </div>
           <div class="bg-muted rounded-lg p-2">
@@ -391,7 +456,7 @@ const invTable = useVueTable({
             >{{ firstChar(name) }}</div>
           </div>
           <span v-if="stats.total > 4" class="text-muted-foreground text-xs ml-1">
-            +{{ stats.total - 4 }} 人
+            {{ t('manage.members.stats.morePeople', { n: stats.total - 4 }) }}
           </span>
         </div>
       </div>
@@ -400,7 +465,7 @@ const invTable = useVueTable({
       <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
         <div class="flex items-start justify-between">
           <div class="flex flex-col gap-1">
-            <span class="text-muted-foreground text-sm font-medium">管理员</span>
+            <span class="text-muted-foreground text-sm font-medium">{{ t('manage.members.stats.admins') }}</span>
             <span class="text-2xl font-bold tracking-tight">{{ stats.admins }}</span>
           </div>
           <div class="bg-muted rounded-lg p-2">
@@ -409,7 +474,7 @@ const invTable = useVueTable({
         </div>
         <div class="mt-3 flex items-center gap-1 text-sm">
           <ArrowUpRight class="text-muted-foreground size-4 shrink-0" />
-          <span class="text-muted-foreground">共 <span class="font-semibold text-foreground">{{ stats.admins }}</span> 人拥有管理权限</span>
+          <span class="text-muted-foreground">{{ t('manage.members.stats.adminAccess', { n: stats.admins }) }}</span>
         </div>
       </div>
 
@@ -417,7 +482,7 @@ const invTable = useVueTable({
       <div class="border-border bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
         <div class="flex items-start justify-between">
           <div class="flex flex-col gap-1">
-            <span class="text-muted-foreground text-sm font-medium">活跃成员</span>
+            <span class="text-muted-foreground text-sm font-medium">{{ t('manage.members.stats.active') }}</span>
             <span class="text-2xl font-bold tracking-tight">{{ stats.active }}</span>
           </div>
           <div class="bg-muted rounded-lg p-2">
@@ -429,7 +494,7 @@ const invTable = useVueTable({
           <span class="text-emerald-600 font-semibold">
             {{ stats.total ? Math.round((stats.active / stats.total) * 100) : 0 }}%
           </span>
-          <span class="text-muted-foreground">活跃率</span>
+          <span class="text-muted-foreground">{{ t('manage.members.stats.activeRate') }}</span>
         </div>
       </div>
 
@@ -441,7 +506,7 @@ const invTable = useVueTable({
       >
         <div class="flex items-start justify-between">
           <div class="flex flex-col gap-1">
-            <span class="text-muted-foreground text-sm font-medium">待接受邀请</span>
+            <span class="text-muted-foreground text-sm font-medium">{{ t('manage.members.stats.pendingInv') }}</span>
             <span class="text-2xl font-bold tracking-tight">{{ stats.pendingInvitations }}</span>
           </div>
           <div class="bg-muted rounded-lg p-2">
@@ -455,9 +520,9 @@ const invTable = useVueTable({
             class="size-4 shrink-0"
           />
           <span :class="stats.pendingInvitations === 0 ? 'text-emerald-600 font-semibold' : 'text-amber-500 font-semibold'">
-            {{ stats.pendingInvitations === 0 ? '全部已接受' : stats.pendingInvitations + ' 条待处理' }}
+            {{ stats.pendingInvitations === 0 ? t('manage.members.stats.allAccepted') : t('manage.members.stats.pendingCount', { n: stats.pendingInvitations }) }}
           </span>
-          <span class="text-muted-foreground">{{ stats.pendingInvitations === 0 ? '无需处理' : '等待接受' }}</span>
+          <span class="text-muted-foreground">{{ stats.pendingInvitations === 0 ? t('manage.members.stats.noAction') : t('manage.members.stats.needsAction') }}</span>
         </div>
       </button>
 
@@ -474,7 +539,7 @@ const invTable = useVueTable({
             : 'text-muted-foreground hover:text-foreground'"
           @click="activeTab = 'members'"
         >
-          成员
+          {{ t('manage.members.tabMembers') }}
           <span class="ml-1.5 tabular-nums text-[10px] opacity-60">{{ stats.total }}</span>
         </button>
         <button
@@ -484,11 +549,11 @@ const invTable = useVueTable({
             : 'text-muted-foreground hover:text-foreground'"
           @click="activeTab = 'invitations'"
         >
-          邀请
+          {{ t('manage.members.tabInvitations') }}
           <span
             class="ml-1.5 tabular-nums text-[10px]"
             :class="stats.pendingInvitations > 0 ? 'text-amber-500 font-bold' : 'opacity-60'"
-          >{{ invTotal }}</span>
+          >{{ invApiTotal }}</span>
         </button>
       </div>
 
@@ -498,9 +563,8 @@ const invTable = useVueTable({
           <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input
             v-model="searchValue"
-            placeholder="搜索名称或邮箱..."
+            :placeholder="t('manage.members.searchPlaceholder')"
             class="pl-8 h-9"
-            @input="onSearchInput"
           />
         </div>
         <Button
@@ -512,10 +576,10 @@ const invTable = useVueTable({
             class="size-3.5"
             :class="(activeTab === 'members' ? memberLoading : invLoading) ? 'animate-spin' : ''"
           />
-          刷新
+          {{ t('common.action.refresh') }}
         </Button>
-        <Button size="sm" class="gap-1.5" @click="openInvite">
-          <Plus class="size-3.5" /> 邀请成员
+        <Button v-if="canManageMembers" size="sm" class="gap-1.5" @click="openInvite">
+          <Plus class="size-3.5" /> {{ t('manage.members.inviteBtn') }}
         </Button>
       </div>
     </div>
@@ -544,12 +608,30 @@ const invTable = useVueTable({
           </template>
           <TableRow v-else>
             <TableCell :colspan="memberColumns.length" class="h-32 text-center text-muted-foreground">
-              {{ memberLoading ? '加载中...' : '暂无成员' }}
+              {{ memberLoading ? t('common.status.loading') : t('manage.members.noMembers') }}
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
-      <DataTablePagination :table="memberTable" />
+    </div>
+    <div v-if="activeTab === 'members'" class="flex items-center justify-between text-sm text-muted-foreground">
+      <span>{{ t('common.pagination.total', { total: memberTotal, page: memberPage, totalPages: memberTotalPages }) }}</span>
+      <div class="flex items-center gap-1">
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="!memberTable.getCanPreviousPage()" @click="memberTable.previousPage()">
+          <ChevronLeft class="size-4" />
+        </Button>
+        <Button
+          v-for="p in memberPages" :key="p"
+          variant="outline" size="sm" class="size-8 p-0 text-xs"
+          :class="p === memberPage ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground' : ''"
+          @click="memberTable.setPageIndex(p - 1)"
+        >{{ p }}</Button>
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="!memberTable.getCanNextPage()" @click="memberTable.nextPage()">
+          <ChevronRight class="size-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- ── Invitations Table ───────────────────────────────────────── -->
@@ -576,20 +658,38 @@ const invTable = useVueTable({
           </template>
           <TableRow v-else>
             <TableCell :colspan="invColumns.length" class="h-32 text-center text-muted-foreground">
-              {{ invLoading ? '加载中...' : '暂无邀请记录' }}
+              {{ invLoading ? t('common.status.loading') : t('manage.members.noInvitations') }}
             </TableCell>
           </TableRow>
         </TableBody>
       </Table>
-      <DataTablePagination :table="invTable" />
+    </div>
+    <div v-if="activeTab === 'invitations'" class="flex items-center justify-between text-sm text-muted-foreground">
+      <span>{{ t('common.pagination.total', { total: invTotal, page: invPage, totalPages: invTotalPages }) }}</span>
+      <div class="flex items-center gap-1">
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="!invTable.getCanPreviousPage()" @click="invTable.previousPage()">
+          <ChevronLeft class="size-4" />
+        </Button>
+        <Button
+          v-for="p in invPages" :key="p"
+          variant="outline" size="sm" class="size-8 p-0 text-xs"
+          :class="p === invPage ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground' : ''"
+          @click="invTable.setPageIndex(p - 1)"
+        >{{ p }}</Button>
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="!invTable.getCanNextPage()" @click="invTable.nextPage()">
+          <ChevronRight class="size-4" />
+        </Button>
+      </div>
     </div>
 
     <!-- ── Remove confirm ─────────────────────────────────────────── -->
     <AppAlertDialog
       v-model:open="removeDialogOpen"
-      title="移除成员"
-      :description="`确认将「${removeTarget?.name}」从 Workspace 中移除？`"
-      confirm-text="确认移除"
+      :title="t('manage.members.removeDialog.title')"
+      :description="t('manage.members.removeDialog.desc', { name: removeTarget?.name })"
+      :confirm-text="t('manage.members.removeDialog.confirm')"
       variant="destructive"
       @confirm="confirmRemove"
       @cancel="removeTarget = null"
@@ -598,9 +698,9 @@ const invTable = useVueTable({
     <!-- ── Revoke confirm ──────────────────────────────────────────── -->
     <AppAlertDialog
       v-model:open="revokeDialogOpen"
-      title="撤销邀请"
-      :description="`确认撤销发送给「${revokeTarget?.email}」的邀请？`"
-      confirm-text="确认撤销"
+      :title="t('manage.members.revokeDialog.title')"
+      :description="t('manage.members.revokeDialog.desc', { email: revokeTarget?.email })"
+      :confirm-text="t('manage.members.revokeDialog.confirm')"
       variant="destructive"
       @confirm="confirmRevoke"
       @cancel="revokeTarget = null"
@@ -612,13 +712,13 @@ const invTable = useVueTable({
   <Dialog v-model:open="inviteDialogOpen">
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
-        <DialogTitle>邀请成员</DialogTitle>
-        <DialogDescription>通过邮件邀请新成员加入当前 Workspace，链接 7 天内有效。</DialogDescription>
+        <DialogTitle>{{ t('manage.members.inviteBtn') }}</DialogTitle>
+        <DialogDescription>{{ t('manage.members.inviteDialog.desc') }}</DialogDescription>
       </DialogHeader>
 
       <div class="space-y-4 py-2">
         <div class="space-y-1.5">
-          <label class="text-xs font-medium">邮箱地址</label>
+          <label class="text-xs font-medium">{{ t('manage.members.inviteDialog.emailLabel') }}</label>
           <Input
             v-model="inviteForm.email"
             type="email"
@@ -628,23 +728,23 @@ const invTable = useVueTable({
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-medium">角色</label>
+          <label class="text-xs font-medium">{{ t('manage.members.inviteDialog.roleLabel') }}</label>
           <select
             v-model="inviteForm.role"
             class="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-[color,box-shadow]"
           >
-            <option value="admin">管理员 — 管理成员与空间配置</option>
-            <option value="editor">编辑者 — 管理节点与策略</option>
-            <option value="member">成员 — 查看与使用资源</option>
-            <option value="viewer">访客 — 只读访问</option>
+            <option value="admin">{{ t('manage.members.inviteDialog.roleAdmin') }}</option>
+            <option value="editor">{{ t('manage.members.inviteDialog.roleEditor') }}</option>
+            <option value="member">{{ t('manage.members.inviteDialog.roleMember') }}</option>
+            <option value="viewer">{{ t('manage.members.inviteDialog.roleViewer') }}</option>
           </select>
         </div>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="inviteDialogOpen = false">取消</Button>
+        <Button variant="outline" @click="inviteDialogOpen = false">{{ t('common.action.cancel') }}</Button>
         <Button :disabled="inviteLoading" @click="submitInvite">
-          {{ inviteLoading ? '发送中...' : '发送邀请' }}
+          {{ inviteLoading ? t('manage.members.inviteDialog.sending') : t('manage.members.inviteDialog.send') }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -654,29 +754,29 @@ const invTable = useVueTable({
   <Dialog v-model:open="editDialogOpen">
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
-        <DialogTitle>修改角色</DialogTitle>
+        <DialogTitle>{{ t('manage.members.changeRole') }}</DialogTitle>
         <DialogDescription>
-          修改「{{ editTarget?.name }}」在当前 Workspace 的角色。
+          {{ t('manage.members.editRoleDialog.desc', { name: editTarget?.name }) }}
         </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-1.5 py-2">
-        <label class="text-xs font-medium">新角色</label>
+        <label class="text-xs font-medium">{{ t('manage.members.editRoleDialog.roleLabel') }}</label>
         <select
           v-model="editRole"
           class="w-full h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-[color,box-shadow]"
         >
-          <option value="admin">管理员</option>
-          <option value="editor">编辑者</option>
-          <option value="member">成员</option>
-          <option value="viewer">访客</option>
+          <option value="admin">{{ t('common.role.admin') }}</option>
+          <option value="editor">{{ t('common.role.editor') }}</option>
+          <option value="member">{{ t('common.role.member') }}</option>
+          <option value="viewer">{{ t('common.role.viewer') }}</option>
         </select>
       </div>
 
       <DialogFooter>
-        <Button variant="outline" @click="editDialogOpen = false">取消</Button>
+        <Button variant="outline" @click="editDialogOpen = false">{{ t('common.action.cancel') }}</Button>
         <Button :disabled="editLoading" @click="confirmEditRole">
-          {{ editLoading ? '保存中...' : '保存' }}
+          {{ editLoading ? t('common.status.saving') : t('common.action.save') }}
         </Button>
       </DialogFooter>
     </DialogContent>

@@ -18,8 +18,20 @@ export interface MemberVo {
 export const listMembers = (params?: any) =>
   request.get(`/workspaces/${wsID()}/members`, params)
 
+export const addMemberToWorkspace = (targetWsID: string, userID: string, role: string) =>
+  request.post(`/workspaces/${targetWsID}/members/${userID}`, { role })
+
 export const updateMemberRole = (userID: string, role: string) =>
   request.put(`/workspaces/${wsID()}/members/${userID}`, { role })
 
 export const removeMember = (userID: string) =>
   request.delete(`/workspaces/${wsID()}/members/${userID}`)
+
+export const getUserWorkspaces = (userID: string) =>
+  request.get(`/users/${userID}/workspaces`, {})
+
+export const removeMemberFromWorkspace = (targetWsID: string, userID: string) =>
+  request.delete(`/workspaces/${targetWsID}/members/${userID}`)
+
+export const updateMemberRoleInWorkspace = (targetWsID: string, userID: string, role: string) =>
+  request.put(`/workspaces/${targetWsID}/members/${userID}`, { role })

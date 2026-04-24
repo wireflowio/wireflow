@@ -91,8 +91,27 @@ export const useDashboardStore = defineStore('dashboard', {
 
         // ── Effective display data (workspace when active, else global) ───
 
-        displayStatCards(): ReturnType<typeof this.wsStatCards | typeof this.statCards> {
-            return this.isWorkspaceMode ? this.wsStatCards : this.statCards
+        displayStatCards: (state) => {
+            const iconNames = ['Server', 'Activity', 'ShieldCheck', 'AlertTriangle']
+            const isWsMode = !!(localStorage.getItem('active_ws_id') && state.wsData)
+            if (isWsMode && state.wsData) {
+                return state.wsData.stat_cards.map((s, i) => ({
+                    title:    s.label,
+                    value:    `${s.value} ${s.unit}`.trim(),
+                    change:   s.trend_pct || s.trend,
+                    trend:    (s.trend === 'down') ? ('down' as const) : ('up' as const),
+                    iconName: iconNames[i] ?? 'Server',
+                    sparkline: makeSparkline(parseFloat(s.value) || 1, s.trend !== 'down'),
+                }))
+            }
+            return state.globalStats.slice(0, 4).map((s, i) => ({
+                title:    s.label,
+                value:    `${s.value} ${s.unit}`.trim(),
+                change:   s.trend,
+                trend:    s.trendUp ? ('up' as const) : ('down' as const),
+                iconName: iconNames[i] ?? 'Server',
+                sparkline: makeSparkline(parseFloat(s.value) || 1, s.trendUp),
+            }))
         },
 
         displayTxData: (state): number[] => {
@@ -165,9 +184,26 @@ export const useDashboardStore = defineStore('dashboard', {
             })),
 
         // ── Legacy getters (kept for compatibility) ───────────────────────
-        chartTimeline(): string[] { return this.displayTimeline },
-        txChartData():   number[] { return this.displayTxData },
-        rxChartData():   number[] { return this.displayRxData },
+        chartTimeline: (state): string[] => {
+            const ws = state.wsData
+            if (localStorage.getItem('active_ws_id') && ws?.throughput_trend.timestamps.length)
+                return ws.throughput_trend.timestamps
+            return state.globalTrend.timestamps.length
+                ? state.globalTrend.timestamps
+                : ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00']
+        },
+        txChartData: (state): number[] => {
+            const ws = state.wsData
+            if (localStorage.getItem('active_ws_id') && ws?.throughput_trend.tx_data.length)
+                return ws.throughput_trend.tx_data
+            return state.globalTrend.tx_data.length ? state.globalTrend.tx_data : Array(6).fill(0)
+        },
+        rxChartData: (state): number[] => {
+            const ws = state.wsData
+            if (localStorage.getItem('active_ws_id') && ws?.throughput_trend.rx_data.length)
+                return ws.throughput_trend.rx_data
+            return state.globalTrend.rx_data.length ? state.globalTrend.rx_data : Array(6).fill(0)
+        },
     },
 
     actions: {
@@ -185,7 +221,7 @@ export const useDashboardStore = defineStore('dashboard', {
 
                 const txLast = this.globalTrend.tx_data.at(-1) ?? 0
                 const rxLast = this.globalTrend.rx_data.at(-1) ?? 0
-                if (!this.activeWsID) {
+                if (!localStorage.getItem('active_ws_id')) {
                     this.txRate = txLast
                     this.rxRate = rxLast
                 }

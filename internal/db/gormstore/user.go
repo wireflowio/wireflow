@@ -34,9 +34,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (*models.User, 
 }
 
 func (r *userRepo) Login(ctx context.Context, username, password string) (*models.User, error) {
-	return r.First(ctx, func(db *gorm.DB) *gorm.DB {
-		return db.Where("username = ? AND password = ?", username, password)
-	})
+	return r.First(ctx, repository.WithUsername(username))
 }
 
 func (r *userRepo) Delete(ctx context.Context, id string) error {
@@ -45,6 +43,26 @@ func (r *userRepo) Delete(ctx context.Context, id string) error {
 
 func (r *userRepo) Count(ctx context.Context) (int64, error) {
 	return r.BaseRepository.Count(ctx)
+}
+
+func (r *userRepo) ListRaw(ctx context.Context, req *dto.PageRequest) ([]*models.User, int64, error) {
+	var users []*models.User
+	var total int64
+
+	query := r.DB().WithContext(ctx).Model(&models.User{})
+	if req.Keyword != "" {
+		query = query.Where("username LIKE ? OR email LIKE ?", "%"+req.Keyword+"%", "%"+req.Keyword+"%")
+	}
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.
+		Preload("Identities").
+		Limit(req.PageSize).
+		Offset((req.Page-1)*req.PageSize).
+		Order("created_at DESC").
+		Find(&users).Error
+	return users, total, err
 }
 
 func (r *userRepo) List(ctx context.Context, req *dto.PageRequest) (*dto.PageResult[vo.UserVo], error) {

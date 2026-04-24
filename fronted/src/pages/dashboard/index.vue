@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   Activity, Server, ShieldCheck, AlertTriangle,
   ArrowUpRight, ArrowDownRight, Zap, MoreHorizontal, Globe, Building2,
 } from 'lucide-vue-next'
 import { useDashboardStore } from '@/stores/useDashboard'
+import { useWorkspaceStore } from '@/stores/workspace'
 
 definePage({
   meta: {
@@ -16,6 +17,14 @@ definePage({
 const store = useDashboardStore()
 onMounted(() => store.startPolling())
 onUnmounted(() => store.stopPolling())
+
+const workspaceStore = useWorkspaceStore()
+watch(() => workspaceStore.currentWorkspace?.id, (newId, oldId) => {
+  if (newId !== oldId) {
+    store.fetch()
+    store.fetchWorkspace()
+  }
+})
 
 // ── colour mapping for audit log dots ────────────────────────────────
 const toneMap: Record<string, string> = {

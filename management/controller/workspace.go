@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"time"
 	"wireflow/internal/store"
 	"wireflow/management/dto"
 	"wireflow/management/models"
@@ -17,6 +18,7 @@ type WorkspaceController interface {
 }
 
 type WorkspaceMemberController interface {
+	Add(ctx context.Context, workspaceID, userID string, role dto.WorkspaceRole) error
 	List(ctx context.Context, workspaceID string) ([]*vo.MemberVo, error)
 	UpdateRole(ctx context.Context, workspaceID, userID string, role dto.WorkspaceRole) error
 	Remove(ctx context.Context, workspaceID, userID string) error
@@ -40,6 +42,18 @@ func (c *workspaceController) AddWorkspace(ctx context.Context, workspaceDto *dt
 
 type workspaceMemberController struct {
 	svc service.WorkspaceMemberService
+}
+
+func (c *workspaceMemberController) Add(ctx context.Context, workspaceID, userID string, role dto.WorkspaceRole) error {
+	now := time.Now()
+	_, err := c.svc.Create(ctx, &models.WorkspaceMember{
+		WorkspaceID: workspaceID,
+		UserID:      userID,
+		Role:        role,
+		Status:      "active",
+		JoinedAt:    &now,
+	})
+	return err
 }
 
 func (c *workspaceMemberController) List(ctx context.Context, workspaceID string) ([]*vo.MemberVo, error) {

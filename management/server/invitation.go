@@ -17,11 +17,15 @@ func (s *Server) invitationRouter() {
 		g.DELETE("/:invID", s.handleRevokeInvitation())
 	}
 
-	// Accept is a public-but-authenticated endpoint (no workspace membership required).
-	acceptGroup := s.Group("/api/v1/invite")
-	acceptGroup.Use(middleware.AuthMiddleware())
+	// Public invite endpoints — no auth required.
+	pub := s.Group("/api/v1/invite")
 	{
-		acceptGroup.POST("/:token/accept", s.handleAcceptInvitation())
+		// GET  /api/v1/invite/:token         — preview invitation info (public)
+		pub.GET("/:token", s.handlePreviewInvitation())
+		// POST /api/v1/invite/:token/register — register new account + accept (public)
+		pub.POST("/:token/register", s.handleRegisterAndAccept())
+		// POST /api/v1/invite/:token/accept   — accept with existing logged-in account
+		pub.POST("/:token/accept", middleware.AuthMiddleware(), s.handleAcceptInvitation())
 	}
 }
 
@@ -63,11 +67,48 @@ func (s *Server) handleListInvitations() gin.HandlerFunc {
 func (s *Server) handleRevokeInvitation() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		invID := c.Param("invID")
-		if err := s.invitationController.Revoke(c.Request.Context(), invID); err != nil {
+		callerID := c.GetString("user_id")
+		if err := s.invitationController.Revoke(c.Request.Context(), callerID, invID); err != nil {
 			resp.Error(c, err.Error())
 			return
 		}
 		resp.OK(c, nil)
+	}
+}
+
+// handlePreviewInvitation is public — returns invitation metadata for display before login.
+func (s *Server) handlePreviewInvitation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Param("token")
+		preview, err := s.invitationController.Preview(c.Request.Context(), token)
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
+		resp.OK(c, preview)
+	}
+}
+
+// handleRegisterAndAccept creates a new user account and accepts the invitation atomically.
+func (s *Server) handleRegisterAndAccept() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Param("token")
+
+		var req struct {
+			Username string `json:"username" binding:"required"`
+			Password string `json:"password" binding:"required,min=6"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			resp.BadRequest(c, err.Error())
+			return
+		}
+
+		jwtToken, err := s.invitationController.RegisterAndAccept(c.Request.Context(), token, req.Username, req.Password)
+		if err != nil {
+			resp.Error(c, err.Error())
+			return
+		}
+		resp.OK(c, gin.H{"token": jwtToken})
 	}
 }
 

@@ -18,5 +18,7 @@ func migrate(db *gorm.DB) error {
 		&models.WorkspaceMember{},
 		&models.WorkspaceInvitation{},
 		&models.AuditLog{},
+		&models.WorkflowRequest{},
+		&models.Policy{},
 	)
 }

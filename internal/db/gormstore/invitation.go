@@ -20,6 +20,12 @@ func (r *workspaceInvitationRepo) Create(ctx context.Context, inv *models.Worksp
 	return r.BaseRepository.Create(ctx, inv)
 }
 
+func (r *workspaceInvitationRepo) FindByID(ctx context.Context, id string) (*models.WorkspaceInvitation, error) {
+	return r.First(ctx, func(db *gorm.DB) *gorm.DB {
+		return db.Where("id = ?", id)
+	})
+}
+
 func (r *workspaceInvitationRepo) GetByToken(ctx context.Context, token string) (*models.WorkspaceInvitation, error) {
 	return r.First(ctx, func(db *gorm.DB) *gorm.DB {
 		return db.Where("token = ?", token)
@@ -37,6 +43,15 @@ func (r *workspaceInvitationRepo) UpdateStatus(ctx context.Context, id string, s
 		Model(&models.WorkspaceInvitation{}).
 		Where("id = ?", id).
 		Update("status", status).Error
+}
+
+func (r *workspaceInvitationRepo) FindAcceptedByEmails(ctx context.Context, emails []string) ([]*models.WorkspaceInvitation, error) {
+	if len(emails) == 0 {
+		return nil, nil
+	}
+	return r.Find(ctx, func(db *gorm.DB) *gorm.DB {
+		return db.Where("email IN ? AND status = 'accepted'", emails).Order("created_at ASC")
+	})
 }
 
 func (r *workspaceInvitationRepo) GetPendingByEmailAndWorkspace(ctx context.Context, email, workspaceID string) (*models.WorkspaceInvitation, error) {

@@ -84,10 +84,11 @@ func GetJWTSecret() []byte {
 	return []byte(secret)
 }
 
-func GenerateBusinessJWT(userID, email, systemRole string) (string, error) {
+func GenerateBusinessJWT(userID, email, username, systemRole string) (string, error) {
 	// 1. 设置有效期（例如 12 小时）
 	claims := models.WireFlowClaims{
 		Email:      email,
+		Username:   username,
 		SystemRole: systemRole,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),

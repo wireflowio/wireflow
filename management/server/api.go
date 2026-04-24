@@ -48,20 +48,22 @@ func (s *Server) apiRouter() error {
 		api.GET("/networks/peers", s.tenantMiddleware.Handle(), s.GetPeers) // 获取该网络下的所有机器
 	}
 	tokenApi := s.Group("/api/v1/token")
+	tokenApi.Use(middleware.AuthMiddleware())
 	{
-		// Token 管理
 		tokenApi.POST("/generate", s.tenantMiddleware.Handle(), s.generateToken())
 		tokenApi.DELETE("/:token", s.tenantMiddleware.Handle(), s.rmToken())
 		tokenApi.GET("/list", s.tenantMiddleware.Handle(), s.listTokens())
 	}
 
 	peerApi := s.Group("/api/v1/peers")
+	peerApi.Use(middleware.AuthMiddleware())
 	{
 		peerApi.GET("/list", s.tenantMiddleware.Handle(), s.listPeers)
 		peerApi.PUT("/update", s.updatePeer)
 	}
 
 	policyApi := s.Group("/api/v1/policies")
+	policyApi.Use(middleware.AuthMiddleware())
 	{
 		policyApi.GET("/list", s.tenantMiddleware.Handle(), s.listPolicies)
 		policyApi.PUT("/update", s.tenantMiddleware.Handle(), s.createOrUpdatePolicy)
@@ -86,6 +88,8 @@ func (s *Server) apiRouter() error {
 	s.dashboardRouter()
 
 	s.auditRouter()
+
+	s.workflowRouter()
 
 	// SPA 静态资源：必须最后注册，通过 NoRoute 捕获所有未匹配路径
 	s.logger.Info("Registering SPA static files")

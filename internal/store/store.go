@@ -22,6 +22,8 @@ type Store interface {
 	UserIdentities() UserIdentityRepository
 	WorkspaceInvitations() WorkspaceInvitationRepository
 	AuditLogs() AuditLogRepository
+	WorkflowRequests() WorkflowRepository
+	Policies() PolicyRepository
 
 	// Tx 在同一个数据库事务中执行 fn，fn 内通过参数 s 访问所有 Repository。
 	Tx(ctx context.Context, fn func(s Store) error) error
@@ -39,6 +41,8 @@ type UserRepository interface {
 	Update(ctx context.Context, user *models.User) error
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, req *dto.PageRequest) (*dto.PageResult[vo.UserVo], error)
+	// ListRaw returns raw User models with Identities preloaded, used for enriched VO mapping.
+	ListRaw(ctx context.Context, req *dto.PageRequest) ([]*models.User, int64, error)
 	Count(ctx context.Context) (int64, error)
 }
 
@@ -81,10 +85,13 @@ type UserIdentityRepository interface {
 // WorkspaceInvitationRepository manages workspace invitations.
 type WorkspaceInvitationRepository interface {
 	Create(ctx context.Context, inv *models.WorkspaceInvitation) error
+	FindByID(ctx context.Context, id string) (*models.WorkspaceInvitation, error)
 	GetByToken(ctx context.Context, token string) (*models.WorkspaceInvitation, error)
 	ListByWorkspace(ctx context.Context, workspaceID string) ([]*models.WorkspaceInvitation, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
 	GetPendingByEmailAndWorkspace(ctx context.Context, email, workspaceID string) (*models.WorkspaceInvitation, error)
+	// FindAcceptedByEmails returns the earliest accepted invitation for each of the given emails.
+	FindAcceptedByEmails(ctx context.Context, emails []string) ([]*models.WorkspaceInvitation, error)
 }
 
 // AuditLogFilter defines query parameters for audit log listing.
@@ -105,4 +112,43 @@ type AuditLogRepository interface {
 	Create(ctx context.Context, log *models.AuditLog) error
 	BatchCreate(ctx context.Context, logs []*models.AuditLog) error
 	List(ctx context.Context, filter AuditLogFilter) ([]*models.AuditLog, int64, error)
+}
+
+// WorkflowFilter defines query parameters for workflow request listing.
+type WorkflowFilter struct {
+	WorkspaceID  string
+	RequestedBy  string
+	ResourceType string
+	Action       string
+	Status       string
+	Page         int
+	PageSize     int
+}
+
+// PolicyFilter defines query parameters for policy listing.
+type PolicyFilter struct {
+	WorkspaceID string
+	Status      string
+	Keyword     string
+	Page        int
+	PageSize    int
+}
+
+// PolicyRepository manages policy DB records.
+type PolicyRepository interface {
+	Create(ctx context.Context, policy *models.Policy) error
+	GetByID(ctx context.Context, id string) (*models.Policy, error)
+	GetByName(ctx context.Context, workspaceID, name string) (*models.Policy, error)
+	List(ctx context.Context, filter PolicyFilter) ([]*models.Policy, int64, error)
+	Update(ctx context.Context, policy *models.Policy) error
+	Delete(ctx context.Context, workspaceID, name string) error
+}
+
+// WorkflowRepository manages workflow approval requests.
+type WorkflowRepository interface {
+	Create(ctx context.Context, req *models.WorkflowRequest) error
+	GetByID(ctx context.Context, id string) (*models.WorkflowRequest, error)
+	UpdateStatus(ctx context.Context, id string, status models.WorkflowStatus, fields map[string]interface{}) error
+	Delete(ctx context.Context, id string) error
+	List(ctx context.Context, filter WorkflowFilter) ([]*models.WorkflowRequest, int64, error)
 }

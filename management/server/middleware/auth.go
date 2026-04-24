@@ -32,7 +32,8 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		// 3. 将用户 ID 写入上下文，后续 Handler 可以通过 c.Get("userID") 拿到
 		c.Set("user_id", claims.Subject)
-		c.Set("name", claims.Email)
+		c.Set("username", claims.Username)
+		c.Set("email", claims.Email)
 		c.Set("system_role", claims.SystemRole)
 
 		// 进阶：如果你想让后面的 context.Context 也能拿到这个值

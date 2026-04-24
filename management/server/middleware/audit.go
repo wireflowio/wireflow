@@ -159,9 +159,10 @@ func AuditMiddleware(svc service.AuditService) gin.HandlerFunc {
 		}
 
 		entry := models.AuditLog{
-			UserID:     c.GetString("user_id"),
-			UserName:   c.GetString("name"),
-			UserIP:     c.ClientIP(),
+			UserID:    c.GetString("user_id"),
+			UserName:  c.GetString("username"),
+			UserEmail: c.GetString("email"),
+			UserIP:    c.ClientIP(),
 			WorkspaceID: c.GetHeader("X-Workspace-Id"),
 			Action:     actionFromMethod(c.Request.Method, c.FullPath()),
 			Resource:   resourceFromPath(c.FullPath()),

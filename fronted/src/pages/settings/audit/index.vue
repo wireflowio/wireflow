@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import {
-  useVueTable, getCoreRowModel, getPaginationRowModel,
+  useVueTable, getCoreRowModel,
   FlexRender, type ColumnDef,
 } from '@tanstack/vue-table'
 import {
   Search, RefreshCw, Clock, Shield, Activity,
   AlertTriangle, Users, ChevronDown, CheckCircle2,
   XCircle, ArrowUpRight, ArrowDownRight, FileText,
+  ChevronLeft, ChevronRight,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import DataTablePagination from '@/components/DataTablePagination.vue'
 import { listAuditLogs, type AuditLogVo } from '@/api/audit'
 import { useTable } from '@/composables/useApi'
 
@@ -24,7 +24,9 @@ definePage({
 
 // ── Data ──────────────────────────────────────────────────────────
 const { rows: logs, total, loading, refresh } = useTable(listAuditLogs)
-onMounted(() => refresh())
+const page     = ref(1)
+const pageSize = ref(10)
+onMounted(() => refresh({ page: page.value, pageSize: pageSize.value }))
 
 // ── Filters ───────────────────────────────────────────────────────
 const searchValue  = ref('')
@@ -49,17 +51,26 @@ function fromDate(range: string): string {
   return d.toISOString()
 }
 
-function doRefresh() {
+function doRefresh(p = 1) {
+  page.value = p
   refresh({
     action:   actionFilter.value || undefined,
     resource: resourceFilter.value || undefined,
     status:   statusFilter.value || undefined,
     keyword:  searchValue.value || undefined,
     from:     fromDate(timeRange.value),
-    page: 1,
-    pageSize: 20,
+    page:     page.value,
+    pageSize: pageSize.value,
   })
 }
+
+const totalPages   = computed(() => Math.max(1, Math.ceil((total.value || 0) / pageSize.value)))
+const visiblePages = computed(() => {
+  const cur = page.value, tp = totalPages.value
+  const start = Math.max(1, Math.min(cur - 1, tp - 2))
+  const end   = Math.min(tp, start + 2)
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+})
 
 // ── Style maps ────────────────────────────────────────────────────
 const actionStyle: Record<string, string> = {
@@ -123,8 +134,9 @@ const columns: ColumnDef<AuditLogVo>[] = [
     header: '操作者',
     cell: ({ row }) => {
       const l = row.original
+      const displayName = l.userName || l.userEmail || '—'
       return h('div', { class: 'flex flex-col gap-0.5' }, [
-        h('span', { class: 'text-sm font-medium leading-none' }, l.userName || '—'),
+        h('span', { class: 'text-sm font-medium leading-none' }, displayName),
         h('span', { class: 'font-mono text-[11px] text-muted-foreground/60' }, l.userIP),
       ])
     },
@@ -201,8 +213,7 @@ const table = useVueTable({
   get data() { return logs.value as AuditLogVo[] },
   columns,
   getCoreRowModel: getCoreRowModel(),
-  getPaginationRowModel: getPaginationRowModel(),
-  initialState: { pagination: { pageSize: 20 } },
+  manualPagination: true,
 })
 </script>
 
@@ -315,7 +326,7 @@ const table = useVueTable({
       <select
         v-model="actionFilter"
         class="h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-[color,box-shadow]"
-        @change="doRefresh"
+        @change="() => doRefresh()"
       >
         <option value="">全部操作</option>
         <option v-for="a in actions" :key="a" :value="a">{{ actionLabel[a] ?? a }}</option>
@@ -325,7 +336,7 @@ const table = useVueTable({
       <select
         v-model="resourceFilter"
         class="h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-[color,box-shadow]"
-        @change="doRefresh"
+        @change="() => doRefresh()"
       >
         <option value="">全部资源</option>
         <option v-for="r in resources" :key="r" :value="r">{{ resourceLabel[r] ?? r }}</option>
@@ -335,7 +346,7 @@ const table = useVueTable({
       <select
         v-model="statusFilter"
         class="h-9 rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 transition-[color,box-shadow]"
-        @change="doRefresh"
+        @change="() => doRefresh()"
       >
         <option value="">全部结果</option>
         <option value="success">成功</option>
@@ -396,7 +407,27 @@ const table = useVueTable({
           </TableRow>
         </TableBody>
       </Table>
-      <DataTablePagination :table="table" />
+    </div>
+
+    <!-- pagination -->
+    <div class="flex items-center justify-between text-sm text-muted-foreground">
+      <span>共 {{ total }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
+      <div class="flex items-center gap-1">
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="page <= 1" @click="doRefresh(page - 1)">
+          <ChevronLeft class="size-4" />
+        </Button>
+        <Button
+          v-for="p in visiblePages" :key="p"
+          variant="outline" size="sm" class="size-8 p-0 text-xs"
+          :class="p === page ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:text-primary-foreground' : ''"
+          @click="doRefresh(p)"
+        >{{ p }}</Button>
+        <Button variant="outline" size="sm" class="size-8 p-0"
+          :disabled="page >= totalPages" @click="doRefresh(page + 1)">
+          <ChevronRight class="size-4" />
+        </Button>
+      </div>
     </div>
 
   </div>

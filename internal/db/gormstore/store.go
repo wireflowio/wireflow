@@ -23,6 +23,8 @@ type gormStore struct {
 	userIdentities       store.UserIdentityRepository
 	workspaceInvitations store.WorkspaceInvitationRepository
 	auditLogs            store.AuditLogRepository
+	workflowRequests     store.WorkflowRepository
+	policies             store.PolicyRepository
 }
 
 // New 创建 gormStore：先执行 AutoMigrate，再初始化各子 Repository。
@@ -43,6 +45,8 @@ func newStore(db *gorm.DB) *gormStore {
 		userIdentities:       newUserIdentityRepo(db),
 		workspaceInvitations: newWorkspaceInvitationRepo(db),
 		auditLogs:            newAuditLogRepo(db),
+		workflowRequests:     newWorkflowRepo(db),
+		policies:             newPolicyRepo(db),
 	}
 }
 
@@ -53,6 +57,8 @@ func (s *gormStore) Profiles() store.ProfileRepository                          
 func (s *gormStore) UserIdentities() store.UserIdentityRepository                  { return s.userIdentities }
 func (s *gormStore) WorkspaceInvitations() store.WorkspaceInvitationRepository     { return s.workspaceInvitations }
 func (s *gormStore) AuditLogs() store.AuditLogRepository                           { return s.auditLogs }
+func (s *gormStore) WorkflowRequests() store.WorkflowRepository                    { return s.workflowRequests }
+func (s *gormStore) Policies() store.PolicyRepository                              { return s.policies }
 
 // Tx 在数据库事务中执行 fn，fn 内通过临时 Store 访问所有 Repository。
 func (s *gormStore) Tx(ctx context.Context, fn func(store.Store) error) error {

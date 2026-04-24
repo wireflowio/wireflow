@@ -59,12 +59,14 @@ type Server struct {
 	relayController      controller.RelayController
 	invitationController controller.InvitationController
 
-	monitorController controller.MonitorController
-	profileController controller.ProfileController
-	auditController   controller.AuditController
+	monitorController  controller.MonitorController
+	profileController  controller.ProfileController
+	auditController    controller.AuditController
+	workflowController controller.WorkflowController
 
 	tenantMiddleware *middleware.TenantMiddleware
 	auditService     service.AuditService
+	workflowService  service.WorkflowService
 
 	store    store.Store
 	presence *managementnats.NodePresenceStore
@@ -143,6 +145,8 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 	auditSvc := service.NewAuditService(st)
 	auditSvc.Start(ctx)
 
+	workflowSvc := service.NewWorkflowService(st)
+
 	s := &Server{
 		Engine:               gin.Default(),
 		logger:               logger,
@@ -165,8 +169,10 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		monitorController:    controller.NewMonitorController(cfg.Monitor.Address, st),
 		profileController:    controller.NewProfileController(st),
 		auditController:      controller.NewAuditController(auditSvc),
+		workflowController:   controller.NewWorkflowController(workflowSvc),
 		tenantMiddleware:     middleware.NewTenantMiddleware(st),
 		auditService:         auditSvc,
+		workflowService:      workflowSvc,
 		store:                st,
 	}
 
@@ -176,6 +182,9 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 	} else {
 		s.logger.Debug("Init admin success")
 	}
+
+	// Register workflow executors before starting the router.
+	s.registerPolicyExecutor()
 
 	if err = s.apiRouter(); err != nil {
 		return nil, err
