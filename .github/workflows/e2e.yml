@@ -96,11 +96,12 @@ jobs:
         run: |
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
-          make docker-push SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
-          make docker-push SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
           if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
             make docker-push SERVICE=wireflowd TAG="${TAG}-pro" REGISTRY="$REGISTRY"
             make docker-push SERVICE=wireflow  TAG="${TAG}-pro" REGISTRY="$REGISTRY"
+          else
+            make docker-push SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
+            make docker-push SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
           fi
 
       # 单 server 节点（--agents 0），避免 port-forward 跨节点 EOF 问题
