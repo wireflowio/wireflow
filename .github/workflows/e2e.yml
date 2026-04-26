@@ -77,18 +77,8 @@ jobs:
         run: |
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
-
           make docker-build SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
           make docker-build SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
-
-          # 只有非 PR 事件（如 push 到 dev）才推送
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "🚀 Not a PR, pushing images to GHCR..."
-            make docker-push SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
-            make docker-push SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
-          else
-            echo "跳过推送：当前为 PR 流程，镜像将直接导入 k3d 集群。"
-          fi
 
       # run-pro 标签：额外构建带 -tags pro 的 wireflowd 控制面 + edge agent 镜像
       - name: Build pro images
@@ -96,10 +86,22 @@ jobs:
         run: |
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
-          echo "🔧 Building wireflowd pro image (EDITION=pro, tag=${TAG}-pro)"
           make docker-build SERVICE=wireflowd TAG="${TAG}-pro" REGISTRY="$REGISTRY" EDITION=pro
-          echo "🔧 Building wireflow pro edge image (EDITION=pro, tag=${TAG}-pro)"
           make docker-build SERVICE=wireflow  TAG="${TAG}-pro" REGISTRY="$REGISTRY" EDITION=pro
+
+      # 推送到 GHCR —— 仅 push 事件（非 PR）。
+      # PR（含 fork PR）中此步骤被跳过：fork 的 GITHUB_TOKEN 无 packages:write 权限。
+      - name: Push images to GHCR
+        if: github.event_name != 'pull_request'
+        run: |
+          REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          make docker-push SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
+          make docker-push SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
+          if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
+            make docker-push SERVICE=wireflowd TAG="${TAG}-pro" REGISTRY="$REGISTRY"
+            make docker-push SERVICE=wireflow  TAG="${TAG}-pro" REGISTRY="$REGISTRY"
+          fi
 
       # 单 server 节点（--agents 0），避免 port-forward 跨节点 EOF 问题
       - name: Setup k3d cluster
