@@ -54,6 +54,16 @@ jobs:
           else
             echo "tag=e2e" >> $GITHUB_OUTPUT
           fi
+          # PR：检查 run-pro 标签；push：检查 commit message 中是否含 [run-pro]
+          IS_PRO=false
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            if ${{ contains(github.event.pull_request.labels.*.name, 'run-pro') }}; then
+              IS_PRO=true
+            fi
+          elif echo "${{ github.event.head_commit.message }}" | grep -qF '[run-pro]'; then
+            IS_PRO=true
+          fi
+          echo "is_pro=${IS_PRO}" >> $GITHUB_OUTPUT
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -80,6 +90,17 @@ jobs:
             echo "跳过推送：当前为 PR 流程，镜像将直接导入 k3d 集群。"
           fi
 
+      # run-pro 标签：额外构建带 -tags pro 的 wireflowd 控制面 + edge agent 镜像
+      - name: Build pro images
+        if: steps.meta.outputs.is_pro == 'true'
+        run: |
+          REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
+          TAG="${{ steps.meta.outputs.tag }}"
+          echo "🔧 Building wireflowd pro image (EDITION=pro, tag=${TAG}-pro)"
+          make docker-build SERVICE=wireflowd TAG="${TAG}-pro" REGISTRY="$REGISTRY" EDITION=pro
+          echo "🔧 Building wireflow pro edge image (EDITION=pro, tag=${TAG}-pro)"
+          make docker-build SERVICE=wireflow  TAG="${TAG}-pro" REGISTRY="$REGISTRY" EDITION=pro
+
       # 单 server 节点（--agents 0），避免 port-forward 跨节点 EOF 问题
       - name: Setup k3d cluster
         uses: AbsaOSS/k3d-action@v2
@@ -101,6 +122,10 @@ jobs:
           TAG="${{ steps.meta.outputs.tag }}"
           k3d image import "${REGISTRY}/wireflowd:${TAG}" -c ${{ env.CLUSTER_NAME }}
           k3d image import "${REGISTRY}/wireflow:${TAG}"  -c ${{ env.CLUSTER_NAME }}
+          if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
+            k3d image import "${REGISTRY}/wireflowd:${TAG}-pro" -c ${{ env.CLUSTER_NAME }}
+            k3d image import "${REGISTRY}/wireflow:${TAG}-pro"  -c ${{ env.CLUSTER_NAME }}
+          fi
 
       - name: Install kustomize
         run: make kustomize
@@ -112,16 +137,29 @@ jobs:
           export PATH=$PATH:$(go env GOPATH)/bin
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
+          if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
+            WIREFLOWD_IMG="${REGISTRY}/wireflowd:${TAG}-pro"
+            echo "🔬 Using pro wireflowd image: ${WIREFLOWD_IMG}"
+          else
+            WIREFLOWD_IMG="${REGISTRY}/wireflowd:${TAG}"
+          fi
           make deploy-aio \
-            IMG="${REGISTRY}/wireflowd:${TAG}" \
+            IMG="${WIREFLOWD_IMG}" \
             KUBECTL="kubectl --kubeconfig=${{ env.E2E_KUBECONFIG }}"
 
       - name: Run E2E tests
         run: |
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
+          # run-pro 标签时使用 pro 构建的 agent 镜像（含 telemetry 等 pro 功能）
+          if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
+            AGENT_IMAGE="${REGISTRY}/wireflow:${TAG}-pro"
+            echo "🔬 Using pro agent image: ${AGENT_IMAGE}"
+          else
+            AGENT_IMAGE="${REGISTRY}/wireflow:${TAG}"
+          fi
           make test-e2e \
-            LOCAL_AGENT_IMAGE="${REGISTRY}/wireflow:${TAG}" \
+            LOCAL_AGENT_IMAGE="${AGENT_IMAGE}" \
             E2E_KUBECONFIG="${{ env.E2E_KUBECONFIG }}"
 
       - name: Collect failure logs
