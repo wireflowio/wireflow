@@ -374,7 +374,8 @@
     "status": {
       "online": "在线",
       "offline": "离线",
-      "pending": "待接入"
+      "pending": "待接入",
+      "disabled": "已禁用"
     },
     "searchPlaceholder": "搜索名称、AppID、地址、区域...",
     "col": {
@@ -390,12 +391,18 @@
     "actions": {
       "view": "查看详情",
       "editLabels": "编辑标签",
+      "disable": "禁用节点",
+      "enable": "启用节点",
       "delete": "删除节点"
     },
     "empty": "暂无节点数据",
     "deleteDialog": {
       "title": "删除节点",
       "desc": "确认删除节点「{name}」？该操作不可撤销。"
+    },
+    "disableDialog": {
+      "title": "禁用节点",
+      "desc": "确认禁用节点「{name}」？节点将被踢出网络，无法通信。您可以随时重新启用。"
     },
     "detail": {
       "assignedIp": "分配 IP",

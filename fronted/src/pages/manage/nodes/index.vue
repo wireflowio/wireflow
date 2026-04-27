@@ -9,6 +9,7 @@ import {
   Server, Wifi, WifiOff, Clock, Network,
   KeyRound, ChevronRight, ChevronLeft, Trash2, Pencil,
   Globe, ArrowUpRight, ArrowDownRight, Copy, Check, Layers,
+  Ban, CircleCheck,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,16 +45,19 @@ type NodeStatus = 'online' | 'offline' | 'pending'
 // ── Style maps ────────────────────────────────────────────────────
 const statusDot: Record<string, string> = {
   online: 'bg-emerald-500', offline: 'bg-rose-500', pending: 'bg-amber-400',
+  disabled: 'bg-slate-400',
 }
 const statusBadge: Record<string, string> = {
-  online:  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20',
-  offline: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20',
-  pending: 'bg-amber-400/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-400/20',
+  online:   'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/20',
+  offline:  'bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-1 ring-rose-500/20',
+  pending:  'bg-amber-400/10 text-amber-600 dark:text-amber-400 ring-1 ring-amber-400/20',
+  disabled: 'bg-slate-400/10 text-slate-500 dark:text-slate-400 ring-1 ring-slate-400/20',
 }
 const statusLabel = computed((): Record<string, string> => ({
-  online:  t('manage.nodes.status.online'),
-  offline: t('manage.nodes.status.offline'),
-  pending: t('manage.nodes.status.pending'),
+  online:   t('manage.nodes.status.online'),
+  offline:  t('manage.nodes.status.offline'),
+  pending:  t('manage.nodes.status.pending'),
+  disabled: t('manage.nodes.status.disabled'),
 }))
 
 const labelColors = [
@@ -151,9 +155,11 @@ function goToPage(p: number) {
   store.actions.refresh()
 }
 
-// ── Delete confirm ─────────────────────────────────────────────────
+// ── Delete / Disable confirm ───────────────────────────────────────
 const deleteTarget     = ref<PeerRow | null>(null)
 const deleteDialogOpen = ref(false)
+const disableTarget     = ref<PeerRow | null>(null)
+const disableDialogOpen = ref(false)
 
 function promptDelete(node: PeerRow) {
   deleteTarget.value = node
@@ -166,13 +172,25 @@ async function confirmDelete() {
   deleteTarget.value = null
 }
 
+function promptDisable(node: PeerRow) {
+  disableTarget.value = node
+  disableDialogOpen.value = true
+}
+async function confirmDisable() {
+  if (disableTarget.value) {
+    await store.actions.handleDisable(disableTarget.value, () => Promise.resolve(true))
+  }
+  disableTarget.value = null
+}
+
 // ── Column definitions ─────────────────────────────────────────────
 const columns = computed<ColumnDef<PeerRow>[]>(() => [
   {
     id: 'status',
     header: t('manage.nodes.col.status'),
     cell: ({ row }) => {
-      const s: string = (row.original as any).status ?? 'pending'
+      const n = row.original as any
+      const s: string = n.disabled ? 'disabled' : (n.status ?? 'pending')
       return h('div', { class: 'flex items-center gap-2' }, [
         h('span', { class: 'relative flex size-2 shrink-0' }, [
           s === 'online' && h('span', { class: `absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 ${statusDot[s]}` }),
@@ -272,7 +290,7 @@ const columns = computed<ColumnDef<PeerRow>[]>(() => [
               h(MoreHorizontal, { class: 'size-4' })
             )
           ),
-          h(DropdownMenuContent, { align: 'end', class: 'w-36' }, () => [
+          h(DropdownMenuContent, { align: 'end', class: 'w-40' }, () => [
             h(DropdownMenuItem, { onClick: () => store.actions.openDrawer('view', node) }, () => [
               h(ChevronRight, { class: 'mr-2 size-3.5' }), t('manage.nodes.actions.view'),
             ]),
@@ -280,6 +298,14 @@ const columns = computed<ColumnDef<PeerRow>[]>(() => [
               h(Pencil, { class: 'mr-2 size-3.5' }), t('manage.nodes.actions.editLabels'),
             ]),
             h(DropdownMenuSeparator),
+            (node as any).disabled
+              ? h(DropdownMenuItem, { onClick: () => store.actions.handleEnable(node) }, () => [
+                  h(CircleCheck, { class: 'mr-2 size-3.5 text-emerald-500' }), t('manage.nodes.actions.enable'),
+                ])
+              : h(DropdownMenuItem, {
+                  class: 'text-amber-600 focus:text-amber-600',
+                  onClick: () => promptDisable(node),
+                }, () => [h(Ban, { class: 'mr-2 size-3.5' }), t('manage.nodes.actions.disable')]),
             h(DropdownMenuItem, {
               class: 'text-destructive focus:text-destructive',
               onClick: () => promptDelete(node),
@@ -505,6 +531,16 @@ const table = useVueTable({
       variant="destructive"
       @confirm="confirmDelete"
       @cancel="deleteTarget = null"
+    />
+
+    <!-- ── Disable confirm ────────────────────────────────────────── -->
+    <AppAlertDialog
+      v-model:open="disableDialogOpen"
+      :title="t('manage.nodes.disableDialog.title')"
+      :description="t('manage.nodes.disableDialog.desc', { name: (disableTarget as any)?.displayName ?? (disableTarget as any)?.name ?? (disableTarget as any)?.appId })"
+      :confirm-text="t('manage.nodes.actions.disable')"
+      @confirm="confirmDisable"
+      @cancel="disableTarget = null"
     />
 
   </div>

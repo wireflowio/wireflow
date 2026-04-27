@@ -374,7 +374,8 @@
     "status": {
       "online": "Online",
       "offline": "Offline",
-      "pending": "Pending"
+      "pending": "Pending",
+      "disabled": "Disabled"
     },
     "searchPlaceholder": "Search name, AppID, address, region...",
     "col": {
@@ -390,12 +391,18 @@
     "actions": {
       "view": "View Details",
       "editLabels": "Edit Labels",
+      "disable": "Disable Node",
+      "enable": "Enable Node",
       "delete": "Delete Node"
     },
     "empty": "No nodes",
     "deleteDialog": {
       "title": "Delete Node",
       "desc": "Delete node \"{name}\"? This cannot be undone."
+    },
+    "disableDialog": {
+      "title": "Disable Node",
+      "desc": "Disable node \"{name}\"? It will be blocked from network access. You can re-enable it later."
     },
     "detail": {
       "assignedIp": "Assigned IP",

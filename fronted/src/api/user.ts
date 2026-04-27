@@ -30,6 +30,9 @@ export const updateSystemRole = (id: string, systemRole: string) =>
 
 export const listPeer = (data?: any) => request.get('/peers/list', data)
 export const updatePeer = (data?: any) => request.put('/peers/update', data)
+export const disablePeer = (name: string) => request.put(`/peers/${name}/disable`, {})
+export const enablePeer = (name: string) => request.put(`/peers/${name}/enable`, {})
+export const deletePeer = (name: string) => request.delete(`/peers/${name}`)
 
 export const getMe = (data?: any) => request.get('/users/getme', data)
 export const updateMe = (data?: any) => request.put('/profile/updateProfile', data)
