@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -438,9 +439,14 @@ func (r *NetworkPeeringReconciler) setError(ctx context.Context, peering *v1alph
 }
 
 // setCondition upserts a condition in the slice by Type.
+// LastTransitionTime is only updated when Status or Reason actually changes,
+// preventing spurious status writes on every reconcile.
 func setCondition(conditions []metav1.Condition, c metav1.Condition) []metav1.Condition {
 	for i, existing := range conditions {
 		if existing.Type == c.Type {
+			if existing.Status == c.Status && existing.Reason == c.Reason {
+				c.LastTransitionTime = existing.LastTransitionTime
+			}
 			conditions[i] = c
 			return conditions
 		}
@@ -463,15 +469,34 @@ func shadowPolicyName(peeringName string) string {
 
 // SetupWithManager registers the controller with the manager.
 func (r *NetworkPeeringReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Only re-enqueue peerings when a network's Phase or ActiveCIDR actually
+	// changes. Without this predicate every Network status patch (e.g. metrics
+	// updates) would trigger an unnecessary reconcile.
+	networkReadyPredicate := predicate.Funcs{
+		CreateFunc:  func(e event.CreateEvent) bool { return true },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldNet, ok1 := e.ObjectOld.(*v1alpha1.WireflowNetwork)
+			newNet, ok2 := e.ObjectNew.(*v1alpha1.WireflowNetwork)
+			if !ok1 || !ok2 {
+				return false
+			}
+			return oldNet.Status.Phase != newNet.Status.Phase ||
+				oldNet.Status.ActiveCIDR != newNet.Status.ActiveCIDR
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.WireflowNetworkPeering{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Re-enqueue peerings when a gateway peer in either network comes online.
 		Watches(&v1alpha1.WireflowPeer{},
 			handler.EnqueueRequestsFromMapFunc(r.mapPeerToPeerings),
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		// Re-enqueue when a network's ActiveCIDR becomes available.
+		// Re-enqueue only when a network's Phase or ActiveCIDR changes.
 		Watches(&v1alpha1.WireflowNetwork{},
-			handler.EnqueueRequestsFromMapFunc(r.mapNetworkToPeerings)).
+			handler.EnqueueRequestsFromMapFunc(r.mapNetworkToPeerings),
+			builder.WithPredicates(networkReadyPredicate)).
 		Named("network-peering").
 		Complete(r)
 }

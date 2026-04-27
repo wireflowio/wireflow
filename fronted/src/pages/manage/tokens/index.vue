@@ -7,7 +7,7 @@ import {
 import {
   Search, RefreshCw, MoreHorizontal, Trash2, KeyRound,
   ChevronLeft, ChevronRight, Plus, Copy, Check, Terminal,
-  ShieldCheck, ShieldX, Infinity, Clock,
+  ShieldCheck, ShieldX, Infinity,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
