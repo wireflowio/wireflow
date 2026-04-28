@@ -237,6 +237,8 @@
       "network": "网络信息",
       "createdBy": "创建人",
       "createdAt": "创建时间",
+      "updatedBy": "修改人",
+      "updatedAt": "修改时间",
       "actions": ""
     },
     "statusLabel": {

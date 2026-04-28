@@ -12,6 +12,7 @@ import {
   Layers, Key, ArrowRight, Pencil, Trash2,
   ChevronLeft, ChevronRight, Server,
   Wifi, WifiOff, Network, ArrowUpRight, ArrowDownRight,
+  UserRound,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,7 +51,6 @@ function promptDelete(ws: Workspace) {
 async function confirmDelete() {
   if (deleteTarget.value) await store.deleteWorkspace(deleteTarget.value.id)
   deleteTarget.value = null
-  await store.fetchList({ page: 1, ...currentFilter.value })
 }
 
 // ── Edit / Create dialog ─────────────────────────────────────────
@@ -133,6 +133,10 @@ const columns = computed<ColumnDef<Workspace>[]>(() => [
         h('div', { class: 'min-w-0' }, [
           h('p', { class: 'font-semibold text-sm leading-none' }, ws.displayName),
           h('p', { class: 'font-mono text-[11px] text-muted-foreground mt-1' }, ws.slug),
+          ws.namespace && h('p', { class: 'font-mono text-[10px] text-muted-foreground/50 mt-0.5 flex items-center gap-1' }, [
+            h('span', { class: 'inline-block size-1 rounded-full bg-muted-foreground/30 shrink-0' }),
+            ws.namespace,
+          ]),
         ]),
       ])
     },
@@ -246,29 +250,43 @@ const columns = computed<ColumnDef<Workspace>[]>(() => [
     },
   },
   {
-    accessorKey: 'createdBy',
-    header: t('manage.workspaces.col.createdBy'),
+    accessorKey: 'createdAt',
+    header: t('manage.workspaces.col.createdAt'),
     cell: ({ row }) => {
-      const name = row.original.createdBy
-      if (!name) return h('span', { class: 'text-xs text-muted-foreground/40' }, '—')
-      return h('div', { class: 'flex items-center gap-1.5' }, [
-        h('div', {
-          class: 'size-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold shrink-0',
-        }, name.slice(0, 1).toUpperCase()),
-        h('span', { class: 'text-xs text-muted-foreground' }, name),
+      const ws = row.original
+      const timeStr = formatCreatedAt(ws.createdAt)
+      const name = ws.createdBy
+      return h('div', { class: 'flex flex-col gap-0.5' }, [
+        name
+          ? h('div', { class: 'flex items-center gap-1' }, [
+              h(UserRound, { class: 'size-3 shrink-0 text-muted-foreground/60' }),
+              h('span', { class: 'text-xs text-muted-foreground' }, name),
+            ])
+          : h('span', { class: 'text-xs text-muted-foreground/40' }, '—'),
+        timeStr !== '—'
+          ? h('span', { class: 'text-[11px] text-muted-foreground/50 tabular-nums', title: ws.createdAt }, timeStr)
+          : null,
       ])
     },
   },
   {
-    accessorKey: 'createdAt',
-    header: t('manage.workspaces.col.createdAt'),
+    id: 'updatedAt',
+    header: t('manage.workspaces.col.updatedAt'),
     cell: ({ row }) => {
-      const timeStr = formatCreatedAt(row.original.createdAt)
-      if (timeStr === '—') return h('span', { class: 'text-xs text-muted-foreground/40' }, '—')
-      return h('span', {
-        class: 'text-xs text-muted-foreground tabular-nums',
-        title: row.original.createdAt,
-      }, timeStr)
+      const ws = row.original
+      const timeStr = formatCreatedAt(ws.updatedAt)
+      const name = ws.updatedBy
+      return h('div', { class: 'flex flex-col gap-0.5' }, [
+        name
+          ? h('div', { class: 'flex items-center gap-1' }, [
+              h(UserRound, { class: 'size-3 shrink-0 text-muted-foreground/60' }),
+              h('span', { class: 'text-xs text-muted-foreground' }, name),
+            ])
+          : h('span', { class: 'text-xs text-muted-foreground/40' }, '—'),
+        timeStr !== '—'
+          ? h('span', { class: 'text-[11px] text-muted-foreground/50 tabular-nums', title: ws.updatedAt }, timeStr)
+          : null,
+      ])
     },
   },
   {

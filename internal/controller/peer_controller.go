@@ -127,7 +127,7 @@ func (r *PeerReconciler) handleInitialization(ctx context.Context, peer *v1alpha
 		return ctrl.Result{}, err
 	}
 	if changed {
-		return ctrl.Result{RequeueAfter: 100 * time.Millisecond}, nil
+		return ctrl.Result{}, nil
 	}
 
 	// Advance to Pending so the next reconcile evaluates network intent.
@@ -280,7 +280,7 @@ func (r *PeerReconciler) ensurePeerSpec(ctx context.Context, peer *v1alpha1.Wire
 				delete(lbls, label)
 			}
 		}
-		lbls[fmt.Sprintf("wireflow.run/network-%s", network.Name)] = "true"
+		lbls[networkLabelKey(network.Name)] = "true"
 		node.SetLabels(lbls)
 		return nil
 	})
@@ -292,7 +292,7 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 
 	var network v1alpha1.WireflowNetwork
 	if err := r.Get(ctx, types.NamespacedName{Namespace: peer.Namespace, Name: *peer.Spec.Network}, &network); err != nil {
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Phase = v1alpha1.NodePhaseFailed
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionJoiningNetwork,
@@ -301,7 +301,9 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 				Message:            fmt.Sprintf("Network %q not found: %v", *peer.Spec.Network, err),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			log.Error(sErr, "failed to record JoiningNetwork condition")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -309,7 +311,7 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 	// networkReadyPredicate in SetupWithManager re-enqueues peers when ActiveCIDR transitions.
 	if network.Status.ActiveCIDR == "" {
 		log.Info("Network not ready yet, waiting for ActiveCIDR", "network", network.Name)
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionJoiningNetwork,
 				Status:             metav1.ConditionFalse,
@@ -317,14 +319,16 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 				Message:            fmt.Sprintf("Waiting for network %q to assign an ActiveCIDR", network.Name),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			log.Error(sErr, "failed to record JoiningNetwork condition")
+		}
 		return ctrl.Result{RequeueAfter: 3 * time.Second}, nil
 	}
 
 	// Apply network label. Labels don't change Generation, so we requeue explicitly.
 	changed, err := r.ensurePeerSpec(ctx, peer)
 	if err != nil {
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Phase = v1alpha1.NodePhaseFailed
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionJoiningNetwork,
@@ -333,7 +337,9 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 				Message:            "Failed to apply network labels: " + err.Error(),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			log.Error(sErr, "failed to record JoiningNetwork condition")
+		}
 		return ctrl.Result{}, err
 	}
 	if changed {
@@ -342,7 +348,7 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 
 	address, err := r.IPAM.AllocateIP(ctx, &network, peer)
 	if err != nil {
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Phase = v1alpha1.NodePhaseFailed
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionIPAllocated,
@@ -351,7 +357,9 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 				Message:            err.Error(),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			log.Error(sErr, "failed to record IPAllocated condition")
+		}
 		return ctrl.Result{}, err
 	}
 	log.Info("IP allocated", "address", address)
@@ -391,7 +399,8 @@ func (r *PeerReconciler) leaveNetwork(ctx context.Context, peer *v1alpha1.Wirefl
 		p.SetLabels(lbls)
 		return nil
 	}); err != nil {
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		log := logf.FromContext(ctx)
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Phase = v1alpha1.NodePhaseFailed
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionProvisioned,
@@ -400,7 +409,9 @@ func (r *PeerReconciler) leaveNetwork(ctx context.Context, peer *v1alpha1.Wirefl
 				Message:            "Failed to remove network labels: " + err.Error(),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			log.Error(sErr, "failed to record Provisioned condition")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -461,7 +472,7 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 		manager := client.FieldOwner("wireflow-controller-manager")
 		if err := r.Patch(ctx, desiredConfigMap, client.Apply, manager); err != nil {
 			logger.Error(err, "Failed to create configmap")
-			_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+			if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 				p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 					Type:               v1alpha1.NodeConditionNetworkConfigured,
 					Status:             metav1.ConditionFalse,
@@ -469,7 +480,9 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 					Message:            "Failed to create config: " + err.Error(),
 					LastTransitionTime: metav1.Now(),
 				})
-			})
+			}); sErr != nil {
+				logger.Error(sErr, "failed to record NetworkConfigured condition")
+			}
 			return ctrl.Result{}, err
 		}
 
@@ -506,7 +519,7 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 	manager := client.FieldOwner("wireflow-controller-manager")
 	if err := r.Patch(ctx, desiredConfigMap, client.Apply, manager); err != nil {
 		logger.Error(err, "Failed to update configmap")
-		_, _ = r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
+		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
 			p.Status.Conditions = setCondition(p.Status.Conditions, metav1.Condition{
 				Type:               v1alpha1.NodeConditionNetworkConfigured,
 				Status:             metav1.ConditionFalse,
@@ -514,7 +527,9 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 				Message:            "Failed to update config: " + err.Error(),
 				LastTransitionTime: metav1.Now(),
 			})
-		})
+		}); sErr != nil {
+			logger.Error(sErr, "failed to record NetworkConfigured condition")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -746,7 +761,7 @@ func (r *PeerReconciler) mapNetworkForNodes(ctx context.Context, obj client.Obje
 	var requests []reconcile.Request
 
 	// 只获取真正加入了该网络的 WireflowPeer（通过网络标签），避免空 PeerSelector 匹配所有 peer
-	networkLabel := fmt.Sprintf("wireflow.run/network-%s", network.Name)
+	networkLabel := networkLabelKey(network.Name)
 	nodeList := &v1alpha1.WireflowPeerList{}
 	if err := r.List(ctx, nodeList, client.InNamespace(network.Namespace), client.MatchingLabels(map[string]string{networkLabel: "true"})); err != nil {
 		return nil
@@ -833,7 +848,7 @@ func (r *PeerReconciler) mapPolicyForNodes(ctx context.Context, obj client.Objec
 	// peers that are actually part of this network, not all peers in the namespace.
 	if policy.Spec.Network != "" {
 		listOpts = append(listOpts, client.MatchingLabels{
-			fmt.Sprintf("wireflow.run/network-%s", policy.Spec.Network): "true",
+			networkLabelKey(policy.Spec.Network): "true",
 		})
 	}
 
@@ -909,7 +924,7 @@ func (r *PeerReconciler) getPeerStateSnapshot(ctx context.Context, current *v1al
 
 func (r *PeerReconciler) findPeersByNetwork(ctx context.Context, network *v1alpha1.WireflowNetwork) (*v1alpha1.WireflowPeerList, error) {
 	labels := map[string]string{
-		fmt.Sprintf("wireflow.run/network-%s", network.Name): "true",
+		networkLabelKey(network.Name): "true",
 	}
 
 	var peers v1alpha1.WireflowPeerList
@@ -954,4 +969,3 @@ func (r *PeerReconciler) filterPoliciesForNode(ctx context.Context, peer *v1alph
 
 	return matched, nil
 }
-

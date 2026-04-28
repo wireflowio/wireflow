@@ -237,6 +237,8 @@
       "network": "Network Info",
       "createdBy": "Created By",
       "createdAt": "Created At",
+      "updatedBy": "Updated By",
+      "updatedAt": "Last Updated",
       "actions": ""
     },
     "statusLabel": {

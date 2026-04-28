@@ -119,7 +119,7 @@ func (r *NetworkPeeringReconciler) reconcileNormal(ctx context.Context, peering 
 
 	// 3. Annotate gateway peers with per-peering routes.
 	//    Other local peers will route the remote CIDR through this gateway.
-	annotationKey := AnnotationPeeringRoutePrefix + peering.Name
+	annotationKey := peeringRouteAnnotationKey(peering.Name)
 	if err := r.ensureAnnotation(ctx, gatewayA, annotationKey, cidrB); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -155,7 +155,7 @@ func (r *NetworkPeeringReconciler) reconcileDelete(ctx context.Context, peering 
 	log := logf.FromContext(ctx)
 	log.Info("Deleting WireflowNetworkPeering", "name", peering.Name)
 
-	annotationKey := AnnotationPeeringRoutePrefix + peering.Name
+	annotationKey := peeringRouteAnnotationKey(peering.Name)
 	shadowName := shadowPeerName(peering.Name)
 
 	// Remove peering-route annotations from gateway peers.
@@ -202,7 +202,7 @@ func (r *NetworkPeeringReconciler) findGateway(ctx context.Context, ns, networkN
 	var peerList v1alpha1.WireflowPeerList
 	if err := r.List(ctx, &peerList, client.InNamespace(ns), client.MatchingLabels{
 		LabelGateway: "true",
-		fmt.Sprintf("wireflow.run/network-%s", networkName): "true",
+		networkLabelKey(networkName): "true",
 	}); err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (r *NetworkPeeringReconciler) ensureShadowPeer(
 	targetNS, targetNetwork, srcCIDR string,
 ) error {
 	name := shadowPeerName(peering.Name)
-	networkLabel := fmt.Sprintf("wireflow.run/network-%s", targetNetwork)
+	networkLabel := networkLabelKey(targetNetwork)
 
 	desired := &v1alpha1.WireflowPeer{
 		ObjectMeta: metav1.ObjectMeta{
@@ -319,7 +319,7 @@ func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gwAccessPolicyName(peering.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/peering": peering.Name},
+			Labels:    map[string]string{"wireflow.run/peering": safeLabelValue(peering.Name)},
 		},
 		Spec: v1alpha1.WireflowPolicySpec{
 			Network:      networkName,
@@ -354,7 +354,7 @@ func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      shadowPolicyName(peering.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/peering": peering.Name},
+			Labels:    map[string]string{"wireflow.run/peering": safeLabelValue(peering.Name)},
 		},
 		Spec: v1alpha1.WireflowPolicySpec{
 			Network: networkName,

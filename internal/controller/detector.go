@@ -436,7 +436,7 @@ func (d *Generator) getPeerNamesByLabels(ctx context.Context, namespace, network
 		}
 		if networkName != "" {
 			listOpts = append(listOpts, client.MatchingLabels{
-				fmt.Sprintf("wireflow.run/network-%s", networkName): "true",
+				networkLabelKey(networkName): "true",
 			})
 		}
 

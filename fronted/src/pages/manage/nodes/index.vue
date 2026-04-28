@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, onUnmounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   useVueTable, getCoreRowModel, FlexRender, type ColumnDef,
@@ -37,6 +37,11 @@ definePage({
 const { t } = useI18n()
 const store = usePeerPageStore()
 onMounted(() => store.actions.refresh())
+
+// Auto-refresh every 30 s so online/offline status stays current.
+let refreshTimer: ReturnType<typeof setInterval>
+onMounted(() => { refreshTimer = setInterval(() => store.actions.refresh(), 30_000) })
+onUnmounted(() => clearInterval(refreshTimer))
 
 // ── Types ─────────────────────────────────────────────────────────
 type PeerRow = (typeof store.rows)[number]
