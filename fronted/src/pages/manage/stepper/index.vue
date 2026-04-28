@@ -127,11 +127,16 @@ async function handleCreatePolicy() {
     if (Object.keys(labelMap.value).length) {
       payload.peerSelector = { matchLabels: labelMap.value }
     }
-    const { code } = await createPolicy(payload) as any
+    const { code, msg } = await createPolicy(payload) as any
     if (code === 200) {
+      // platform_admin: applied directly
+      isDone.value = true
+    } else if (code === 0) {
+      // normal user: submitted for approval (HTTP 202)
+      toast.success(t('manage.stepper.step5.submitted'))
       isDone.value = true
     } else {
-      toast.error(t('manage.stepper.step5.createFailed'))
+      toast.error(msg || t('manage.stepper.step5.createFailed'))
     }
   } catch {
     toast.error(t('manage.stepper.step5.createFailed'))

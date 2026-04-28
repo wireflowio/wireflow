@@ -80,7 +80,7 @@ func (p *peerController) CreateToken(ctx context.Context, request []byte) ([]byt
 	}
 
 	wsID, _ := ctx.Value(infra.WorkspaceKey).(string)
-	if _, err := p.policyService.ApplyDirect(ctx, wsID, &dto.PolicyDto{
+	if _, err := p.policyService.ApplyDirect(ctx, wsID, "", "", &dto.PolicyDto{
 		Name:      tokenDto.Name,
 		Namespace: tokenDto.Namespace,
 		Action:    "Deny",

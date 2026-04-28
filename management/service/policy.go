@@ -29,8 +29,8 @@ type PolicyService interface {
 	Apply(ctx context.Context, policyID string) error
 
 	// ApplyDirect writes to k8s immediately and upserts a DB record with status=active.
-	// Used for admin direct-update (PUT /update).
-	ApplyDirect(ctx context.Context, wsID string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
+	// Used for admin direct-create (POST) or direct-update (PUT).
+	ApplyDirect(ctx context.Context, wsID, operatorID, operatorName string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
 
 	ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error)
 	DeletePolicy(ctx context.Context, name string) error
@@ -130,9 +130,9 @@ func (p *policyService) Apply(ctx context.Context, policyID string) error {
 	return p.store.Policies().Update(ctx, rec)
 }
 
-// ApplyDirect is used by platform_admin PUT /update — writes directly to k8s and
+// ApplyDirect is used by platform_admin POST/PUT — writes directly to k8s and
 // upserts the DB record as active.
-func (p *policyService) ApplyDirect(ctx context.Context, wsID string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
+func (p *policyService) ApplyDirect(ctx context.Context, wsID, operatorID, operatorName string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
 	workspace, err := p.store.Workspaces().GetByID(ctx, wsID)
 	if err != nil {
 		return nil, err
@@ -171,8 +171,10 @@ func (p *policyService) ApplyDirect(ctx context.Context, wsID string, policyDto 
 	if err != nil {
 		// Create new.
 		existing = &models.Policy{
-			WorkspaceID: wsID,
-			Name:        policyDto.Name,
+			WorkspaceID:   wsID,
+			Name:          policyDto.Name,
+			CreatedBy:     operatorID,
+			CreatedByName: operatorName,
 		}
 	}
 	existing.Description = policyDto.Description
@@ -181,6 +183,8 @@ func (p *policyService) ApplyDirect(ctx context.Context, wsID string, policyDto 
 	existing.Spec = string(specBytes)
 	existing.Status = models.PolicyStatusActive
 	existing.ErrorMessage = ""
+	existing.UpdatedBy = operatorID
+	existing.UpdatedByName = operatorName
 
 	if existing.ID == "" {
 		_ = p.store.Policies().Create(ctx, existing)
@@ -225,7 +229,12 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 			Description:        rec.Description,
 			PolicyTypes:        policyTypes,
 			Status:             string(rec.Status),
+			CreatedBy:          rec.CreatedBy,
 			CreatedByName:      rec.CreatedByName,
+			CreatedAt:          rec.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedBy:          rec.UpdatedBy,
+			UpdatedByName:      rec.UpdatedByName,
+			UpdatedAt:          rec.UpdatedAt.Format("2006-01-02 15:04:05"),
 			WireflowPolicySpec: &spec,
 		})
 	}

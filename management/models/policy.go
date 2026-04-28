@@ -14,7 +14,7 @@ const (
 // pending (pre-approval) and active (deployed to k8s) policies.
 type Policy struct {
 	Model
-	WorkspaceID       string       `gorm:"index;size:36"                              json:"workspaceId"`
+	WorkspaceID       string       `gorm:"size:36;uniqueIndex:idx_policy_ws_name"     json:"workspaceId"`
 	Name              string       `gorm:"size:200;uniqueIndex:idx_policy_ws_name"    json:"name"`
 	Description       string       `gorm:"size:500"                                   json:"description"`
 	Action            string       `gorm:"size:20"                                    json:"action"`
@@ -25,6 +25,8 @@ type Policy struct {
 	ErrorMessage      string       `gorm:"size:500"                                   json:"errorMessage,omitempty"`
 	CreatedBy         string       `gorm:"size:36"                                    json:"createdBy,omitempty"`
 	CreatedByName     string       `gorm:"size:200"                                   json:"createdByName,omitempty"`
+	UpdatedBy         string       `gorm:"size:36"                                    json:"updatedBy,omitempty"`
+	UpdatedByName     string       `gorm:"size:200"                                   json:"updatedByName,omitempty"`
 }
 
 func (Policy) TableName() string { return "t_policy" }

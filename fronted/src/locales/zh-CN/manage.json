@@ -154,6 +154,7 @@
       "selector": "目标选择器",
       "rules": "规则数",
       "creator": "创建人",
+      "updatedBy": "最后修改",
       "status": "状态",
       "actions": ""
     },
@@ -579,7 +580,8 @@
       "selectorTitle": "节点选择器（来自 Step 4）",
       "noLabels": "未设置节点标签，策略将匹配工作空间内所有节点",
       "nameRequired": "请填写策略名称",
-      "createFailed": "策略创建失败"
+      "createFailed": "策略创建失败",
+      "submitted": "策略已提交审批，等待管理员确认"
     }
   }
 }

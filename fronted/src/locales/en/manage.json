@@ -154,6 +154,7 @@
       "selector": "Target Selector",
       "rules": "Rules",
       "creator": "Creator",
+      "updatedBy": "Last Modified",
       "status": "Status",
       "actions": ""
     },
@@ -579,7 +580,8 @@
       "selectorTitle": "Node Selector (from Step 4)",
       "noLabels": "No labels set, policy will match all nodes in workspace",
       "nameRequired": "Please enter a policy name",
-      "createFailed": "Policy creation failed"
+      "createFailed": "Policy creation failed",
+      "submitted": "Policy submitted for approval, awaiting admin confirmation"
     }
   }
 }

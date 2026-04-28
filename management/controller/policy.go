@@ -13,7 +13,7 @@ import (
 type PolicyController interface {
 	ListPolicy(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PolicyVo], error)
 	Submit(ctx context.Context, wsID, createdBy, createdByName string, policyDto *dto.PolicyDto) (*models.Policy, error)
-	ApplyDirect(ctx context.Context, wsID string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
+	ApplyDirect(ctx context.Context, wsID, operatorID, operatorName string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error)
 	Apply(ctx context.Context, policyID string) error
 	DeletePolicy(ctx context.Context, name string) error
 }
@@ -30,8 +30,8 @@ func (p *policyController) Submit(ctx context.Context, wsID, createdBy, createdB
 	return p.policyService.Submit(ctx, wsID, createdBy, createdByName, policyDto)
 }
 
-func (p *policyController) ApplyDirect(ctx context.Context, wsID string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
-	return p.policyService.ApplyDirect(ctx, wsID, policyDto)
+func (p *policyController) ApplyDirect(ctx context.Context, wsID, operatorID, operatorName string, policyDto *dto.PolicyDto) (*vo.PolicyVo, error) {
+	return p.policyService.ApplyDirect(ctx, wsID, operatorID, operatorName, policyDto)
 }
 
 func (p *policyController) Apply(ctx context.Context, policyID string) error {

@@ -35,8 +35,20 @@ func (s *Server) createOrUpdatePolicy(c *gin.Context) {
 
 	wsID, _ := c.Request.Context().Value(infra.WorkspaceKey).(string)
 
-	// POST /create → save to DB as pending + submit workflow for approval.
+	// POST /create
 	if c.Request.Method == "POST" {
+		// platform_admin applies directly without approval workflow.
+		if c.GetString("system_role") == "platform_admin" {
+			vo, err := s.policyController.ApplyDirect(c.Request.Context(), wsID, c.GetString("user_id"), c.GetString("username"), &req)
+			if err != nil {
+				resp.Error(c, err.Error())
+				return
+			}
+			resp.OK(c, vo)
+			return
+		}
+
+		// Other roles: save as pending + submit workflow for approval.
 		policyRec, err := s.policyController.Submit(c.Request.Context(), wsID, c.GetString("user_id"), c.GetString("username"), &req)
 		if err != nil {
 			resp.Error(c, err.Error())
@@ -63,7 +75,7 @@ func (s *Server) createOrUpdatePolicy(c *gin.Context) {
 	}
 
 	// PUT /update → apply directly (admin only path).
-	vo, err := s.policyController.ApplyDirect(c.Request.Context(), wsID, &req)
+	vo, err := s.policyController.ApplyDirect(c.Request.Context(), wsID, c.GetString("user_id"), c.GetString("username"), &req)
 	if err != nil {
 		resp.Error(c, err.Error())
 		return

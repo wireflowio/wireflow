@@ -77,7 +77,7 @@ func (t *tokenService) Create(ctx context.Context) (string, error) {
 	}
 
 	wsID, _ := ctx.Value(infra.WorkspaceKey).(string)
-	if _, err := t.policyService.ApplyDirect(ctx, wsID, &dto.PolicyDto{
+	if _, err := t.policyService.ApplyDirect(ctx, wsID, "", "", &dto.PolicyDto{
 		Name:      "default-deny",
 		Namespace: tokenDto.Namespace,
 		Action:    "Deny",
