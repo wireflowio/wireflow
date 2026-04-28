@@ -290,6 +290,18 @@ func (r *PeerReconciler) ensurePeerSpec(ctx context.Context, peer *v1alpha1.Wire
 func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.WireflowPeer, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	// 幂等性校验 1: 是否已经在期望的网络中？
+	if peer.Status.ActiveNetwork != nil && *peer.Status.ActiveNetwork == *peer.Spec.Network {
+		log.Info("Peer is already in the target network, skip join")
+		return ctrl.Result{}, nil
+	}
+
+	// 幂等性校验 2: 是否已经分配了 IP？(防止重复分配)
+	if peer.Status.AllocatedAddress != nil {
+		log.Info("Peer is already in the target network, skip join")
+		return ctrl.Result{}, nil
+	}
+
 	var network v1alpha1.WireflowNetwork
 	if err := r.Get(ctx, types.NamespacedName{Namespace: peer.Namespace, Name: *peer.Spec.Network}, &network); err != nil {
 		if _, sErr := r.updateStatus(ctx, peer, func(p *v1alpha1.WireflowPeer) {
