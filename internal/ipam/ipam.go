@@ -42,7 +42,7 @@ func NewIPAM(client client.Client) *IPAM {
 func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1alpha1.WireflowGlobalIPPool) (string, error) {
 	const maxRetries = 10
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		// 每次重试都重新查询，以感知并发创建带来的新占用
+		// Re-query on every attempt to observe new allocations made by concurrent requests.
 		ip, err := m.FindFirstFree(ctx, pool)
 		if err != nil {
 			return "", err
@@ -70,14 +70,14 @@ func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1a
 
 		err = m.client.Create(ctx, alloc)
 		if err == nil {
-			// 创建成功，意味着我们抢到了这个段
+			// Created successfully — we won the race for this subnet.
 			return subnetCIDR, nil
 		}
 
 		if !errors.IsAlreadyExists(err) {
-			return "", err // 发生了其他错误
+			return "", err // Unexpected error.
 		}
-		// AlreadyExists：该段刚被并发请求抢走，重试找下一个空闲段
+		// AlreadyExists: a concurrent request claimed this subnet; retry to find the next free one.
 	}
 
 	return "", fmt.Errorf("no available subnet in pool")
@@ -90,24 +90,24 @@ func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.WireflowGlobalI
 		return nil, fmt.Errorf("invalid pool CIDR: %v", err)
 	}
 
-	// 这里的 ip 实际上就是起始地址 (10.0.0.0)
+	// ip is the network base address (e.g. 10.0.0.0); normalise it with the mask.
 	startIP := ip.Mask(ipnet.Mask)
 
-	// 1. 从 Informer 缓存获取所有现有的分配
+	// 1. List all existing allocations from the Informer cache.
 	var allAllocations v1alpha1.WireflowSubnetAllocationList
 	if err = m.client.List(ctx, &allAllocations); err != nil {
 		return nil, err
 	}
 
-	// 2. 将已占用的 Hex 后缀存入 Map
+	// 2. Build a set of occupied hex suffixes for O(1) lookup.
 	used := make(map[string]struct{})
 	for _, a := range allAllocations.Items {
-		// 假设名称格式是 subnet-0a0a0100
+		// Name format: subnet-<8-hex-digits>, e.g. subnet-0a0a0100
 		hexStr := strings.TrimPrefix(a.Name, "subnet-")
 		used[hexStr] = struct{}{}
 	}
 
-	// 3. 迭代计算，遇到不在 used Map 里的第一个地址就返回
+	// 3. Iterate subnets and return the first one not in the used set.
 	for curr := startIP; ipnet.Contains(curr); curr = nextSubnet(curr, pool.Spec.SubnetMask) {
 		if _, exists := used[ipToHex(curr)]; !exists {
 			return curr, nil // 找到了回收后的空洞或全新的网段
@@ -117,13 +117,13 @@ func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.WireflowGlobalI
 }
 
 func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork, peer *v1alpha1.WireflowPeer) (string, error) {
-	// 1. 解析 Network 分配到的网段 (例如 10.10.1.0/24)
+	// 1. Parse the network's assigned CIDR (e.g. 10.10.1.0/24).
 	ip, ipnet, err := net.ParseCIDR(network.Status.ActiveCIDR)
 	if err != nil {
 		return "", fmt.Errorf("invalid network CIDR: %v", err)
 	}
 
-	// 2. 获取该租户(Namespace)内已占用的 IP 对象
+	// 2. List all occupied IP objects in the peer's namespace (tenant scope).
 	var existing v1alpha1.WireflowEndpointList
 	if err := m.client.List(ctx, &existing, client.InNamespace(peer.Namespace)); err != nil {
 		return "", err
@@ -131,15 +131,20 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 
 	used := make(map[string]struct{})
 	for _, a := range existing.Items {
-		// peerName
+		// If this peer already has an endpoint (e.g. a previous status update
+		// failed after the endpoint was created), reuse that address instead of
+		// allocating a second one.
+		if a.Spec.PeerRef == peer.Name {
+			return a.Spec.Address, nil
+		}
 		used[a.Name] = struct{}{}
 	}
 
-	// 3. 寻找空闲 IP
-	// 起始点：网络地址 + 2 (跳过 .0 和 .1 网关)
+	// 3. Find a free IP.
+	// Start at network base + 2 (skip .0 network address and .1 gateway).
 	startInt := ipToUint32(ip.Mask(ipnet.Mask)) + 2
 
-	// 结束点：广播地址 - 1
+	// End at broadcast - 1.
 	ones, bits := ipnet.Mask.Size()
 	totalIPs := uint32(1 << (bits - ones))
 	endInt := ipToUint32(ip.Mask(ipnet.Mask)) + totalIPs - 2
@@ -149,10 +154,10 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 		hexName := fmt.Sprintf("ip-%s", ipToHex(currentIP))
 
 		if _, ok := used[hexName]; ok {
-			continue // 已占用
+			continue // Already in use.
 		}
 
-		// 4. 原子创建 IPAllocation
+		// 4. Atomically claim the IP by creating its WireflowEndpoint.
 		endpoint := &v1alpha1.WireflowEndpoint{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      hexName,
@@ -170,16 +175,39 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 
 		if err := m.client.Create(ctx, endpoint); err != nil {
 			if errors.IsAlreadyExists(err) {
-				continue // 刚才被别的并发请求抢走了，尝试下一个
+				continue // Another request claimed this address concurrently; try the next one.
 			}
 			return "", err
 		}
 
-		// 成功抢占 IP
+		// Successfully claimed the IP.
 		return currentIP.String(), nil
 	}
 
 	return "", fmt.Errorf("no available IP addresses in network %s", network.Name)
+}
+
+// ReleaseIP deletes the WireflowEndpoint that holds the peer's allocated address,
+// returning the IP to the pool. Safe to call when AllocatedAddress is nil.
+func (m *IPAM) ReleaseIP(ctx context.Context, namespace, allocatedAddress string) error {
+	if allocatedAddress == "" {
+		return nil
+	}
+	ip := net.ParseIP(allocatedAddress)
+	if ip == nil {
+		return nil
+	}
+	hexName := fmt.Sprintf("ip-%s", ipToHex(ip))
+	endpoint := &v1alpha1.WireflowEndpoint{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hexName,
+			Namespace: namespace,
+		},
+	}
+	if err := m.client.Delete(ctx, endpoint); err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	return nil
 }
 
 // 辅助函数：计算下一个子网地址
@@ -189,39 +217,26 @@ func nextSubnet(ip net.IP, maskBits int) net.IP {
 	return uint32ToIP(i)
 }
 
-// ipToHex 将 net.IP 转换为 8 位的十六进制字符串
+// ipToHex converts a net.IP to an 8-character lowercase hex string.
 func ipToHex(ip net.IP) string {
-	// 确保处理的是 IPv4 的 4 字节表示
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		return ""
 	}
-	// 使用 hex.EncodeToString 直接转换字节数组
 	return hex.EncodeToString(ipv4)
 }
 
-// hexToIP 将 8 位十六进制字符串还原为 net.IP
-// nolint:all
-func hexToIP(h string) net.IP {
-	bytes, err := hex.DecodeString(h)
-	if err != nil || len(bytes) != 4 {
-		return nil
-	}
-	return net.IP(bytes)
-}
-
-// ipToUint32 将 net.IP 转换为 uint32 数字
+// ipToUint32 converts a net.IP to a uint32 using big-endian byte order,
+// ensuring that e.g. 1.0.0.0 compares greater than 0.255.255.255.
 func ipToUint32(ip net.IP) uint32 {
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		return 0
 	}
-	// 使用 BigEndian (大端序) 保证转换结果符合直觉
-	// 例如 1.0.0.0 转换后大于 0.255.255.255
 	return binary.BigEndian.Uint32(ipv4)
 }
 
-// uint32ToIP 将 uint32 数字还原为 net.IP
+// uint32ToIP converts a uint32 back to a net.IP (big-endian).
 func uint32ToIP(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)

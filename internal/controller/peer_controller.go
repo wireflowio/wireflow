@@ -168,7 +168,14 @@ func (r *PeerReconciler) handlePending(ctx context.Context, peer *v1alpha1.Wiref
 		return r.leaveNetwork(ctx, peer, req)
 
 	default:
-		// specNet != nil: join or switch networks.
+		// specNet != nil. Differentiate between first-join and network-switch.
+		// On a network switch the old IP must be released before a new one is
+		// allocated; otherwise joinNetwork would allocate a second address while
+		// the first endpoint is still alive.
+		if activeNet != nil && *activeNet != *specNet {
+			log.Info("Switching network, leaving old network first", "name", req.Name, "from", *activeNet, "to", *specNet)
+			return r.leaveNetwork(ctx, peer, req)
+		}
 		log.Info("Joining network", "name", req.Name, "network", *specNet)
 		return r.joinNetwork(ctx, peer, req)
 	}
@@ -210,22 +217,22 @@ func (r *PeerReconciler) handleFailed(ctx context.Context, peer *v1alpha1.Wirefl
 }
 
 func (r *PeerReconciler) handleDelete(ctx context.Context, node *v1alpha1.WireflowPeer) (ctrl.Result, error) {
-	// 1. 定义 Finalizer 名称
+	// 1. Finalizer name.
 	const finalizerName = "wireflow.run/node"
 
-	// 2. 检查 Finalizer 是否存在
+	// 2. Check if the finalizer is present.
 	if !controllerutil.ContainsFinalizer(node, finalizerName) {
-		return ctrl.Result{}, nil // 已经处理过了，直接返回
+		return ctrl.Result{}, nil // Already removed, nothing to do.
 	}
 
-	// 3. 执行清理逻辑
-	// 关键点：这里必须是幂等的！即便执行多次，结果也一样
+	// 3. Run cleanup logic.
+	// Critical: this must be idempotent — running it multiple times must yield the same result.
 	if err := r.performCleanup(ctx, node); err != nil {
-		// 如果清理失败，不要立即移除 Finalizer，返回 error 触发重试
+		// If cleanup fails, do not remove the finalizer yet; return the error to trigger a retry.
 		return ctrl.Result{}, err
 	}
 
-	// 4. 清理成功后，移除 Finalizer
+	// 4. Cleanup succeeded — remove the finalizer.
 	controllerutil.RemoveFinalizer(node, finalizerName)
 	if err := r.Update(ctx, node); err != nil {
 		return ctrl.Result{}, err
@@ -235,8 +242,8 @@ func (r *PeerReconciler) handleDelete(ctx context.Context, node *v1alpha1.Wirefl
 }
 
 func (r *PeerReconciler) performCleanup(ctx context.Context, node *v1alpha1.WireflowPeer) error {
-	// 目前没有外部资源需要清理
-	// 预留位置：如果未来需要清理 Relay 缓存或数据库记录，加在这里
+	// No external resources need cleaning up at this time.
+	// Reserved: add relay cache or database cleanup here if needed in the future.
 	return nil
 }
 
@@ -274,7 +281,8 @@ func (r *PeerReconciler) ensurePeerSpec(ctx context.Context, peer *v1alpha1.Wire
 		if lbls == nil {
 			lbls = make(map[string]string)
 		}
-		// 切换网络时，先删除所有旧的 network label，再添加新的，避免 peer 同时出现在多个网络
+		// On a network switch, remove all old network labels before adding the new one
+		// so the peer never appears in more than one network at a time.
 		for label := range lbls {
 			if strings.HasPrefix(label, "wireflow.run/network-") {
 				delete(lbls, label)
@@ -290,14 +298,13 @@ func (r *PeerReconciler) ensurePeerSpec(ctx context.Context, peer *v1alpha1.Wire
 func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.WireflowPeer, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// 幂等性校验 1: 是否已经在期望的网络中？
+	// Idempotency guard: the peer is already in the target network, nothing to do.
+	// The caller (handlePending) guarantees that activeNet is nil or equals specNet
+	// by the time we arrive here, so checking ActiveNetwork against specNet is sufficient.
+	// AllocateIP is itself idempotent: if the peer already owns a WireflowEndpoint it
+	// returns the existing address, preventing a second allocation on retry after a
+	// failed updateStatus call.
 	if peer.Status.ActiveNetwork != nil && *peer.Status.ActiveNetwork == *peer.Spec.Network {
-		log.Info("Peer is already in the target network, skip join")
-		return ctrl.Result{}, nil
-	}
-
-	// 幂等性校验 2: 是否已经分配了 IP？(防止重复分配)
-	if peer.Status.AllocatedAddress != nil {
 		log.Info("Peer is already in the target network, skip join")
 		return ctrl.Result{}, nil
 	}
@@ -399,8 +406,20 @@ func (r *PeerReconciler) joinNetwork(ctx context.Context, peer *v1alpha1.Wireflo
 	return r.lastReconcile(ctx, peer, req)
 }
 
-// leaveNetwork clears the network label and status fields, then marks the peer Ready (idle).
+// leaveNetwork releases the peer's IP, clears its network labels and status,
+// then marks the peer Ready (idle).
 func (r *PeerReconciler) leaveNetwork(ctx context.Context, peer *v1alpha1.WireflowPeer, req ctrl.Request) (ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	// Release the allocated IP back to the pool before wiping status.
+	if peer.Status.AllocatedAddress != nil {
+		if err := r.IPAM.ReleaseIP(ctx, peer.Namespace, *peer.Status.AllocatedAddress); err != nil {
+			log.Error(err, "failed to release IP", "address", *peer.Status.AllocatedAddress)
+			return ctrl.Result{}, err
+		}
+		log.Info("IP released", "address", *peer.Status.AllocatedAddress)
+	}
+
 	if _, err := r.updateSpec(ctx, peer, func(p *v1alpha1.WireflowPeer) error {
 		lbls := p.GetLabels()
 		for label := range lbls {
@@ -441,6 +460,15 @@ func (r *PeerReconciler) leaveNetwork(ctx context.Context, peer *v1alpha1.Wirefl
 		return ctrl.Result{}, err
 	}
 
+	// If the peer is switching networks (Spec.Network != nil), the status/label patches
+	// above do not bump Generation, so GenerationChangedPredicate will not enqueue a new
+	// reconcile. Requeue explicitly so handleReady can detect the pending join and advance
+	// to Pending → joinNetwork. For a true leave (Spec.Network == nil) no further
+	// reconcile is needed, so fall through to lastReconcile to flush the ConfigMap.
+	if peer.Spec.Network != nil {
+		return ctrl.Result{RequeueAfter: 100 * time.Millisecond}, nil
+	}
+
 	return r.lastReconcile(ctx, peer, req)
 }
 
@@ -451,10 +479,10 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 
 	configMapName := fmt.Sprintf("%s-config", peer.Name)
 
-	// 1) 每次都重新构建 snapshot（不再做 changes 检查）
+	// 1) Rebuild the snapshot on every reconcile (no stale-change detection).
 	snapshot := r.getPeerStateSnapshot(ctx, peer, request)
 
-	// 2) 用 WireflowPolicy 计算 computedPeers / computedRules，并生成最终 message
+	// 2) Compute peers/rules from WireflowPolicy and generate the final message.
 	message, err := r.generator.generate(ctx, peer, snapshot, r.generator.generateConfigVersion())
 	if err != nil {
 		return ctrl.Result{}, err
@@ -472,7 +500,7 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 		return ctrl.Result{}, err
 	}
 
-	// 3) 获取当前 CM，看 hash 是否一致；不一致才更新
+	// 3) Fetch the existing ConfigMap and compare hashes; update only when they differ.
 	var found corev1.ConfigMap
 	err = r.Get(ctx, types.NamespacedName{Name: configMapName, Namespace: peer.Namespace}, &found)
 	if err != nil {
@@ -570,16 +598,6 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 	return ctrl.Result{}, nil
 }
 
-// 如果你想看具体哪里变了
-//func diffConfig(oldData, newData string) {
-//	// 假设是 JSON 格式字符串，先反序列化
-//	var oldMap, newMap map[string]interface{}
-//	json.Unmarshal([]byte(oldData), &oldMap)
-//	json.Unmarshal([]byte(newData), &newMap)
-//
-//	// 使用 go-cmp 打印详细差异
-//	fmt.Println(cmp.Diff(oldMap, newMap))
-//}
 
 func (r *PeerReconciler) newConfigmap(namespace, configMapName, message, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
@@ -604,11 +622,11 @@ func (r *PeerReconciler) newConfigmap(namespace, configMapName, message, hash st
 }
 
 func computeMessageHash(msg *infra.Message) (string, error) {
-	// 排除 ConfigVersion 和 Timestamp，避免这两个字段每次变化导致 hash 不稳定
+	// Exclude ConfigVersion and Timestamp to keep the hash stable across reconciles.
 	tmp := struct {
 		*infra.Message
-		ConfigVersion interface{} `json:"configVersion,omitempty"` // 覆盖排除
-		Timestamp     interface{} `json:"timestamp,omitempty"`     // 覆盖排除
+		ConfigVersion interface{} `json:"configVersion,omitempty"` // shadow to exclude
+		Timestamp     interface{} `json:"timestamp,omitempty"`     // shadow to exclude
 	}{
 		Message:       msg,
 		ConfigVersion: nil,
@@ -704,10 +722,10 @@ func (r *PeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		r.generator = NewGenerator(mgr.GetClient())
 	}
 
-	// 定义一个只管更新的过滤器
+	// Predicate that fires only on Update events.
 	onlyUpdatePredicate := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			// 启动时的全量加载会触发这里，返回 false 拦截掉
+			// The initial list-and-watch bulk load fires Create events; ignore them.
 			return false
 		},
 	}
@@ -717,19 +735,21 @@ func (r *PeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 
 	configMapPredicate := predicate.Funcs{
-		// 不响应 Create：控制器自己 Create configmap 后无需再 enqueue peer（
-		// Status.CurrentHash 已写入，下次 reconcile 会直接跳过）
+		// Ignore Create: after the controller creates the ConfigMap, Status.CurrentHash
+		// is already written, so the next reconcile will skip cleanly without re-enqueue.
 		CreateFunc: func(e event.CreateEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldCm := e.ObjectOld.(*corev1.ConfigMap)
 			newCm := e.ObjectNew.(*corev1.ConfigMap)
-			// 只有 Data 内容真正变了，才触发 map 函数（外部修改才需要自愈）
+			// Only trigger when Data actually changed (self-heal external edits).
 			return !reflect.DeepEqual(oldCm.Data, newCm.Data)
 		},
 	}
-	// 监听 WireflowNetwork 的 spec 变化（generation changed）以及 ActiveCIDR 从空变非空（status patch）。
-	// 使用自定义 predicate 是因为 GenerationChangedPredicate 只检测 spec 变化，
-	// 而 NetworkReconciler 分配 ActiveCIDR 是 status patch，不改变 generation。
+	// Watch WireflowNetwork for spec changes (generation bump) and for the moment
+	// ActiveCIDR transitions from empty to non-empty (status patch).
+	// A custom predicate is needed because GenerationChangedPredicate only detects
+	// spec changes, while NetworkReconciler assigns ActiveCIDR via a status patch
+	// that does not bump generation.
 	networkReadyPredicate := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -738,7 +758,7 @@ func (r *PeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			if !ok1 || !ok2 {
 				return false
 			}
-			// spec 变化 或 ActiveCIDR 刚被分配 → 触发 peer reconcile
+			// Trigger peer reconcile on spec change or when ActiveCIDR is first assigned.
 			return oldNet.Generation != newNet.Generation ||
 				(oldNet.Status.ActiveCIDR == "" && newNet.Status.ActiveCIDR != "")
 		},
@@ -759,8 +779,10 @@ func (r *PeerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(predicate.And(configMapPredicate, ownedCMPredicate))).
 		Watches(&v1alpha1.WireflowPolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.mapPolicyForNodes),
-			// 不加 onlyUpdatePredicate：新建策略（Create）必须触发 peer reconcile 才能下发配置；
-			// GenerationChangedPredicate 默认放行 Create/Delete，只过滤 generation 未变的 Update。
+			// Do not add onlyUpdatePredicate: a newly created policy (Create event) must
+			// trigger peer reconcile to push the config down.
+			// GenerationChangedPredicate passes Create/Delete by default and only filters
+			// Updates where generation has not changed.
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("node").WithOptions(controller.Options{
 		MaxConcurrentReconciles: 5,
@@ -772,14 +794,14 @@ func (r *PeerReconciler) mapNetworkForNodes(ctx context.Context, obj client.Obje
 	network := obj.(*v1alpha1.WireflowNetwork)
 	var requests []reconcile.Request
 
-	// 只获取真正加入了该网络的 WireflowPeer（通过网络标签），避免空 PeerSelector 匹配所有 peer
+	// Only list peers that have actually joined this network (via the network label)
+	// to avoid an empty PeerSelector matching all peers in the namespace.
 	networkLabel := networkLabelKey(network.Name)
 	nodeList := &v1alpha1.WireflowPeerList{}
 	if err := r.List(ctx, nodeList, client.InNamespace(network.Namespace), client.MatchingLabels(map[string]string{networkLabel: "true"})); err != nil {
 		return nil
 	}
 
-	// 2. 将所有匹配的 WireflowPeer 加入请求队列
 	for _, node := range nodeList.Items {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
@@ -795,14 +817,12 @@ func (r *PeerReconciler) mapConfigMapForNodes(ctx context.Context, obj client.Ob
 	cm := obj.(*corev1.ConfigMap)
 	var requests []reconcile.Request
 
-	// 1. 获取所有 WireflowPeer (或只获取匹配 WireflowNetwork.Spec.PeerSelector 的 WireflowPeer)
 	var node v1alpha1.WireflowPeer
 	name := strings.TrimSuffix(cm.Name, "-config")
 	if err := r.Get(ctx, types.NamespacedName{Namespace: cm.Namespace, Name: name}, &node); err != nil {
 		return nil
 	}
 
-	// 2. 将所有匹配的 WireflowPeer 加入请求队列
 	requests = append(requests, reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: node.Namespace,
@@ -816,10 +836,7 @@ func (r *PeerReconciler) mapEndpointForNodes(ctx context.Context, obj client.Obj
 	endpoint := obj.(*v1alpha1.WireflowEndpoint)
 	var requests []reconcile.Request
 
-	//获取所有nsName下的WireflowPeer
 	peerList := &v1alpha1.WireflowPeerList{}
-
-	// 使用 ListOptions 锁定命名空间
 	listOpts := []client.ListOption{
 		client.InNamespace(endpoint.Namespace),
 	}
@@ -828,7 +845,6 @@ func (r *PeerReconciler) mapEndpointForNodes(ctx context.Context, obj client.Obj
 		return nil
 	}
 
-	// 2. 将所有匹配的 WireflowPeer 加入请求队列
 	for _, item := range peerList.Items {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
@@ -881,10 +897,8 @@ func (r *PeerReconciler) mapPolicyForNodes(ctx context.Context, obj client.Objec
 	return requests
 }
 
-// getNetwork 会获取所有的Networks，正向声明的或者反向声明的都包含
+// getNetwork returns the WireflowNetwork that the peer's Spec.Network points to.
 func (r *PeerReconciler) getNetwork(ctx context.Context, peer *v1alpha1.WireflowPeer) (*v1alpha1.WireflowNetwork, error) {
-
-	// 1. 获取所有 WireflowNetwork 资源 (用于反向检查)
 	var network v1alpha1.WireflowNetwork
 	if err := r.Get(ctx, types.NamespacedName{Namespace: peer.Namespace, Name: *peer.Spec.Network}, &network); err != nil {
 		return nil, fmt.Errorf("failed to get joined network: %w", err)
@@ -902,7 +916,6 @@ func (r *PeerReconciler) getPeerStateSnapshot(ctx context.Context, current *v1al
 		Labels: current.GetLabels(),
 	}
 
-	// 获取网络信息
 	if current.Spec.Network != nil {
 		networkName := *current.Spec.Network
 		var network v1alpha1.WireflowNetwork
@@ -923,7 +936,6 @@ func (r *PeerReconciler) getPeerStateSnapshot(ctx context.Context, current *v1al
 		}
 	}
 
-	//获取网络策略
 	policyList, err := r.filterPoliciesForNode(ctx, snapshot.Peer)
 	if err != nil {
 		return snapshot
@@ -962,18 +974,18 @@ func (r *PeerReconciler) filterPoliciesForNode(ctx context.Context, peer *v1alph
 	}
 
 	for _, policy := range policyList.Items {
-		// 只匹配同一网络的 policy，避免其他网络的 policy 影响当前 peer 的 hash
+		// Only match policies from the same network to prevent cross-network policies
+		// from affecting this peer's config hash.
 		if policy.Spec.Network != peerNetwork {
 			continue
 		}
 
 		selector, err := metav1.LabelSelectorAsSelector(&policy.Spec.PeerSelector)
 		if err != nil {
-			// selector 写错时：你可以选择忽略该 policy 或直接返回错误
 			return nil, fmt.Errorf("invalid nodeSelector in policy %s/%s: %w", policy.Namespace, policy.Name, err)
 		}
 
-		// 空 selector {} 会匹配所有对象（这点要注意）
+		// An empty selector {} matches all objects.
 		if selector.Matches(nodeLabelSet) {
 			matched = append(matched, &policy)
 		}
