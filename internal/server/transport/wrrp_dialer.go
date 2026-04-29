@@ -48,6 +48,8 @@ type wrrpDialer struct {
 	onPeerReceived func(peer infra.Peer)
 	onRestart      func() // called when SYN arrives on an active session (remote restarted)
 	sm             *SessionManager
+	closeOnce      sync.Once
+	stopChan       chan struct{} // closed on Close() to unblock goroutines
 }
 
 type WrrpDialerConfig struct {
@@ -74,6 +76,7 @@ func NewWrrpDialer(cfg *WrrpDialerConfig) infra.Dialer {
 		remoteId:       cfg.RemoteId,
 		wrrp:           cfg.Wrrp,
 		readyChan:      make(chan struct{}),
+		stopChan:       make(chan struct{}),
 		sm:             cfg.SM,
 		sender:         cfg.Sender,
 		getLocalPeer:   cfg.GetLocalPeer,
@@ -109,6 +112,9 @@ func (w *wrrpDialer) Prepare(ctx context.Context, remoteId infra.PeerIdentity) e
 			select {
 			case <-newCtx.Done():
 				w.log.Warn("SYN canceled", "err", newCtx.Err())
+				return
+			case <-w.stopChan:
+				w.log.Debug("SYN stopped via Close")
 				return
 			case <-ticker.C:
 				w.log.Debug("sending SYN", "remote", remoteId)
@@ -246,8 +252,11 @@ func (w *wrrpDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pa
 		if cancel != nil {
 			cancel() // stop SYN ticker so we don't trigger spurious onRestart on the remote
 		}
-		w.readyOnce.Do(func() { close(w.readyChan) })
-		return w.sendOfferFromWrrp(ctx, grpc.PacketType_ANSWER)
+		w.closeReady()
+		if err := w.sendOfferFromWrrp(ctx, grpc.PacketType_ANSWER); err != nil {
+			w.log.Error("send ANSWER failed", err)
+		}
+		return nil
 
 	case grpc.PacketType_ANSWER:
 		offer := packet.GetOffer()
@@ -293,7 +302,20 @@ func (w *wrrpDialer) Type() infra.DialerType {
 }
 
 func (w *wrrpDialer) Close() error {
+	w.closeOnce.Do(func() {
+		w.mu.Lock()
+		cancel := w.cancel
+		w.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+		close(w.stopChan)
+	})
 	return nil
+}
+
+func (w *wrrpDialer) closeReady() {
+	w.readyOnce.Do(func() { close(w.readyChan) })
 }
 
 type WrrpTransport struct {

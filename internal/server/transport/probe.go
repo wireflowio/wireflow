@@ -16,13 +16,15 @@ package transport
 
 import (
 	"context"
+	"errors"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/alatticeio/lattice/internal/agent/config"
 	"github.com/alatticeio/lattice/internal/agent/infra"
 	"github.com/alatticeio/lattice/internal/agent/log"
 	"github.com/alatticeio/lattice/internal/grpc"
-	"sync"
-	"sync/atomic"
-	"time"
 
 	"github.com/pion/ice/v4"
 )
@@ -31,43 +33,46 @@ var (
 	_ infra.Probe = (*Probe)(nil)
 )
 
-// Probe for probe connection from two peerManager.
+// Probe manages the connection lifecycle to a single remote peer.
 type Probe struct {
 	mu        sync.RWMutex
 	localId   infra.PeerIdentity
 	remoteId  infra.PeerIdentity
 	iceDialer infra.Dialer
-	state     ice.ConnectionState
+	wrrpDialer infra.Dialer
+	iceState  ice.ConnectionState
 	signal    infra.SignalService
 	log       *log.Logger
-	rtt       time.Duration // nolint
+	rtt       time.Duration
 
-	// epoch is incremented on each restart().  A discover() goroutine captures
-	// its epoch at launch and checks it before calling onSuccess/onFailure.
-	// If the epoch changed (restart fired while discover was in flight), the
-	// goroutine discards its result — preventing a stale goroutine from racing
-	// a freshly started one to onSuccess.
-	epoch atomic.Uint64
-	// running is true while a discover() goroutine is active.  CAS(false→true)
-	// in Start() ensures only one goroutine runs at a time.
-	running atomic.Bool
+	// State machine guards lifecycle transitions.
+	sm *StateMachine
 
-	// Add wrrp
-	wrrpDialer infra.Dialer
+	// Configurator handles WireGuard side-effects (peer, route, NAT).
+	configurator ConnectionConfigurator
 
-	// newIceDialer creates a fresh iceDialer instance for reconnection.
-	newIceDialer func() infra.Dialer
-	// newWrrpDialer creates a fresh wrrpDialer instance for reconnection.
+	// Factory funcs for creating fresh dialers on restart.
+	newIceDialer  func() infra.Dialer
 	newWrrpDialer func() infra.Dialer
 
-	// onBeforeRestart is called at the top of restart() to clean up stale
-	// WireGuard peer state (RemovePeer) and reset onPeerKnown guards before
-	// fresh dialers start their SYN/ACK exchange.
+	// onBeforeRestart is called before rebuilding dialers to clean up
+	// stale WireGuard peer state.
 	onBeforeRestart func()
 
-	onSuccess        func(transport infra.Transport) error
-	onFailure        func(error) error
+	// Epoch and running for discover() goroutine coordination.
+	epoch   atomic.Uint64
+	running atomic.Bool
+
+	// currentTransport holds the active transport.
 	currentTransport infra.Transport
+
+	// Remote peer info received from SYN/ACK.
+	muPeer     sync.Mutex
+	remotePeer *infra.Peer
+
+	// firstFailureAt tracks consecutive failure duration for 60s timeout.
+	muFail       sync.Mutex
+	firstFailureAt time.Time
 }
 
 func (p *Probe) Handle(ctx context.Context, remoteId infra.PeerIdentity, packet *grpc.SignalPacket) error {
@@ -83,19 +88,15 @@ func (p *Probe) Handle(ctx context.Context, remoteId infra.PeerIdentity, packet 
 		p.mu.RUnlock()
 		return d.Handle(ctx, p.remoteId, packet)
 	}
-
 	return nil
 }
 
 // restart replaces both dialers with fresh instances and re-runs discovery.
-// Called on clean session transitions: ICE Failed state, or a SYN arriving
-// on an already-active WRRP session (remote restarted).
 func (p *Probe) restart() {
 	if p.newIceDialer == nil {
 		return
 	}
-	// Clean up stale WireGuard peer state before creating new dialers so the
-	// fresh SYN/ACK exchange starts from a known-clean baseline.
+	// Clean up stale WireGuard peer state.
 	if p.onBeforeRestart != nil {
 		p.onBeforeRestart()
 	}
@@ -105,18 +106,13 @@ func (p *Probe) restart() {
 		p.wrrpDialer = p.newWrrpDialer()
 	}
 	p.mu.Unlock()
-	// Increment epoch to invalidate any in-flight discover() goroutine.
-	// The goroutine will see a changed epoch, discard its result, and exit
-	// without calling onSuccess/onFailure — so the fresh Start() below is
-	// the sole owner of the next connection outcome.
+
 	p.epoch.Add(1)
-	p.running.Store(false) // allow Start() to proceed
+	p.running.Store(false)
 	_ = p.Start(context.Background(), p.remoteId)
 }
 
-// Close permanently stops this probe and releases all resources.
-// Setting the factory funcs to nil prevents restart() from spinning up new
-// dialers after the underlying connections trigger their close callbacks.
+// Close permanently stops this probe.
 func (p *Probe) Close() {
 	p.mu.Lock()
 	p.newIceDialer = nil
@@ -136,7 +132,9 @@ func (p *Probe) Close() {
 }
 
 func (p *Probe) OnConnectionStateChange(state ice.ConnectionState) {
-	p.updateState(state)
+	p.mu.Lock()
+	p.iceState = state
+	p.mu.Unlock()
 	p.log.Debug("Setting new connection status", "state", state)
 }
 
@@ -146,46 +144,30 @@ func (p *Probe) Start(ctx context.Context, remoteId infra.PeerIdentity) error {
 		return nil
 	}
 
-	// Capture epoch at launch.  If restart() fires before discover() returns,
-	// epoch will have been incremented and running reset to false — the check
-	// below detects this and prevents a stale goroutine from calling onSuccess.
 	myEpoch := p.epoch.Load()
 	p.log.Debug("Start probe peer", "localId", p.localId, "remoteId", remoteId)
+
+	// Transition to Probing (valid from Created or Failed).
+	_ = p.sm.Transition(StateProbing)
 
 	go func() {
 		t, err := p.discover(ctx)
 
-		// If epoch changed, restart() fired while we were in discover().
-		// The new goroutine launched by restart() owns the connection outcome;
-		// we discard our result and exit silently.
 		if p.epoch.Load() != myEpoch {
 			if t != nil {
 				t.Close() //nolint:errcheck
 			}
 			return
 		}
-		// Release the running slot so a future Start() (e.g. from onFailure
-		// scheduling probe.restart()) can proceed.
 		p.running.Store(false)
 
 		if err != nil {
-			p.updateState(ice.ConnectionStateFailed)
 			p.log.Error("Discover transport failed", err)
-			err = p.onFailure(err)
-			if err != nil {
-				p.updateState(ice.ConnectionStateFailed)
-			}
+			p.onFailure(err)
 			return
 		}
 
-		p.mu.Lock()
-		p.currentTransport = t
-		p.mu.Unlock()
-		if err = p.onSuccess(t); err != nil {
-			p.updateState(ice.ConnectionStateFailed)
-			p.log.Warn("onSuccess failed, restarting probe in 3s", "remoteId", p.remoteId.AppID, "err", err)
-			time.AfterFunc(3*time.Second, p.restart)
-		}
+		p.onSuccess(t)
 	}()
 
 	return nil
@@ -195,21 +177,52 @@ func (p *Probe) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (p *Probe) updateState(state ice.ConnectionState) {
-	p.state = state
+// onSuccess handles the first successful transport connection.
+func (p *Probe) onSuccess(transport infra.Transport) {
+	p.mu.Lock()
+	p.currentTransport = transport
+	p.mu.Unlock()
+
+	transportType := transport.Type()
+	if transportType == infra.ICE {
+		_ = p.sm.Transition(StateICEReady)
+	} else {
+		_ = p.sm.Transition(StateWRRPReady)
+	}
 }
 
-// discover races ICE and WRRP dialers concurrently and returns whichever
-// transport connects first, with one exception: if WRRP wins the race, it
-// waits an extra 500ms to give ICE a chance to catch up.  If ICE arrives
-// within that window the WRRP connection is discarded in favour of the
-// higher-priority direct path; otherwise WRRP is used immediately and ICE
-// can still upgrade later via handleUpgradeTransport.
-//
-// The select loop collects results and errors:
-//   - First successful Transport → return it (after the optional 500ms ICE wait)
-//   - All dialers failed → return the last error, caller's onFailure fires
-//   - ctx cancelled → propagate the context error
+// onFailure handles discovery failure.
+func (p *Probe) onFailure(err error) {
+	// ErrDialerClosed: clean session transition, restart immediately.
+	if errors.Is(err, ErrDialerClosed) {
+		p.muFail.Lock()
+		p.firstFailureAt = time.Time{}
+		p.muFail.Unlock()
+		_ = p.sm.Transition(StateFailed)
+		p.restart()
+		return
+	}
+
+	p.muFail.Lock()
+	if p.firstFailureAt.IsZero() {
+		p.firstFailureAt = time.Now()
+	}
+	elapsed := time.Since(p.firstFailureAt)
+	p.muFail.Unlock()
+
+	if elapsed >= 60*time.Second {
+		p.log.Info("peer unreachable for 60s, closing probe", "remoteId", p.remoteId.AppID)
+		_ = p.sm.Transition(StateClosed)
+		// Factory handles probe removal externally.
+		return
+	}
+
+	p.log.Warn("discover failed, retrying in 10s", "remoteId", p.remoteId.AppID, "err", err)
+	_ = p.sm.Transition(StateFailed)
+	time.AfterFunc(10*time.Second, p.restart)
+}
+
+// discover races ICE and WRRP dialers concurrently.
 func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 	dialerCount := 1
 	if config.Conf.EnableWrrp {
@@ -218,18 +231,8 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 
 	result := make(chan infra.Transport, dialerCount)
 	errs := make(chan error, dialerCount)
-
-	// wrrpWon is set to true when WRRP wins the initial race and ICE has not
-	// yet arrived within the 500 ms upgrade window.  The ICE goroutine reads
-	// this flag to decide whether to call handleUpgradeTransport:
-	//   - false (default): ICE was the initial winner; probe.Start() calls
-	//     onSuccess exactly once — no second call needed.
-	//   - true: WRRP won; ICE arrives later as an upgrade path and must call
-	//     handleUpgradeTransport to switch the WireGuard endpoint.
 	var wrrpWon atomic.Bool
 
-	// ICE goroutine: completes the full SYN→ACK→OFFER→Dial handshake.
-	// Dial blocks until an OFFER is received (up to 65s) or ctx is cancelled.
 	go func() {
 		p.log.Debug("Starting ice dialer", "remoteId", p.remoteId)
 		if err := p.iceDialer.Prepare(ctx, p.remoteId); err != nil {
@@ -243,10 +246,6 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 			return
 		}
 		result <- t
-		// Only upgrade when WRRP already owns the active transport.
-		// When ICE wins the race discover() returns it directly and
-		// probe.Start() calls onSuccess — a second call here would
-		// double-apply AddPeer/ApplyRoute/SetupNAT and cause reconnects.
 		if wrrpWon.Load() {
 			if err = p.handleUpgradeTransport(t); err != nil {
 				p.log.Error("Upgrade transport failed", err)
@@ -254,9 +253,6 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 		}
 	}()
 
-	// WRRP goroutine: registers with the relay server and establishes a tunnel.
-	// Only started when WRRP is enabled; acts as a fallback if ICE cannot
-	// complete within the race window.
 	if config.Conf.EnableWrrp {
 		go func() {
 			p.log.Debug("Starting wrrp dialer", "remoteId", p.remoteId)
@@ -273,21 +269,17 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 		}()
 	}
 
-	// Race: first success wins; all failures → error.
 	failed := 0
 	var lastErr error
 	for {
 		select {
 		case t := <-result:
-			// WRRP arrived first: hold on for 500ms to see if ICE can still win.
-			// If ICE arrives in time, discard WRRP and return the direct path.
 			if t.Type() == infra.WRRP && config.Conf.EnableWrrp {
 				select {
 				case iceT := <-result:
 					_ = t.Close()
 					return iceT, nil
 				case <-time.After(500 * time.Millisecond):
-					// WRRP wins; mark so the ICE goroutine knows to upgrade later.
 					wrrpWon.Store(true)
 				}
 			}
@@ -307,22 +299,19 @@ func (p *Probe) discover(ctx context.Context) (infra.Transport, error) {
 func (p *Probe) handleUpgradeTransport(newTransport infra.Transport) error {
 	p.log.Debug("Upgrade transport....", "newTransport", newTransport)
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	old := p.currentTransport
+	p.currentTransport = newTransport
+	p.mu.Unlock()
 
-	// 权重比较：直连优于中转
-	if p.currentTransport == nil || newTransport.Priority() > p.currentTransport.Priority() {
-		old := p.currentTransport
-		p.currentTransport = newTransport
-
-		// 延迟关闭旧连接，确保缓冲区数据发完
-		if old != nil {
-			go func() {
-				time.Sleep(2 * time.Second)
-				old.Close() //nolint:errcheck
-			}()
-		}
+	// Close old after delay.
+	if old != nil {
+		go func() {
+			time.Sleep(2 * time.Second)
+			old.Close() //nolint:errcheck
+		}()
 	}
 
-	// reset endpoint
-	return p.onSuccess(p.currentTransport)
+	// Transition WRRPReady -> ICEReady: WG config handled by state machine callbacks.
+	_ = p.sm.Transition(StateICEReady)
+	return nil
 }

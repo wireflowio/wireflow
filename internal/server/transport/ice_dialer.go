@@ -19,14 +19,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/alatticeio/lattice/internal/agent/infra"
-	"github.com/alatticeio/lattice/internal/agent/log"
-	"github.com/alatticeio/lattice/internal/agent/provision"
-	"github.com/alatticeio/lattice/internal/grpc"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/alatticeio/lattice/internal/agent/infra"
+	"github.com/alatticeio/lattice/internal/agent/log"
+	"github.com/alatticeio/lattice/internal/agent/provision"
+	"github.com/alatticeio/lattice/internal/grpc"
 
 	"github.com/pion/ice/v4"
 	"github.com/pion/logging"
@@ -107,10 +108,18 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 			return nil
 		}
 		// Extract peer info from ACK payload (new design: peer info in SYN/ACK).
+		// Guard with credentialsInited to avoid redundant calls on ACK retransmissions.
 		if hs := packet.GetHandshake(); hs != nil && len(hs.PeerInfo) > 0 {
-			var remotePeer infra.Peer
-			if err := json.Unmarshal(hs.PeerInfo, &remotePeer); err == nil {
-				i.onPeerReceived(remotePeer)
+			if !i.credentialsInited.Load() {
+				i.mu.Lock()
+				if !i.credentialsInited.Load() {
+					var remotePeer infra.Peer
+					if err := json.Unmarshal(hs.PeerInfo, &remotePeer); err == nil {
+						i.onPeerReceived(remotePeer)
+					}
+					i.credentialsInited.Store(true)
+				}
+				i.mu.Unlock()
 			}
 		}
 		// cancel send syn
@@ -126,10 +135,18 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 		}
 
 		// Extract peer info from SYN payload (new design: peer info in SYN/ACK).
+		// Guard with credentialsInited to avoid redundant calls on SYN retransmissions.
 		if hs := packet.GetHandshake(); hs != nil && len(hs.PeerInfo) > 0 {
-			var remotePeer infra.Peer
-			if err := json.Unmarshal(hs.PeerInfo, &remotePeer); err == nil {
-				i.onPeerReceived(remotePeer)
+			if !i.credentialsInited.Load() {
+				i.mu.Lock()
+				if !i.credentialsInited.Load() {
+					var remotePeer infra.Peer
+					if err := json.Unmarshal(hs.PeerInfo, &remotePeer); err == nil {
+						i.onPeerReceived(remotePeer)
+					}
+					i.credentialsInited.Store(true)
+				}
+				i.mu.Unlock()
 			}
 		}
 
@@ -177,12 +194,14 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 				i.rUfrag = offer.Ufrag
 				i.rPwd = offer.Pwd
 
-				var remotePeer infra.Peer
-				if err := json.Unmarshal(offer.Current, &remotePeer); err != nil {
-					i.mu.Unlock()
-					return err
+				// Parse peer info from OFFER (backward compatibility with
+				// older nodes that don't send peer_info in SYN/ACK).
+				if len(offer.Current) > 0 {
+					var remotePeer infra.Peer
+					if err := json.Unmarshal(offer.Current, &remotePeer); err == nil {
+						i.onPeerReceived(remotePeer)
+					}
 				}
-				i.onPeerReceived(remotePeer)
 				i.credentialsInited.Store(true)
 			}
 			i.mu.Unlock()
@@ -235,7 +254,7 @@ func (i *iceDialer) Prepare(ctx context.Context, remoteId infra.PeerIdentity) er
 	if i.agent == nil {
 		agent, err := i.getAgent(remoteId)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("getAgent failed: %w", err)
 		}
 		i.agent = agent
 	}

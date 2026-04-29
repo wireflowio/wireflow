@@ -17,6 +17,7 @@ package infra
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pion/ice/v4"
 	"github.com/pion/logging"
@@ -49,8 +50,9 @@ type FilteringUDPMux struct {
 	realConn      net.PacketConn // true socket; FilteringUDPMux is the sole reader
 	passThroughCh chan<- PassThroughPacket
 
-	stopCh chan struct{}
-	wg     sync.WaitGroup
+	stopCh       chan struct{}
+	wg           sync.WaitGroup
+	droppedCount atomic.Uint64 // count of dropped pass-through packets
 }
 
 // NewFilteringUDPMux constructs the wrapper. realConn is the shared UDP socket.
@@ -105,17 +107,15 @@ func (f *FilteringUDPMux) Start() {
 func (f *FilteringUDPMux) readLoop() {
 	defer f.wg.Done()
 
-	buf := make([]byte, 1500)
+	buf := make([]byte, 2048)
 	for {
 		n, addr, err := f.realConn.ReadFrom(buf)
 		if err != nil {
-			select {
-			case <-f.stopCh:
+			if err == net.ErrClosed {
 				return
-			default:
-				// transient error (e.g. EAGAIN); keep running
-				continue
 			}
+			// transient error (e.g. EAGAIN); keep running
+			continue
 		}
 
 		pkt := buf[:n]
@@ -133,7 +133,7 @@ func (f *FilteringUDPMux) readLoop() {
 			case f.passThroughCh <- PassThroughPacket{Data: data, Addr: udpAddr}:
 			default:
 				// Channel full: drop rather than block the sole reader.
-				// WireGuard's consume goroutine is fast; this should be rare.
+				f.droppedCount.Add(1)
 			}
 		}
 	}
@@ -146,4 +146,10 @@ func (f *FilteringUDPMux) Close() error {
 	// Closing chanConn unblocks the mux's connWorker so it can exit.
 	_ = f.chanConn.Close()
 	return f.inner.Close()
+}
+
+// DroppedCount returns the number of pass-through packets dropped due to
+// a full channel. Useful for monitoring NAT overload conditions.
+func (f *FilteringUDPMux) DroppedCount() uint64 {
+	return f.droppedCount.Load()
 }
