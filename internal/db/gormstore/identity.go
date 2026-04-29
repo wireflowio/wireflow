@@ -3,9 +3,9 @@ package gormstore
 import (
 	"context"
 
-	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/internal/server/models"
 
-	"github.com/alatticeio/lattice/management/repository"
+	"github.com/alatticeio/lattice/internal/server/repository"
 
 	"gorm.io/gorm"
 )

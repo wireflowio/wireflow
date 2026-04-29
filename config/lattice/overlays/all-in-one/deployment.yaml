@@ -3,21 +3,21 @@ kind: Deployment
 metadata:
   name: aio
   labels:
-    app.kubernetes.io/name: wireflowd
+    app.kubernetes.io/name: latticed
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: wireflowd
+      app.kubernetes.io/name: latticed
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: wireflowd
+        app.kubernetes.io/name: latticed
     spec:
-      serviceAccountName: wireflow-controller-admin
+      serviceAccountName: lattice-controller-admin
       containers:
-        - name: wireflowd
-          image: ghcr.io/wireflowio/wireflowd:latest
+        - name: latticed
+          image: ghcr.io/alatticeio/latticed:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -26,10 +26,10 @@ spec:
               containerPort: 4222  # 边缘 Agent 通过此端口连接内嵌 NATS
           volumeMounts:
             - name: data
-              mountPath: /app/data  # SQLite 落盘目录（WORKDIR=/app，dsn=data/wireflow.db）
+              mountPath: /app/data  # SQLite 落盘目录（WORKDIR=/app，dsn=data/lattice.db）
             - name: conf
-              mountPath: /etc/wireflow/wireflow.yaml
-              subPath: wireflow.yaml
+              mountPath: /etc/lattice/lattice.yaml
+              subPath: lattice.yaml
           readinessProbe:
             httpGet:
               path: /health
@@ -53,7 +53,7 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: aio-data  # namePrefix 后: wireflow-aio-data
+            claimName: aio-data  # namePrefix 后: lattice-aio-data
         - name: conf
           configMap:
-            name: aio-config  # namePrefix 后: wireflow-aio-config
+            name: aio-config  # namePrefix 后: lattice-aio-config

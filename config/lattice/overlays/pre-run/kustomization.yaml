@@ -8,26 +8,26 @@ resources:
 # 1. 动态修改所有资源的命名空间
 namespace: lattice-system
 
-namePrefix: wireflow-
+namePrefix: lattice-
 
 # 2. 统一打标签（方便集成测试时过滤资源）
 labels:
   - pairs:
-      wireflow.io/pr-id: "${PR_NUMBER}"
+      lattice.io/pr-id: "${PR_NUMBER}"
       managed-by: github-actions
     includeSelectors: true  # 既然是 PR 环境，建议开启，方便一键清理
 
 # 3. 动态替换镜像标签
 images:
-  - name: wireflow-manager
+  - name: lattice-manager
     newTag: pr-latest
 
 # 4. 如果需要修改环境变量（比如指向不同的 Dex 地址）
 patches:
   - target:
       kind: Deployment
-      name: wireflow-manager
+      name: lattice-manager
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/env/0/value
-        value: "http://wireflow-dex.lattice-system.svc.cluster.local:5556/dex"
+        value: "http://lattice-dex.lattice-system.svc.cluster.local:5556/dex"

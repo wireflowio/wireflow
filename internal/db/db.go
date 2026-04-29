@@ -12,9 +12,9 @@ package db
 
 import (
 	"fmt"
-	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/agent/config"
+	"github.com/alatticeio/lattice/internal/agent/store"
 	"github.com/alatticeio/lattice/internal/db/gormstore"
-	"github.com/alatticeio/lattice/internal/store"
 	"log"
 	"time"
 

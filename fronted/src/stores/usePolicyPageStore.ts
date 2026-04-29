@@ -54,7 +54,7 @@ export const usePolicyPageStore = defineStore('policyPage', () => {
     // --- 3. Getters (YAML Preview) ---
     const yamlPreview = computed(() => {
         const target = parseLabel(form.value._targetLabel);
-        let yaml = `apiVersion: wireflowcontroller.wireflow.run/v1alpha1\nkind: WireflowPolicy\nmetadata:\n  name: ${form.value.name || 'new-policy'}\nspec:\n  peerSelector:\n    matchLabels:\n      ${target.key}: ${target.value}`
+        let yaml = `apiVersion: alattice.io/v1alpha1\nkind: LatticePolicy\nmetadata:\n  name: ${form.value.name || 'new-policy'}\nspec:\n  peerSelector:\n    matchLabels:\n      ${target.key}: ${target.value}`
 
         const renderRules = (rules: any[], direction: 'ingress' | 'egress') => {
             if (!form.value.policyTypes.includes(direction === 'ingress' ? 'Ingress' : 'Egress')) return ''

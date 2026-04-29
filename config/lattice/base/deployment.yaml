@@ -3,18 +3,18 @@ kind: Deployment
 metadata:
   name: control
   labels:
-    k8s-app: wireflow-control
+    k8s-app: lattice-control
 spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: wireflow-control
+      k8s-app: lattice-control
   template:
     metadata:
       labels:
-        k8s-app: wireflow-control
+        k8s-app: lattice-control
     spec:
-      serviceAccountName: wireflow-controller-admin
+      serviceAccountName: lattice-controller-admin
       initContainers:
         - name: wait-for-nats
           image: curlimages/curl:latest
@@ -23,12 +23,12 @@ spec:
             - '/bin/sh'
             - '-c'
             - |
-              until curl -f http://wireflow-nats-service:8222/varz; do
+              until curl -f http://lattice-nats-service:8222/varz; do
                 echo "Waiting for nats server..."
                 sleep 2
               done
       containers:
-        - name: wireflow-control
+        - name: lattice-control
           image: manager:latest
           imagePullPolicy: IfNotPresent
           args:
@@ -37,27 +37,27 @@ spec:
             - "--level=DEBUG"
             - "--env=prod"
           volumeMounts:
-            - mountPath: /etc/wireflow/wireflow.yaml
+            - mountPath: /etc/lattice/lattice.yaml
               name: conf
-              subPath: wireflow.yaml
+              subPath: lattice.yaml
           env:
             # 对应结构体 Database.DSN
             - name: APP_DATABASE_DSN
-              value: "root:root@tcp(wireflow-mariadb.lattice-system.svc.cluster.local:3306)/wireflow?charset=utf8mb4&parseTime=True&loc=Local"
+              value: "root:root@tcp(lattice-mariadb.lattice-system.svc.cluster.local:3306)/lattice?charset=utf8mb4&parseTime=True&loc=Local"
 
             # 对应结构体 Dex.Issuer
             - name: APP_DEX_ISSUR
-              value: "http://wireflow-dex.lattice-system.svc.cluster.local:5556/dex/auth"
+              value: "http://lattice-dex.lattice-system.svc.cluster.local:5556/dex/auth"
             # 对应结构体 Dex.Issuer
             - name: APP_DEX_PROVIDERURL
-              value: "http://wireflow-dex.lattice-system.svc.cluster.local:5556/dex"
+              value: "http://lattice-dex.lattice-system.svc.cluster.local:5556/dex"
       volumes:
         - name: conf
           configMap:
-            name: wireflow-control-config
+            name: lattice-control-config
             items:
-              - key: wireflow.yaml
-                path: wireflow.yaml
+              - key: lattice.yaml
+                path: lattice.yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -69,11 +69,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: wireflow-turn
+      k8s-app: lattice-turn
   template:
     metadata:
       labels:
-        k8s-app: wireflow-turn
+        k8s-app: lattice-turn
     spec:
       initContainers:
         - name: wait-for-nats
@@ -83,12 +83,12 @@ spec:
             - '/bin/sh'
             - '-c'
             - |
-              until curl -f http://wireflow-nats-service:8222/varz; do
+              until curl -f http://lattice-nats-service:8222/varz; do
                 echo "Waiting for nats server..."
                 sleep 2
               done
       containers:
-        - name: wireflow-turn
+        - name: lattice-turn
           image: manager:latest
           imagePullPolicy: IfNotPresent
           ports:
@@ -106,18 +106,18 @@ kind: Deployment
 metadata:
   name: wrrper
   labels:
-    k8s-app: wireflow-wrrper
+    k8s-app: lattice-wrrper
 spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: wireflow-wrrper
+      k8s-app: lattice-wrrper
   template:
     metadata:
       labels:
-        k8s-app: wireflow-wrrper
+        k8s-app: lattice-wrrper
     spec:
-      serviceAccountName: wireflow-controller-admin
+      serviceAccountName: lattice-controller-admin
       initContainers:
         - name: wait-for-nats
           image: curlimages/curl:latest
@@ -125,12 +125,12 @@ spec:
             - '/bin/sh'
             - '-c'
             - |
-              until curl -f http://wireflow-nats-service:8222/varz; do
+              until curl -f http://lattice-nats-service:8222/varz; do
                 echo "Waiting for nats server..."
                 sleep 2
               done
       containers:
-        - name: wireflow-wrrper
+        - name: lattice-wrrper
           image: manager:latest
           imagePullPolicy: IfNotPresent
           ports:
@@ -148,7 +148,7 @@ spec:
       volumes:
         - name: conf
           configMap:
-            name: wireflow-control-config
+            name: lattice-control-config
             items:
               - key: conf.yaml
                 path: conf.yaml

@@ -1,4 +1,4 @@
-// Copyright 2025 The Lattice Authors, Inc.
+// Copyright 2026 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,8 +64,8 @@ import (
 	"github.com/klauspost/compress/s2"
 	"google.golang.org/protobuf/encoding/protowire"
 
-	"github.com/alatticeio/lattice/internal/infra"
-	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/agent/infra"
+	"github.com/alatticeio/lattice/internal/agent/log"
 )
 
 // ─── Public extension API ─────────────────────────────────────────────────────

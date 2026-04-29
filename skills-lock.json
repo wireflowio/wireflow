@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "git-commit": {
+      "source": "smithery.ai",
+      "sourceType": "well-known",
+      "computedHash": "8baf55899d54774510b3f751336f32c168e302f4c7d6d28a36b9792b82b2ecaa"
+    },
     "pi-planning-with-files": {
       "source": "OthmanAdi/planning-with-files",
       "sourceType": "github",

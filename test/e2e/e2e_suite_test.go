@@ -22,13 +22,13 @@ import (
 )
 
 var (
-	restConfig     *rest.Config
-	clientset      *kubernetes.Clientset
+	restConfig    *rest.Config
+	clientset     *kubernetes.Clientset
 	latticeClient client.Client
-	ns             string
-	agentImage     string
-	manageUrl      string
-	kubeconfig     string
+	ns            string
+	agentImage    string
+	manageUrl     string
+	kubeconfig    string
 )
 
 func init() {

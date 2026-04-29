@@ -1,6 +1,6 @@
 
-Wireflow
-Copyright 2025 The Lattice Authors
+Lattice
+Copyright 2026 The Lattice Authors
 
 This product includes software developed at
 https://github.com/alatticeio/lattice
@@ -21,10 +21,10 @@ limitations under the License.
 
 TRADEMARK NOTICE
 
-"Wireflow" and the Wireflow logo are trademarks of [winstonfly].
+"Lattice" and the Lattice logo are trademarks of [winstonfly].
 
 While the source code is licensed under Apache 2.0, the use of the
-"Wireflow" name and logo in derivative works or commercial offerings
+"Lattice" name and logo in derivative works or commercial offerings
 may require permission.
 
 For trademark usage inquiries, please contact:
@@ -72,7 +72,7 @@ vendor/ directory or by running: go mod vendor
 
 ATTRIBUTION
 
-Wireflow is built by a community of contributors. See the AUTHORS file
+Lattice is built by a community of contributors. See the AUTHORS file
 for a list of individuals who have contributed to this project.
 
 To see the full list of contributors, visit:
@@ -82,8 +82,8 @@ https://github.com/alatticeio/lattice/graphs/contributors
 
 CONTACT
 
-- Website: https://wireflow.run (if available)
+- Website: https://lattice.run
 - GitHub: https://github.com/alatticeio/lattice
 - Issues: https://github.com/alatticeio/lattice/issues
 - Discussions: https://github.com/alatticeio/lattice/discussions
-- Email: info@wireflow.run
+- Email: info@lattice.run

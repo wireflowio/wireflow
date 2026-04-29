@@ -12,8 +12,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  CLUSTER_NAME: wf-e2e
-  E2E_KUBECONFIG: /tmp/wf-e2e.kubeconfig
+  CLUSTER_NAME: lattice-e2e
+  E2E_KUBECONFIG: /tmp/lattice-e2e.kubeconfig
 
 permissions:
   contents: read
@@ -141,13 +141,13 @@ jobs:
           REGISTRY="${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}"
           TAG="${{ steps.meta.outputs.tag }}"
           if [ "${{ steps.meta.outputs.is_pro }}" == "true" ]; then
-            WIREFLOWD_IMG="${REGISTRY}/latticed:${TAG}-pro"
-            echo "🔬 Using pro latticed image: ${WIREFLOWD_IMG}"
+            LATTICED_IMG="${REGISTRY}/latticed:${TAG}-pro"
+            echo "Using pro latticed image: ${LATTICED_IMG}"
           else
-            WIREFLOWD_IMG="${REGISTRY}/latticed:${TAG}"
+            LATTICED_IMG="${REGISTRY}/latticed:${TAG}"
           fi
           make deploy-aio \
-            IMG="${WIREFLOWD_IMG}" \
+            IMG="${LATTICED_IMG}" \
             KUBECTL="kubectl --kubeconfig=${{ env.E2E_KUBECONFIG }}"
 
       - name: Run E2E tests

@@ -17,12 +17,12 @@ rules:
   - update
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowenrollmenttokens
-  - wireflownetworks
-  - wireflowpeers
-  - wireflowpolicies
+  - latticeenrollmenttokens
+  - latticenetworks
+  - latticepeers
+  - latticepolicies
   verbs:
   - create
   - delete
@@ -32,21 +32,21 @@ rules:
   - update
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowenrollmenttokens/finalizers
-  - wireflownetworks/finalizers
-  - wireflowpeers/finalizers
-  - wireflowpolicies/finalizers
+  - latticeenrollmenttokens/finalizers
+  - latticenetworks/finalizers
+  - latticepeers/finalizers
+  - latticepolicies/finalizers
   verbs:
   - update
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowenrollmenttokens/status
-  - wireflownetworks/status
-  - wireflowpeers/status
-  - wireflowpolicies/status
+  - latticeenrollmenttokens/status
+  - latticenetworks/status
+  - latticepeers/status
+  - latticepolicies/status
   verbs:
   - get
   - patch

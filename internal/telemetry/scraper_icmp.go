@@ -1,4 +1,4 @@
-// Copyright 2025 The Lattice Authors, Inc.
+// Copyright 2026 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 
 	probing "github.com/prometheus-community/pro-bing"
 
-	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/agent/infra"
 )
 
 // ICMPScraper probes each peer VIP with ICMP echo requests and records latency

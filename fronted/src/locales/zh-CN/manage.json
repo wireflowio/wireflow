@@ -208,7 +208,7 @@
       "portLabel": "端口",
       "noIngressRules": "无规则 — 拒绝所有入站",
       "noEgressRules": "无规则 — 拒绝所有出站",
-      "crdHint": "策略将以 WireflowPolicy CRD 形式同步至集群，生效可能需要数秒。",
+      "crdHint": "策略将以 LatticePolicy CRD 形式同步至集群，生效可能需要数秒。",
       "publish": "发布策略",
       "save": "保存更改"
     },
@@ -484,7 +484,7 @@
       "remoteNsHint": "对端工作空间的 K8s namespace",
       "remoteNetLabel": "对端网络名称",
       "remoteNetOptional": "(可选)",
-      "remoteNetPlaceholder": "留空则使用 wireflow-default-net",
+      "remoteNetPlaceholder": "留空则使用 lattice-default-net",
       "nameLabel": "连接名称",
       "nameOptional": "(可选)",
       "namePlaceholder": "留空则自动生成",
@@ -559,7 +559,7 @@
     "step3": {
       "title": "执行节点接入",
       "desc": "在目标机器终端执行以下命令，完成节点注册。",
-      "hint": "确保目标机器已安装 wireflow agent 并开放出站连接，命令执行完毕后节点将自动注册。"
+      "hint": "确保目标机器已安装 lattice agent 并开放出站连接，命令执行完毕后节点将自动注册。"
     },
     "step4": {
       "title": "配置节点标签",

@@ -1,4 +1,4 @@
-// Copyright 2025 The Lattice Authors, Inc.
+// Copyright 2026 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/alatticeio/lattice/internal/config"
-	"github.com/alatticeio/lattice/internal/controller"
+	"github.com/alatticeio/lattice/internal/agent/config"
+	"github.com/alatticeio/lattice/internal/agent/controller"
+	internalnats "github.com/alatticeio/lattice/internal/agent/nats"
 	"github.com/alatticeio/lattice/internal/db"
-	internalnats "github.com/alatticeio/lattice/internal/nats"
-	"github.com/alatticeio/lattice/management"
+	"github.com/alatticeio/lattice/internal/server"
 	"os/signal"
 	"syscall"
 

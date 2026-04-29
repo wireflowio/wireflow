@@ -7,7 +7,7 @@ package gormstore
 import (
 	"context"
 
-	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/internal/agent/store"
 
 	"gorm.io/gorm"
 )

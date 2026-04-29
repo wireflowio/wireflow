@@ -1,5 +1,5 @@
-apiVersion: wireflowcontroller.wireflow.run/v1alpha1
-kind: WireflowGlobalIPPool
+apiVersion: alattice.io/v1alpha1
+kind: LatticeGlobalIPPool
 metadata:
   name: ip-pool
 spec:

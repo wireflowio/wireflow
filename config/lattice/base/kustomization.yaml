@@ -4,18 +4,18 @@ resources:
   - service.yaml
   - configmap.yaml
   - service_account.yaml
-  - wireflow-role-binding.yaml
-  - wireflow-ip-pool.yaml
-  - wireflow-web.yaml
+  - lattice-role-binding.yaml
+  - lattice-ip-pool.yaml
+  - lattice-web.yaml
 
 # 推荐做法 (Kustomize v5+)
 labels:
   - pairs:
-      app.kubernetes.io/name: wireflow-manager
-      app.kubernetes.io/part-of: wireflow
+      app.kubernetes.io/name: lattice-manager
+      app.kubernetes.io/part-of: lattice
     includeSelectors: true
     includeTemplates: true  # 同时也给 Pod Template 打上标签
 
 images:
-  - name: ghcr.io/wireflowio/wireflow-web
+  - name: ghcr.io/alatticeio/lattice-web
     newTag: dev  # 在这里指定你的特定版本（Tag）

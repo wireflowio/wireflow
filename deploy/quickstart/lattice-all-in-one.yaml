@@ -292,6 +292,8 @@ data:
       secret: "replace-with-random-secret"  # ⚠️ 请替换为随机密钥
       expire_hours: 24
 
+    leader-elect: true
+
     # all-in-one 模式：NATS 内嵌于 latticed 进程，进程内直连
     signaling-url: "nats://localhost:4222"
 

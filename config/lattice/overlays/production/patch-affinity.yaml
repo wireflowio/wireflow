@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wireflow-manager
+  name: lattice-manager
 spec:
   template:
     spec:
@@ -13,5 +13,5 @@ spec:
                   - key: app
                     operator: In
                     values:
-                      - wireflow-manager
+                      - lattice-manager
               topologyKey: "kubernetes.io/hostname" # 强制副本分散在不同的物理机上

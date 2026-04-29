@@ -531,7 +531,7 @@ async function confirmDelete() {
           class="flex gap-2 rounded-lg bg-rose-500/5 border border-rose-500/20 p-3">
           <XCircle class="size-4 text-rose-500 shrink-0 mt-0.5" />
           <p class="text-xs text-muted-foreground leading-relaxed">
-            {{ t('manage.networkPeering.detailDialog.failedTip1') }}<code class="font-mono">wireflow.run/gateway=true</code>{{ t('manage.networkPeering.detailDialog.failedTip2') }}
+            {{ t('manage.networkPeering.detailDialog.failedTip1') }}<code class="font-mono">lattice.run/gateway=true</code>{{ t('manage.networkPeering.detailDialog.failedTip2') }}
           </p>
         </div>
       </div>
@@ -617,7 +617,7 @@ async function confirmDelete() {
         <div class="flex gap-2 rounded-lg bg-primary/5 border border-primary/10 p-3">
           <Zap class="size-4 text-primary shrink-0 mt-0.5" />
           <p class="text-xs text-muted-foreground leading-relaxed">
-            {{ t('manage.networkPeering.createDialog.zapTip1') }}<code class="font-mono">wireflow.run/gateway=true</code>{{ t('manage.networkPeering.createDialog.zapTip2') }}
+            {{ t('manage.networkPeering.createDialog.zapTip1') }}<code class="font-mono">lattice.run/gateway=true</code>{{ t('manage.networkPeering.createDialog.zapTip2') }}
           </p>
         </div>
       </div>

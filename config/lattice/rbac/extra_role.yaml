@@ -17,12 +17,12 @@ rules:
   - update
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowendpoints
-  - wireflowglobalippools
-  - wireflowsubnetallocations
-  - wireflowenrollmenttokens
+  - latticeendpoints
+  - latticeglobalippools
+  - latticesubnetallocations
+  - latticeenrollmenttokens
   verbs:
   - create
   - delete
@@ -32,29 +32,29 @@ rules:
   - update
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowendpoints/finalizers
-  - wireflowglobalippools/finalizers
-  - wireflowsubnetallocations/finalizers
-  - wireflowenrollmenttokens/finalizers
+  - latticeendpoints/finalizers
+  - latticeglobalippools/finalizers
+  - latticesubnetallocations/finalizers
+  - latticeenrollmenttokens/finalizers
   verbs:
   - update
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowglobalippools/status
-  - wireflowenrollmenttokens/status
+  - latticeglobalippools/status
+  - latticeenrollmenttokens/status
   verbs:
   - get
   - patch
   - update
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflownetworkpeerings
-  - wireflowrelayservers
-  - wireflowclusterpeerings
+  - latticenetworkpeerings
+  - latticerelayservers
+  - latticeclusterpeerings
   verbs:
   - create
   - delete
@@ -64,27 +64,27 @@ rules:
   - update
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflowclusters
+  - latticeclusters
   verbs:
   - get
   - list
   - watch
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflownetworkpeerings/finalizers
-  - wireflowrelayservers/finalizers
-  - wireflowclusterpeerings/finalizers
+  - latticenetworkpeerings/finalizers
+  - latticerelayservers/finalizers
+  - latticeclusterpeerings/finalizers
   verbs:
   - update
 - apiGroups:
-  - wireflowcontroller.wireflow.run
+  - alattice.io
   resources:
-  - wireflownetworkpeerings/status
-  - wireflowrelayservers/status
-  - wireflowclusterpeerings/status
+  - latticenetworkpeerings/status
+  - latticerelayservers/status
+  - latticeclusterpeerings/status
   verbs:
   - get
   - patch

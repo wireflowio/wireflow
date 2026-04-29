@@ -4,10 +4,10 @@ kind: Service
 metadata:
   name: api-service
   labels:
-    app.kubernetes.io/name: wireflowd
+    app.kubernetes.io/name: latticed
 spec:
   selector:
-    app.kubernetes.io/name: wireflowd
+    app.kubernetes.io/name: latticed
   ports:
     - name: http
       port: 8080
@@ -20,10 +20,10 @@ kind: Service
 metadata:
   name: nats-service
   labels:
-    app.kubernetes.io/name: wireflowd
+    app.kubernetes.io/name: latticed
 spec:
   selector:
-    app.kubernetes.io/name: wireflowd
+    app.kubernetes.io/name: latticed
   ports:
     - name: client
       port: 4222

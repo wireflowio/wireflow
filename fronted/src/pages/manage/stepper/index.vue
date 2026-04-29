@@ -92,7 +92,7 @@ async function fetchToken() {
 }
 
 const joinCommand = computed(() =>
-  `wireflow join --token ${generatedToken.value || '<token>'}`)
+  `lattice join --token ${generatedToken.value || '<token>'}`)
 
 // ── Copy helper ───────────────────────────────────────────────────
 async function copyText(text: string, key: string) {
@@ -205,7 +205,7 @@ const canProceed = computed(() => {
           <!-- Rail header -->
           <div class="px-5 py-4 xl:px-6 xl:py-5 border-b border-border">
             <div class="flex items-center gap-2.5">
-              <img src="@/assets/logo.svg" class="size-7 xl:size-8 shrink-0" alt="Wireflow" />
+              <img src="@/assets/logo.svg" class="size-7 xl:size-8 shrink-0" alt="Lattice" />
               <div>
                 <p class="text-xs font-black uppercase tracking-wider">{{ t('manage.stepper.title') }}</p>
                 <p class="text-[10px] text-muted-foreground/60">Node Onboarding</p>

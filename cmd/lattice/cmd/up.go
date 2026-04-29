@@ -1,4 +1,4 @@
-// Copyright 2025 The Lattice Authors, Inc.
+// Copyright 2026 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/alatticeio/lattice/internal/config"
-	wflog "github.com/alatticeio/lattice/internal/log"
-	"github.com/alatticeio/lattice/node"
+	"github.com/alatticeio/lattice/internal/agent"
+	"github.com/alatticeio/lattice/internal/agent/config"
+	wflog "github.com/alatticeio/lattice/internal/agent/log"
 	"github.com/alatticeio/lattice/pkg/utils"
 	"os"
 	"os/signal"
@@ -98,7 +98,7 @@ Use --save to persist the current flags back to the config file.`,
 				config.Conf.EnableMetric = em
 			}
 
-			return node.Start(ctx, config.Conf)
+			return agent.Start(ctx, config.Conf)
 		},
 	}
 

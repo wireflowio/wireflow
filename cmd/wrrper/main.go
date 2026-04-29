@@ -1,4 +1,4 @@
-// Copyright 2025 The Lattice Authors, Inc.
+// Copyright 2026 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/alatticeio/lattice/internal/config"
-	"github.com/alatticeio/lattice/internal/log"
-	"github.com/alatticeio/lattice/wrrper"
+	"github.com/alatticeio/lattice/internal/agent/config"
+	"github.com/alatticeio/lattice/internal/agent/log"
+	"github.com/alatticeio/lattice/internal/relay"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -60,14 +60,14 @@ func main() {
 func run(flags *config.Config) error {
 	log.SetLevel(flags.Level)
 
-	server := wrrper.NewServer(flags)
+	server := relay.NewServer(flags)
 
 	if flags.WrrpQuicURL != "" {
-		tlsCfg, err := wrrper.GenerateSelfSignedTLS()
+		tlsCfg, err := relay.GenerateSelfSignedTLS()
 		if err != nil {
 			log.GetLogger("wrrper").Warn("failed to generate TLS cert, QUIC disabled", "err", err)
 		} else {
-			qs := wrrper.NewQUICServer(server.Manager())
+			qs := relay.NewQUICServer(server.Manager())
 			go func() {
 				if startErr := qs.Start(flags.WrrpQuicURL, tlsCfg); startErr != nil {
 					log.GetLogger("wrrper").Error("QUIC server stopped", startErr)

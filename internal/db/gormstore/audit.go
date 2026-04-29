@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/alatticeio/lattice/internal/store"
-	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/internal/agent/store"
+	"github.com/alatticeio/lattice/internal/server/models"
 
 	"gorm.io/gorm"
 )

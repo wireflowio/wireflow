@@ -1,7 +1,7 @@
 package gormstore
 
 import (
-	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/internal/server/models"
 
 	"gorm.io/gorm"
 )

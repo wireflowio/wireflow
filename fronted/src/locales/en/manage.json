@@ -208,7 +208,7 @@
       "portLabel": "Port",
       "noIngressRules": "No rules — deny all inbound",
       "noEgressRules": "No rules — deny all outbound",
-      "crdHint": "The policy will be synced to the cluster as a WireflowPolicy CRD. It may take a few seconds.",
+      "crdHint": "The policy will be synced to the cluster as a LatticePolicy CRD. It may take a few seconds.",
       "publish": "Publish Policy",
       "save": "Save Changes"
     },
@@ -484,7 +484,7 @@
       "remoteNsHint": "K8s namespace of the remote workspace",
       "remoteNetLabel": "Remote Network Name",
       "remoteNetOptional": "(optional)",
-      "remoteNetPlaceholder": "Leave empty to use wireflow-default-net",
+      "remoteNetPlaceholder": "Leave empty to use lattice-default-net",
       "nameLabel": "Connection Name",
       "nameOptional": "(optional)",
       "namePlaceholder": "Auto-generated if empty",
@@ -559,7 +559,7 @@
     "step3": {
       "title": "Run Join Command",
       "desc": "Run this command on the target machine to register the node.",
-      "hint": "Make sure the target machine has the wireflow agent installed with outbound access."
+      "hint": "Make sure the target machine has the lattice agent installed with outbound access."
     },
     "step4": {
       "title": "Configure Node Labels",

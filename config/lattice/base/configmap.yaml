@@ -3,10 +3,10 @@ kind: ConfigMap
 metadata:
   name: control-config
 data:
-  wireflow.yaml: |
+  lattice.yaml: |
     app:
       listen: :8080
-      name: "WireFlow"
+      name: "LatticeFlow"
       env: "development"
       init_admins:
         - username: "admin"
@@ -16,5 +16,5 @@ data:
       secret: "your-super-secret-key"
       expire_hours: 24
 
-    signaling-url: "nats://wireflow-nats-service.lattice-system.svc.cluster.local:4222"
+    signaling-url: "nats://lattice-nats-service.lattice-system.svc.cluster.local:4222"
 
