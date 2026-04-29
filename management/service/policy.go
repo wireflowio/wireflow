@@ -52,7 +52,7 @@ func NewPolicyService(client *resource.Client, st store.Store) PolicyService {
 
 // Submit stores the policy intent in DB as "pending" (awaiting workflow approval).
 func (p *policyService) Submit(ctx context.Context, wsID, createdBy, createdByName string, policyDto *dto.PolicyDto) (*models.Policy, error) {
-	specBytes, err := json.Marshal(policyDto.WireflowPolicySpec)
+	specBytes, err := json.Marshal(policyDto.LatticePolicySpec)
 	if err != nil {
 		return nil, fmt.Errorf("marshal spec: %w", err)
 	}
@@ -91,7 +91,7 @@ func (p *policyService) Apply(ctx context.Context, policyID string) error {
 		return fmt.Errorf("workspace not found: %w", err)
 	}
 
-	var spec v1alpha1.WireflowPolicySpec
+	var spec v1alpha1.LatticePolicySpec
 	if err := json.Unmarshal([]byte(rec.Spec), &spec); err != nil {
 		return fmt.Errorf("unmarshal spec: %w", err)
 	}
@@ -100,10 +100,10 @@ func (p *policyService) Apply(ctx context.Context, policyID string) error {
 
 	spec.Action = rec.Action
 
-	crd := &v1alpha1.WireflowPolicy{
+	crd := &v1alpha1.LatticePolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
-			Kind:       "WireflowPolicy",
+			APIVersion: "alattice.io/v1alpha1",
+			Kind:       "LatticePolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      rec.Name,
@@ -117,7 +117,7 @@ func (p *policyService) Apply(ctx context.Context, policyID string) error {
 		Spec: spec,
 	}
 
-	manager := client.FieldOwner("wireflow-controller-manager")
+	manager := client.FieldOwner("lattice-controller-manager")
 	if err := p.client.Patch(ctx, crd, client.Apply, manager); err != nil {
 		rec.Status = models.PolicyStatusFailed
 		rec.ErrorMessage = err.Error()
@@ -138,13 +138,13 @@ func (p *policyService) ApplyDirect(ctx context.Context, wsID, operatorID, opera
 		return nil, err
 	}
 
-	spec := policyDto.WireflowPolicySpec
+	spec := policyDto.LatticePolicySpec
 	spec.Action = policyDto.Action
 
-	crd := &v1alpha1.WireflowPolicy{
+	crd := &v1alpha1.LatticePolicy{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
-			Kind:       "WireflowPolicy",
+			APIVersion: "alattice.io/v1alpha1",
+			Kind:       "LatticePolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      policyDto.Name,
@@ -158,13 +158,13 @@ func (p *policyService) ApplyDirect(ctx context.Context, wsID, operatorID, opera
 		Spec: spec,
 	}
 
-	manager := client.FieldOwner("wireflow-controller-manager")
+	manager := client.FieldOwner("lattice-controller-manager")
 	if err := p.client.Patch(ctx, crd, client.Apply, manager); err != nil {
 		return nil, err
 	}
 
 	// Upsert DB record.
-	specBytes, _ := json.Marshal(policyDto.WireflowPolicySpec)
+	specBytes, _ := json.Marshal(policyDto.LatticePolicySpec)
 	typesBytes, _ := json.Marshal(policyDto.PolicyTypes)
 
 	existing, err := p.store.Policies().GetByName(ctx, wsID, policyDto.Name)
@@ -198,7 +198,7 @@ func (p *policyService) ApplyDirect(ctx context.Context, wsID, operatorID, opera
 		Description:        policyDto.Description,
 		Namespace:          policyDto.Namespace,
 		PolicyTypes:        policyDto.PolicyTypes,
-		WireflowPolicySpec: &spec,
+		LatticePolicySpec: &spec,
 	}, nil
 }
 
@@ -218,7 +218,7 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 
 	vos := make([]vo.PolicyVo, 0, len(records))
 	for _, rec := range records {
-		var spec v1alpha1.WireflowPolicySpec
+		var spec v1alpha1.LatticePolicySpec
 		_ = json.Unmarshal([]byte(rec.Spec), &spec)
 		var policyTypes []string
 		_ = json.Unmarshal([]byte(rec.PolicyTypes), &policyTypes)
@@ -235,7 +235,7 @@ func (p *policyService) ListPolicy(ctx context.Context, pageParam *dto.PageReque
 			UpdatedBy:          rec.UpdatedBy,
 			UpdatedByName:      rec.UpdatedByName,
 			UpdatedAt:          rec.UpdatedAt.Format("2006-01-02 15:04:05"),
-			WireflowPolicySpec: &spec,
+			LatticePolicySpec: &spec,
 		})
 	}
 
@@ -259,10 +259,10 @@ func (p *policyService) DeletePolicy(ctx context.Context, name string) error {
 	// Fetch the policy record before deleting so we can clean up its workflow request.
 	rec, _ := p.store.Policies().GetByName(ctx, wsID, name)
 
-	crd := &v1alpha1.WireflowPolicy{
+	crd := &v1alpha1.LatticePolicy{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       "WireflowPolicy",
-			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
+			Kind:       "LatticePolicy",
+			APIVersion: "alattice.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,

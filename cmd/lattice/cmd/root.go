@@ -29,16 +29,16 @@ import (
 var cfgManager = config.NewConfigManager()
 
 var rootCmd = &cobra.Command{
-	Use:   "wireflow",
+	Use:   "lattice",
 	Short: "High-performance WireGuard-based overlay network manager",
-	Long: `Wireflow connects agents across networks using WireGuard tunnels and a
+	Long: `Lattice connects agents across networks using WireGuard tunnels and a
 centralized management plane. Agents join a workspace via enrollment tokens,
 and traffic is governed by explicit allow/deny policies.
 
 Quick start:
-  wireflow workspace add dev
-  wireflow token create dev-team -n <namespace>
-  wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url>`,
+  lattice workspace add dev
+  lattice token create dev-team -n <namespace>
+  lattice up --token <token> --server-url <server-url> --signaling-url <signaling-url>`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -72,7 +72,7 @@ func Execute() {
 
 func init() {
 	fs := rootCmd.PersistentFlags()
-	fs.StringP("config-dir", "", "", "config directory (default: ~/.wireflow)")
+	fs.StringP("config-dir", "", "", "config directory (default: ~/.lattice)")
 	fs.StringP("server-url", "", "", "management server URL")
 	fs.StringP("signaling-url", "", "", "signaling server URL")
 	fs.BoolP("version", "", false, "print version information")

@@ -71,7 +71,7 @@ type NatsSignalService struct {
 }
 
 func NewNatsService(ctx context.Context, name, role, url string) (*NatsSignalService, error) {
-	clientName := fmt.Sprintf("wireflow-%s-%s-%d", role, name, time.Now().UnixNano())
+	clientName := fmt.Sprintf("lattice-%s-%s-%d", role, name, time.Now().UnixNano())
 	// 1. 使用更稳健的连接配置
 	opts := []natsgo.Option{
 		natsgo.Name(clientName),
@@ -120,7 +120,7 @@ func NewNatsService(ctx context.Context, name, role, url string) (*NatsSignalSer
 }
 
 func (s *NatsSignalService) ensureStream(ctx context.Context, js jetstream.JetStream) error {
-	streamName := "WIREFLOW"
+	streamName := "LATTICE"
 	_, err := js.Stream(ctx, streamName)
 	if err != nil {
 		if errors.Is(err, jetstream.ErrStreamNotFound) {
@@ -163,7 +163,7 @@ func (s *NatsSignalService) Flush() error {
 }
 
 func (s *NatsSignalService) Send(_ context.Context, peerId infra.PeerID, data []byte) error {
-	subject := fmt.Sprintf("wireflow.signals.peers.%s", peerId)
+	subject := fmt.Sprintf("lattice.signals.peers.%s", peerId)
 	return s.nc.Publish(subject, data)
 }
 

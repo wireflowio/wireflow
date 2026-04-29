@@ -74,7 +74,7 @@ func (r *firewallRuleResolver) ResolveRules(ctx context.Context, currentPeer *in
 					continue
 				}
 				result.Ingress = append(result.Ingress, infra.TrafficRule{
-					ChainName: "WIREFLOW-INGRESS",
+					ChainName: "LATTICE-INGRESS",
 					Peers:     []string{srcIP},
 					Port:      rule.Port,
 					Protocol:  rule.Protocol,
@@ -97,7 +97,7 @@ func (r *firewallRuleResolver) ResolveRules(ctx context.Context, currentPeer *in
 					continue
 				}
 				result.Egress = append(result.Egress, infra.TrafficRule{
-					ChainName: "WIREFLOW-EGRESS",
+					ChainName: "LATTICE-EGRESS",
 					Peers:     []string{destIP},
 					Port:      rule.Port,
 					Protocol:  rule.Protocol,

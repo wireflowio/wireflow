@@ -109,16 +109,16 @@ func push(nodes []string, states []nodeState, vmURL, networkID string) {
 		base := fmt.Sprintf(`peer_id="%s",network_id="%s"`, node, networkID)
 
 		// ── system ────────────────────────────────────────────────
-		writeLine(&sb, "wireflow_node_cpu_usage_percent",     base, s.cpu,    now)
-		writeLine(&sb, "wireflow_node_memory_bytes",          base, s.memMB*1e6, now)
-		writeLine(&sb, "wireflow_node_goroutines",            base, 80+rand.Float64()*40, now)
-		writeLine(&sb, "wireflow_node_uptime_seconds",        base, s.uptime, now)
+		writeLine(&sb, "lattice_node_cpu_usage_percent",     base, s.cpu,    now)
+		writeLine(&sb, "lattice_node_memory_bytes",          base, s.memMB*1e6, now)
+		writeLine(&sb, "lattice_node_goroutines",            base, 80+rand.Float64()*40, now)
+		writeLine(&sb, "lattice_node_uptime_seconds",        base, s.uptime, now)
 
 		// ── wireguard traffic ─────────────────────────────────────
 		txBase := fmt.Sprintf(`peer_id="%s",network_id="%s",direction="tx"`, node, networkID)
 		rxBase := fmt.Sprintf(`peer_id="%s",network_id="%s",direction="rx"`, node, networkID)
-		writeLine(&sb, "wireflow_node_traffic_bytes_total", txBase, s.txBytes, now)
-		writeLine(&sb, "wireflow_node_traffic_bytes_total", rxBase, s.rxBytes, now)
+		writeLine(&sb, "lattice_node_traffic_bytes_total", txBase, s.txBytes, now)
+		writeLine(&sb, "lattice_node_traffic_bytes_total", rxBase, s.rxBytes, now)
 
 		// ── peer connections (mesh: each node peers with every other) ──
 		for j, remote := range nodes {
@@ -131,26 +131,26 @@ func push(nodes []string, states []nodeState, vmURL, networkID string) {
 			peerBaseEP := fmt.Sprintf(`peer_id="%s",network_id="%s",remote_peer_id="%s",remote_peer_name="%s",endpoint="10.0.0.%d:51820"`,
 				node, networkID, remote, remote, j+1)
 
-			writeLine(&sb, "wireflow_peer_status", peerBaseEP, 1.0, now)
+			writeLine(&sb, "lattice_peer_status", peerBaseEP, 1.0, now)
 
 			hs := float64(time.Now().Add(-time.Duration(30+rand.Intn(90))*time.Second).Unix())
-			writeLine(&sb, "wireflow_peer_last_handshake_seconds",
+			writeLine(&sb, "lattice_peer_last_handshake_seconds",
 				fmt.Sprintf(`peer_id="%s",network_id="%s",remote_peer_id="%s"`, node, networkID, remote),
 				hs, now)
 
 			// per-peer traffic
 			peerTxBase := peerBase + `,direction="tx"`
 			peerRxBase := peerBase + `,direction="rx"`
-			writeLine(&sb, "wireflow_peer_traffic_bytes_total", peerTxBase, s.txBytes/float64(len(nodes)-1), now)
-			writeLine(&sb, "wireflow_peer_traffic_bytes_total", peerRxBase, s.rxBytes/float64(len(nodes)-1), now)
+			writeLine(&sb, "lattice_peer_traffic_bytes_total", peerTxBase, s.txBytes/float64(len(nodes)-1), now)
+			writeLine(&sb, "lattice_peer_traffic_bytes_total", peerRxBase, s.rxBytes/float64(len(nodes)-1), now)
 
 			// ICMP
 			latBase := fmt.Sprintf(`peer_id="%s",network_id="%s",remote_peer_id="%s",remote_peer_name="%s",remote_peer_ip="10.0.0.%d"`,
 				node, networkID, remote, remote, j+1)
 			lossBase := fmt.Sprintf(`peer_id="%s",network_id="%s",remote_peer_id="%s"`,
 				node, networkID, remote)
-			writeLine(&sb, "wireflow_peer_latency_ms",         latBase,  clamp(latency, 1, 200), now)
-			writeLine(&sb, "wireflow_peer_packet_loss_percent", lossBase, clamp(s.loss, 0, 5),   now)
+			writeLine(&sb, "lattice_peer_latency_ms",         latBase,  clamp(latency, 1, 200), now)
+			writeLine(&sb, "lattice_peer_packet_loss_percent", lossBase, clamp(s.loss, 0, 5),   now)
 		}
 	}
 

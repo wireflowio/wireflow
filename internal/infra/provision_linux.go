@@ -82,8 +82,8 @@ func (r *ruleProvisioner) Name() string {
 }
 
 func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
-	inChain := "WIREFLOW-INGRESS"
-	outChain := "WIREFLOW-EGRESS"
+	inChain := "LATTICE-INGRESS"
+	outChain := "LATTICE-EGRESS"
 
 	// 1. 初始化链
 	r.initChain(inChain, "INPUT", "-i")
@@ -209,7 +209,7 @@ func isRunningInContainer() bool {
 	return false
 }
 
-// SetupNAT configures iptables NAT rules required when wireflow runs inside a
+// SetupNAT configures iptables NAT rules required when lattice runs inside a
 // container acting as a VPN gateway. It is a no-op on bare-metal or VM
 // deployments because ApplyRoute already installs the correct MASQUERADE rule
 // on the default outbound interface.

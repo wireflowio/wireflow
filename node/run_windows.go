@@ -28,7 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"wireflow/dns"
+	"lattice/dns"
 )
 
 func Start(ctx context.Context, flags *config.Config) error {
@@ -40,7 +40,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 
 	log.SetLevel(flags.Level)
 
-	logger := log.GetLogger("wireflow")
+	logger := log.GetLogger("lattice")
 
 	// peers config to wireGuard
 	agentCfg := &NodeConfig{
@@ -53,20 +53,20 @@ func Start(ctx context.Context, flags *config.Config) error {
 	}
 
 	if flags.EnableDaemon {
-		fmt.Println("Run wireflow in daemon mode")
+		fmt.Println("Run lattice in daemon mode")
 		env := os.Environ()
-		env = append(env, "WIREFLOW_DAEMON=true")
-		if os.Getenv("WIREFLOW_DAEMON") == "" {
+		env = append(env, "LATTICE_DAEMON=true")
+		if os.Getenv("LATTICE_DAEMON") == "" {
 			// 确保日志目录存在
 			var logDir string
 			switch runtime.GOOS {
 			case "darwin":
 				host, _ := os.UserHomeDir()
-				logDir = fmt.Sprintf("%s/%s", host, "Library/Logs/wireflow")
+				logDir = fmt.Sprintf("%s/%s", host, "Library/Logs/lattice")
 			case "windows":
-				logDir = "C:\\ProgramData\\wireflow\\logs"
+				logDir = "C:\\ProgramData\\lattice\\logs"
 			default:
-				logDir = "/var/log/wireflow"
+				logDir = "/var/log/lattice"
 			}
 
 			if _, err = os.Stat(logDir); err != nil {
@@ -81,7 +81,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 
 			// 打开日志文件
 			logFile, err = os.OpenFile(
-				filepath.Join(logDir, "wireflow.log"),
+				filepath.Join(logDir, "lattice.log"),
 				os.O_CREATE|os.O_WRONLY|os.O_APPEND,
 				0644,
 			)
@@ -189,17 +189,17 @@ func Start(ctx context.Context, flags *config.Config) error {
 			go c.DeviceManager.IpcHandle(conn)
 		}
 	}()
-	logger.Info("wireflow started")
+	logger.Info("lattice started")
 
 	<-ctx.Done()
 	uapi.Close()
 
 	c.close()
-	logger.Info("wireflow shutting down")
+	logger.Info("lattice shutting down")
 	return err
 }
 
-// Stop stop wireflow daemon
+// Stop stop lattice daemon
 func Stop(flags *config.Config) error {
 	interfaceName := flags.InterfaceName
 	if flags.InterfaceName == "" {
@@ -214,7 +214,7 @@ func Stop(flags *config.Config) error {
 		}
 
 		if len(ifaces) == 0 {
-			return fmt.Errorf("%s", "Wireflow daemon is not running, no ifaces found")
+			return fmt.Errorf("%s", "Lattice daemon is not running, no ifaces found")
 		}
 
 		interfaceName = ifaces[0].Name
@@ -228,7 +228,7 @@ func Status(flags *config.Config) error {
 	return PrintStatus(flags.InterfaceName)
 }
 
-// stop wireflow daemon via sock file
+// stop lattice daemon via sock file
 func stopViaPIDFile(interfaceName string) error {
 	// get sock
 	socketPath := fmt.Sprintf("/var/run/wireguard/%s.sock", interfaceName)
@@ -240,7 +240,7 @@ func stopViaPIDFile(interfaceName string) error {
 	// connect to the socket
 	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
-		return fmt.Errorf("wireflow sock connect failed: %v", err)
+		return fmt.Errorf("lattice sock connect failed: %v", err)
 	}
 	defer conn.Close()
 	// 发送消息到服务器
@@ -256,6 +256,6 @@ func stopViaPIDFile(interfaceName string) error {
 		return fmt.Errorf("receive error: %v", err)
 	}
 
-	fmt.Printf("wireflow stopped: %s\n", interfaceName)
+	fmt.Printf("lattice stopped: %s\n", interfaceName)
 	return nil
 }

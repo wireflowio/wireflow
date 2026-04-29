@@ -75,7 +75,7 @@ func (c *Client) GetNetMap(token string) (*infra.Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err = c.RequestNats(ctx, "wireflow.signals.peer", "GetNetMap", data)
+	data, err = c.RequestNats(ctx, "lattice.signals.peer", "GetNetMap", data)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (c *Client) GetNetMap(token string) (*infra.Message, error) {
 	return &msg, nil
 }
 
-// Register will register device to wireflow center
+// Register will register device to lattice center
 func (c *Client) Register(ctx context.Context, token, interfaceName string) (*infra.Peer, error) {
 	if token == "" {
 		return nil, fmt.Errorf("token is empty")
@@ -120,7 +120,7 @@ func (c *Client) Register(ctx context.Context, token, interfaceName string) (*in
 		return nil, err
 	}
 
-	data, err = c.RequestNats(ctx, "wireflow.signals.peer", "register", data)
+	data, err = c.RequestNats(ctx, "lattice.signals.peer", "register", data)
 
 	if err != nil {
 		return nil, fmt.Errorf("register failed. %v", err)

@@ -15,7 +15,7 @@
 //go:build !pro
 
 // Package telemetry stubs out the Pro telemetry pipeline for community builds.
-// VictoriaMetrics push is a Wireflow Pro feature.
+// VictoriaMetrics push is a Lattice Pro feature.
 package telemetry
 
 import (
@@ -27,7 +27,7 @@ import (
 	"github.com/alatticeio/lattice/internal/log"
 )
 
-var errProRequired = errors.New("telemetry push is a Wireflow Pro feature — upgrade at https://wireflow.run/pro")
+var errProRequired = errors.New("telemetry push is a Lattice Pro feature — upgrade at https://alattice.io/pro")
 
 // Labels is a map of Prometheus label name → value.
 type Labels map[string]string

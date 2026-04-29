@@ -18,5 +18,5 @@ type PolicyVo struct {
 	UpdatedBy                    string `json:"updatedBy,omitempty"`
 	UpdatedByName                string `json:"updatedByName,omitempty"`
 	UpdatedAt                    string `json:"updatedAt,omitempty"`
-	*v1alpha1.WireflowPolicySpec `json:",inline"`
+	*v1alpha1.LatticePolicySpec `json:",inline"`
 }

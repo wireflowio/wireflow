@@ -39,10 +39,10 @@ type Generator struct {
 
 // PeerStateSnapshot
 type PeerStateSnapshot struct {
-	Peer     *v1alpha1.WireflowPeer
-	Network  *v1alpha1.WireflowNetwork
-	Policies []*v1alpha1.WireflowPolicy
-	Peers    []*v1alpha1.WireflowPeer
+	Peer     *v1alpha1.LatticePeer
+	Network  *v1alpha1.LatticeNetwork
+	Policies []*v1alpha1.LatticePolicy
+	Peers    []*v1alpha1.LatticePeer
 	Labels   map[string]string
 }
 
@@ -58,9 +58,9 @@ func NewGenerator(client client.Client) *Generator {
 //func (d *Generator) DetectNodeChanges(
 //	ctx context.Context,
 //	oldPeerSnapshot *PeerStateSnapshot,
-//	oldPeer, newPeer *v1alpha1.WireflowPeer,
-//	oldNetwork, newNetwork *v1alpha1.WireflowNetwork,
-//	oldPolicies, newPolicies []*v1alpha1.WireflowPolicy,
+//	oldPeer, newPeer *v1alpha1.LatticePeer,
+//	oldNetwork, newNetwork *v1alpha1.LatticeNetwork,
+//	oldPolicies, newPolicies []*v1alpha1.LatticePolicy,
 //	req ctrl.Request,
 //) *infra.DetailsInfo {
 //
@@ -80,7 +80,7 @@ func NewGenerator(client client.Client) *Generator {
 //	return changes
 //}
 //
-//func (d *Generator) detectNodeConfigChanges(ctx context.Context, changes *infra.DetailsInfo, oldNodeCtx *PeerStateSnapshot, oldNode, newNode *v1alpha1.WireflowPeer, req ctrl.Request) *infra.DetailsInfo {
+//func (d *Generator) detectNodeConfigChanges(ctx context.Context, changes *infra.DetailsInfo, oldNodeCtx *PeerStateSnapshot, oldNode, newNode *v1alpha1.LatticePeer, req ctrl.Request) *infra.DetailsInfo {
 //	var newCreated bool
 //	if oldNode == nil {
 //		newCreated = true
@@ -148,7 +148,7 @@ func NewGenerator(client client.Client) *Generator {
 //	return changes
 //}
 //
-//func (d *Generator) detectNetworkChanges(ctx context.Context, changes *infra.DetailsInfo, oldNodeCtx *PeerStateSnapshot, oldNetwork, newNetwork *v1alpha1.WireflowNetwork, req ctrl.Request) *infra.DetailsInfo {
+//func (d *Generator) detectNetworkChanges(ctx context.Context, changes *infra.DetailsInfo, oldNodeCtx *PeerStateSnapshot, oldNetwork, newNetwork *v1alpha1.LatticeNetwork, req ctrl.Request) *infra.DetailsInfo {
 //	networkUpdateType := d.detectNetworkUpdateType(oldNetwork, newNetwork)
 //
 //	switch networkUpdateType {
@@ -192,7 +192,7 @@ const (
 )
 
 //
-//func (d *Generator) detectNetworkUpdateType(oldNetwork, newNetwork *v1alpha1.WireflowNetwork) changeType {
+//func (d *Generator) detectNetworkUpdateType(oldNetwork, newNetwork *v1alpha1.LatticeNetwork) changeType {
 //	if oldNetwork == nil && newNetwork == nil {
 //		return typeNone
 //	}
@@ -207,7 +207,7 @@ const (
 //	return typeNone
 //}
 //
-//func (d *Generator) detectPolicyUpdateType(oldPolicies, newPolicies []*v1alpha1.WireflowPolicy) changeType {
+//func (d *Generator) detectPolicyUpdateType(oldPolicies, newPolicies []*v1alpha1.LatticePolicy) changeType {
 //
 //	if oldPolicies == nil && newPolicies != nil {
 //		return typeAdd
@@ -220,7 +220,7 @@ const (
 //	return typeNone
 //}
 //
-//func (d *Generator) detectPolicyChanges(ctx context.Context, changes *infra.DetailsInfo, oldPolicies, newPolicies []*v1alpha1.WireflowPolicy, req ctrl.Request) *infra.DetailsInfo {
+//func (d *Generator) detectPolicyChanges(ctx context.Context, changes *infra.DetailsInfo, oldPolicies, newPolicies []*v1alpha1.LatticePolicy, req ctrl.Request) *infra.DetailsInfo {
 //
 //	policyUpdateType := d.detectPolicyUpdateType(oldPolicies, newPolicies)
 //
@@ -253,8 +253,8 @@ const (
 //	return changes
 //}
 
-//func (d *Generator) findPolicy(ctx context.Context, node *v1alpha1.WireflowPeer, req ctrl.Request) ([]*infra.Policy, error) {
-//	var policyList v1alpha1.WireflowPolicyList
+//func (d *Generator) findPolicy(ctx context.Context, node *v1alpha1.LatticePeer, req ctrl.Request) ([]*infra.Policy, error) {
+//	var policyList v1alpha1.LatticePolicyList
 //	if err := d.client.List(ctx, &policyList, client.InNamespace(req.Namespace)); err != nil {
 //		return nil, err
 //	}
@@ -278,10 +278,10 @@ const (
 //	log.Info("findNodes by network labels", "networkName", networkName)
 //
 //	labels := map[string]string{
-//		"wireflow.run/network-": networkName,
+//		"alattice.io/network-": networkName,
 //	}
 //
-//	var peers v1alpha1.WireflowPeerList
+//	var peers v1alpha1.LatticePeerList
 //	if err := d.client.List(ctx, &peers, client.MatchingLabels(labels)); err != nil {
 //		return nil, err
 //	}
@@ -294,7 +294,7 @@ const (
 //	return addedPeers, nil
 //}
 
-func (d *Generator) generate(ctx context.Context, current *v1alpha1.WireflowPeer, snapshot *PeerStateSnapshot, version string) (*infra.Message, error) {
+func (d *Generator) generate(ctx context.Context, current *v1alpha1.LatticePeer, snapshot *PeerStateSnapshot, version string) (*infra.Message, error) {
 	var err error
 	// 生成配置版本号
 	msg := &infra.Message{
@@ -365,7 +365,7 @@ func (d *Generator) generateConfigVersion() string {
 	return fmt.Sprintf("v%d", d.versionCounter)
 }
 
-func (d *Generator) buildPolicy(ctx context.Context, src *v1alpha1.WireflowPolicy) *infra.Policy {
+func (d *Generator) buildPolicy(ctx context.Context, src *v1alpha1.LatticePolicy) *infra.Policy {
 	log := logf.FromContext(ctx)
 	log.Info("buildPolicy", "policy", src.Name)
 	policy := &infra.Policy{
@@ -440,7 +440,7 @@ func (d *Generator) getPeerNamesByLabels(ctx context.Context, namespace, network
 			})
 		}
 
-		var nodeList v1alpha1.WireflowPeerList
+		var nodeList v1alpha1.LatticePeerList
 		if err := d.client.List(ctx, &nodeList, listOpts...); err != nil {
 			return nil, fmt.Errorf("failed to list nodes with selector %s: %w", selector.String(), err)
 		}

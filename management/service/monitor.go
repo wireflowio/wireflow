@@ -113,8 +113,8 @@ func NewMonitorServiceWithOptions(opts MonitorServiceOptions) (MonitorService, e
 
 // GetPeerStatus 获取所有 Peer 的拓扑状态
 func (v *monitorService) GetTopologySnapshot(ctx context.Context) ([]models.PeerSnapshot, error) {
-	// 1. 查询所有以 wireflow_node_ 开头的指标
-	query := `last_over_time({__name__=~"wireflow_node_.*"}[5m])`
+	// 1. 查询所有以 lattice_node_ 开头的指标
+	query := `last_over_time({__name__=~"lattice_node_.*"}[5m])`
 	vector, err := v.QueryByTime(ctx, query, time.Now())
 	if err != nil {
 		return nil, err
@@ -140,8 +140,8 @@ func (v *monitorService) GetTopologySnapshot(ctx context.Context) ([]models.Peer
 		}
 
 		// 2. 自动格式化并存入 Map
-		// 我们去掉前缀 "wireflow_node_" 让前端拿到的 Key 更简洁
-		shortName := strings.TrimPrefix(metricName, "wireflow_node_")
+		// 我们去掉前缀 "lattice_node_" 让前端拿到的 Key 更简洁
+		shortName := strings.TrimPrefix(metricName, "lattice_node_")
 		nodeMap[nodeID].Metrics[shortName] = utils.AutoFormat(metricName, val)
 
 		// 3. 特殊逻辑：根据 CPU 自动判定健康度
@@ -248,7 +248,7 @@ func (s *monitorService) fillMetrics(node *models.NodeSnapshot, name string, val
 		if val > 90 {
 			node.HealthLevel = "error"
 		}
-	case models.WIREFLOW_PEER_STATUS:
+	case models.LATTICE_PEER_STATUS:
 		if val == 1 {
 			node.Status = "online"
 			if node.HealthLevel == "" {
@@ -304,7 +304,7 @@ func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, name
 
 	// 2. 获取平均延迟
 	eg.Go(func() error {
-		query := fmt.Sprintf(`avg(wireflow_peer_latency_ms{network_id="%s"})`, namespace)
+		query := fmt.Sprintf(`avg(lattice_peer_latency_ms{network_id="%s"})`, namespace)
 		val, _, err := s.api.Query(ctx, query, time.Now())
 		if err == nil {
 			resp.LiveStats[1] = models.StatCard{
@@ -319,7 +319,7 @@ func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, name
 
 	// 3. 获取丢包率
 	eg.Go(func() error {
-		query := fmt.Sprintf(`avg(wireflow_peer_packet_loss_percent{network_id="%s"})`, namespace)
+		query := fmt.Sprintf(`avg(lattice_peer_packet_loss_percent{network_id="%s"})`, namespace)
 		val, _, err := s.api.Query(ctx, query, time.Now())
 		if err == nil {
 			resp.LiveStats[2] = models.StatCard{
@@ -334,7 +334,7 @@ func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, name
 
 	// 4. 活动隧道数：peer_status==1 的连接数 / 2（每条隧道两端各上报一次）
 	eg.Go(func() error {
-		query := fmt.Sprintf(`ceil(sum(wireflow_peer_status{network_id="%s"} == 1) / 2)`, namespace)
+		query := fmt.Sprintf(`ceil(sum(lattice_peer_status{network_id="%s"} == 1) / 2)`, namespace)
 		val, _, err := s.api.Query(ctx, query, time.Now())
 		if err == nil {
 			resp.LiveStats[3] = models.StatCard{
@@ -354,8 +354,8 @@ func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, name
 			End:   time.Now(),
 			Step:  time.Minute * 2,
 		}
-		txQuery := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="tx"}[5m])) * 8 / 1e6`, namespace)
-		rxQuery := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="rx"}[5m])) * 8 / 1e6`, namespace)
+		txQuery := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="tx"}[5m])) * 8 / 1e6`, namespace)
+		rxQuery := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="rx"}[5m])) * 8 / 1e6`, namespace)
 		txResult, _, err := s.api.QueryRange(ctx, txQuery, r)
 		if err == nil {
 			rxResult, _, _ := s.api.QueryRange(ctx, rxQuery, r)
@@ -366,7 +366,7 @@ func (s *monitorService) GetWorkspaceAggregatedMonitor(ctx context.Context, name
 
 	// 6. 节点列表明细
 	eg.Go(func() error {
-		query := fmt.Sprintf(`last_over_time(wireflow_peer_status{network_id="%s"}[5m])`, namespace)
+		query := fmt.Sprintf(`last_over_time(lattice_peer_status{network_id="%s"}[5m])`, namespace)
 		val, _, err := s.api.Query(ctx, query, time.Now())
 		if err == nil {
 			resp.Nodes = s.convertVectorToNodes(val)
@@ -392,7 +392,7 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 
 	// 0. 在线节点数
 	eg.Go(func() error {
-		q := fmt.Sprintf(`count(last_over_time(wireflow_node_uptime_seconds{network_id="%s"}[5m]))`, namespace)
+		q := fmt.Sprintf(`count(last_over_time(lattice_node_uptime_seconds{network_id="%s"}[5m]))`, namespace)
 		vec, _ := s.QueryByTime(ctx, q, time.Now())
 		val := 0
 		if len(vec) > 0 {
@@ -407,7 +407,7 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 
 	// 1. 实时吞吐 TX（Mbps）
 	eg.Go(func() error {
-		q := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="tx"}[2m])) * 8 / 1e6`, namespace)
+		q := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="tx"}[2m])) * 8 / 1e6`, namespace)
 		vec, _ := s.QueryByTime(ctx, q, time.Now())
 		val := 0.0
 		if len(vec) > 0 {
@@ -422,7 +422,7 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 
 	// 2. 平均延迟（ms）
 	eg.Go(func() error {
-		q := fmt.Sprintf(`avg(wireflow_peer_latency_ms{network_id="%s"})`, namespace)
+		q := fmt.Sprintf(`avg(lattice_peer_latency_ms{network_id="%s"})`, namespace)
 		vec, _ := s.QueryByTime(ctx, q, time.Now())
 		val := 0.0
 		if len(vec) > 0 {
@@ -441,7 +441,7 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 
 	// 3. 平均丢包率（%）
 	eg.Go(func() error {
-		q := fmt.Sprintf(`avg(wireflow_peer_packet_loss_percent{network_id="%s"})`, namespace)
+		q := fmt.Sprintf(`avg(lattice_peer_packet_loss_percent{network_id="%s"})`, namespace)
 		vec, _ := s.QueryByTime(ctx, q, time.Now())
 		val := 0.0
 		if len(vec) > 0 {
@@ -465,8 +465,8 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 			End:   time.Now(),
 			Step:  2 * time.Minute,
 		}
-		txQ := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="tx"}[5m])) * 8 / 1e6`, namespace)
-		rxQ := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="rx"}[5m])) * 8 / 1e6`, namespace)
+		txQ := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="tx"}[5m])) * 8 / 1e6`, namespace)
+		rxQ := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="rx"}[5m])) * 8 / 1e6`, namespace)
 		txResult, _, _ := s.api.QueryRange(ctx, txQ, r)
 		rxResult, _, _ := s.api.QueryRange(ctx, rxQ, r)
 		trend := s.processMatrixToTrendWithRX(txResult, rxResult)
@@ -478,8 +478,8 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 
 	// 5. 节点 CPU + Memory
 	eg.Go(func() error {
-		cpuQ := fmt.Sprintf(`last_over_time(wireflow_node_cpu_usage_percent{network_id="%s"}[5m])`, namespace)
-		memQ := fmt.Sprintf(`last_over_time(wireflow_node_memory_bytes{network_id="%s"}[5m])`, namespace)
+		cpuQ := fmt.Sprintf(`last_over_time(lattice_node_cpu_usage_percent{network_id="%s"}[5m])`, namespace)
+		memQ := fmt.Sprintf(`last_over_time(lattice_node_memory_bytes{network_id="%s"}[5m])`, namespace)
 		cpuVec, _ := s.QueryByTime(ctx, cpuQ, time.Now())
 		memVec, _ := s.QueryByTime(ctx, memQ, time.Now())
 
@@ -507,11 +507,11 @@ func (s *monitorService) GetWorkspaceDashboard(ctx context.Context, namespace st
 	// 6. Top 10 节点（24h 流量）
 	eg.Go(func() error {
 		trafficQ := fmt.Sprintf(
-			`topk(10, sum by (peer_id)(increase(wireflow_node_traffic_bytes_total{network_id="%s"}[24h])))`,
+			`topk(10, sum by (peer_id)(increase(lattice_node_traffic_bytes_total{network_id="%s"}[24h])))`,
 			namespace)
 		trafficVec, _ := s.QueryByTime(ctx, trafficQ, time.Now())
 
-		statusQ := fmt.Sprintf(`last_over_time(wireflow_peer_status{network_id="%s"}[5m])`, namespace)
+		statusQ := fmt.Sprintf(`last_over_time(lattice_peer_status{network_id="%s"}[5m])`, namespace)
 		statusVec, _ := s.QueryByTime(ctx, statusQ, time.Now())
 
 		onlineMap := make(map[string]bool)
@@ -592,7 +592,7 @@ func (s *monitorService) processMatrixToTrendWithRX(txVal model.Value, rxVal mod
 }
 
 // 将节点标签信息转换为明细列表
-// 数据来源：wireflow_peer_status，labels: workspace_id, node_id, peer_id, endpoint, alias
+// 数据来源：lattice_peer_status，labels: workspace_id, node_id, peer_id, endpoint, alias
 func (s *monitorService) convertVectorToNodes(val model.Value) []models.NodeMonitorDetail {
 	vector, _ := val.(model.Vector)
 	nodes := make([]models.NodeMonitorDetail, 0)
@@ -609,7 +609,7 @@ func (s *monitorService) convertVectorToNodes(val model.Value) []models.NodeMoni
 }
 
 func (s *monitorService) fetchThroughput(ctx context.Context, namespace string) models.StatCard {
-	query := fmt.Sprintf(`sum(irate(wireflow_node_traffic_bytes_total{network_id="%s",direction="tx"}[2m])) * 8 / 1e6`, namespace)
+	query := fmt.Sprintf(`sum(irate(lattice_node_traffic_bytes_total{network_id="%s",direction="tx"}[2m])) * 8 / 1e6`, namespace)
 
 	// 2. 执行查询
 	val, _, err := s.api.Query(ctx, query, time.Now())
@@ -672,7 +672,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 1. 活跃工作空间数（有数据上报的空间）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `count(count by (workspace_id) (wireflow_peer_status{workspace_id!=""}))`, time.Now())
+		vec, err := s.QueryByTime(ctx, `count(count by (workspace_id) (lattice_peer_status{workspace_id!=""}))`, time.Now())
 		if err == nil && len(vec) > 0 {
 			activeWs = int(vec[0].Value)
 		}
@@ -681,7 +681,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 2. 全网在线节点数（按 node_id 去重）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `count(count by (peer_id) (wireflow_peer_status == 1))`, time.Now())
+		vec, err := s.QueryByTime(ctx, `count(count by (peer_id) (lattice_peer_status == 1))`, time.Now())
 		if err == nil && len(vec) > 0 {
 			onlineNodes = int(vec[0].Value)
 		}
@@ -690,7 +690,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 3. 全域总吞吐（Gbps）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `sum(irate(wireflow_peer_traffic_bytes_total{direction="tx"}[2m])) * 8 / 1e9`, time.Now())
+		vec, err := s.QueryByTime(ctx, `sum(irate(lattice_peer_traffic_bytes_total{direction="tx"}[2m])) * 8 / 1e9`, time.Now())
 		if err == nil && len(vec) > 0 {
 			throughputGbps = float64(vec[0].Value)
 		}
@@ -699,7 +699,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 4. 每个空间的在线节点数（按 network_id 分组）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `count by (network_id) (last_over_time(wireflow_node_uptime_seconds[5m]))`, time.Now())
+		vec, err := s.QueryByTime(ctx, `count by (network_id) (last_over_time(lattice_node_uptime_seconds[5m]))`, time.Now())
 		if err != nil {
 			return nil
 		}
@@ -714,7 +714,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 5. 每个空间 24h 发送流量（用节点级聚合，避免双倍计数）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `sum by (network_id) (increase(wireflow_node_traffic_bytes_total{direction="tx"}[24h]))`, time.Now())
+		vec, err := s.QueryByTime(ctx, `sum by (network_id) (increase(lattice_node_traffic_bytes_total{direction="tx"}[24h]))`, time.Now())
 		if err != nil {
 			return nil
 		}
@@ -729,7 +729,7 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 
 	// 6. 每个空间健康度（在线 peer 占比）
 	eg.Go(func() error {
-		vec, err := s.QueryByTime(ctx, `avg by (network_id) (wireflow_peer_status) * 100`, time.Now())
+		vec, err := s.QueryByTime(ctx, `avg by (network_id) (lattice_peer_status) * 100`, time.Now())
 		if err != nil {
 			return nil
 		}
@@ -750,8 +750,8 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 			End:   time.Now(),
 			Step:  4 * time.Hour,
 		}
-		txQ := `sum(irate(wireflow_node_traffic_bytes_total{direction="tx"}[20m])) * 8 / 1e9`
-		rxQ := `sum(irate(wireflow_node_traffic_bytes_total{direction="rx"}[20m])) * 8 / 1e9`
+		txQ := `sum(irate(lattice_node_traffic_bytes_total{direction="tx"}[20m])) * 8 / 1e9`
+		rxQ := `sum(irate(lattice_node_traffic_bytes_total{direction="rx"}[20m])) * 8 / 1e9`
 		txResult, _, _ := s.api.QueryRange(ctx, txQ, r)
 		rxResult, _, _ := s.api.QueryRange(ctx, rxQ, r)
 		trend := s.processMatrixToTrendWithRX(txResult, rxResult)
@@ -764,19 +764,19 @@ func (s *monitorService) GetGlobalDashboard(ctx context.Context) (*models.Dashbo
 	// 8. Top 10 节点（24h 流量）+ CPU + 在线状态
 	eg.Go(func() error {
 		trafficVec, err := s.QueryByTime(ctx,
-			`topk(10, sum by (peer_id, network_id) (increase(wireflow_node_traffic_bytes_total[24h])))`,
+			`topk(10, sum by (peer_id, network_id) (increase(lattice_node_traffic_bytes_total[24h])))`,
 			time.Now())
 		if err != nil {
 			return nil
 		}
 
-		cpuVec, _ := s.QueryByTime(ctx, `last_over_time(wireflow_node_cpu_usage_percent[5m])`, time.Now())
+		cpuVec, _ := s.QueryByTime(ctx, `last_over_time(lattice_node_cpu_usage_percent[5m])`, time.Now())
 		cpuMap := make(map[string]float64)
 		for _, samp := range cpuVec {
 			cpuMap[string(samp.Metric["peer_id"])] = float64(samp.Value)
 		}
 
-		statusVec, _ := s.QueryByTime(ctx, `last_over_time(wireflow_peer_status[5m])`, time.Now())
+		statusVec, _ := s.QueryByTime(ctx, `last_over_time(lattice_peer_status[5m])`, time.Now())
 		onlineMap := make(map[string]bool)
 		endpointMap := make(map[string]string)
 		for _, samp := range statusVec {

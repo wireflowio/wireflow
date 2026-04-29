@@ -26,7 +26,7 @@ func NewClient(signalUrl string) (*Client, error) {
 func (c *Client) Info(ctx context.Context) error {
 
 	c.printInfo()
-	data, err := c.client.Request(ctx, "wireflow.signals.service", "info", nil)
+	data, err := c.client.Request(ctx, "lattice.signals.service", "info", nil)
 	if err != nil {
 		fmt.Println("Server Version: [Offline/Unknown]")
 	} else {
@@ -60,7 +60,7 @@ func (c *Client) CreateToken(namespace, name, expiry string) error {
 		return err
 	}
 
-	data, err := c.client.Request(context.Background(), "wireflow.signals.service", "createToken", bs)
+	data, err := c.client.Request(context.Background(), "lattice.signals.service", "createToken", bs)
 
 	if err != nil {
 		return err

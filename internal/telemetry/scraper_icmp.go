@@ -36,8 +36,8 @@ import (
 //
 // Emitted metrics:
 //
-//	wireflow_peer_latency_ms          {peer_id, network_id, remote_peer_id, remote_peer_name, remote_peer_ip}
-//	wireflow_peer_packet_loss_percent {peer_id, network_id, remote_peer_id}
+//	lattice_peer_latency_ms          {peer_id, network_id, remote_peer_id, remote_peer_name, remote_peer_ip}
+//	lattice_peer_packet_loss_percent {peer_id, network_id, remote_peer_id}
 type ICMPScraper struct {
 	peers   *infra.PeerManager
 	count   int
@@ -152,8 +152,8 @@ func (s *ICMPScraper) Scrape(ctx context.Context, id Identity, nowMs int64) ([]S
 		})
 
 		out = append(out,
-			NewSample("wireflow_peer_latency_ms", latencyLbls, r.latencyMs, nowMs),
-			NewSample("wireflow_peer_packet_loss_percent", lossLbls, r.packetLoss, nowMs),
+			NewSample("lattice_peer_latency_ms", latencyLbls, r.latencyMs, nowMs),
+			NewSample("lattice_peer_packet_loss_percent", lossLbls, r.packetLoss, nowMs),
 		)
 	}
 

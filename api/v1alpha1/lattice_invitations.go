@@ -5,20 +5,20 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// WireflowInvitation is the Schema for the networks API.
+// LatticeInvitation is the Schema for the networks API.
 // +kubebuilder:resource:shortName=wfinv
 // +kubebuilder:printcolumn:name="NETWORK",type="string",JSONPath=".spec.network",description="Joined Network"
 // +kubebuilder:printcolumn:name="NAMESPACE",type="string",JSONPath=".spec.namespace",description="Joined namespace"
 // +kubebuilder:printcolumn:name="LABELS",type="string",JSONPath=".spec.peerLabels",description="Added labels when joined"
 // +kubebuilder:printcolumn:name="ExpiresAt",type="string",JSONPath=".spec.expiresAt",description="Expires time"
-type WireflowInvitation struct {
+type LatticeInvitation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              WireflowInvitationSpec   `json:"spec"`
-	Status            WireflowInvitationStatus `json:"status,omitempty"`
+	Spec              LatticeInvitationSpec   `json:"spec"`
+	Status            LatticeInvitationStatus `json:"status,omitempty"`
 }
 
-type WireflowInvitationSpec struct {
+type LatticeInvitationSpec struct {
 	// Invite a peer join to a network
 	Network string `json:"network"`
 
@@ -31,7 +31,7 @@ type WireflowInvitationSpec struct {
 	ExpiresAt metav1.Time `json:"expiresAt"`
 }
 
-type WireflowInvitationStatus struct {
+type LatticeInvitationStatus struct {
 	// 生成给客户端的token
 	Token string `json:"token"`
 
@@ -45,11 +45,11 @@ type WireflowInvitationStatus struct {
 
 // +kubebuilder:object:root=true
 
-type WireflowInvitationList struct {
+type LatticeInvitationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowInvitation{}, &WireflowInvitationList{})
+	SchemeBuilder.Register(&LatticeInvitation{}, &LatticeInvitationList{})
 }

@@ -20,13 +20,13 @@ import (
 
 // 1. OIDC 配置
 var endpoint = oauth2.Endpoint{
-	AuthURL:  "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex/auth",
-	TokenURL: "http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex/token",
+	AuthURL:  "http://lattice-dex.lattice-system.svc.cluster.local:5556/dex/auth",
+	TokenURL: "http://lattice-dex.lattice-system.svc.cluster.local:5556/dex/token",
 }
 
 var oauth2Config = oauth2.Config{
-	ClientID:     "wireflow-server",     // 必须对应 dex-oauth2Config.yaml
-	ClientSecret: "wireflow-secret-key", // 必须对应 dex-oauth2Config.yaml
+	ClientID:     "lattice-server",     // 必须对应 dex-oauth2Config.yaml
+	ClientSecret: "lattice-secret-key", // 必须对应 dex-oauth2Config.yaml
 	Endpoint:     endpoint,
 	RedirectURL:  "http://localhost:8080/auth/callback",
 	Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
@@ -123,9 +123,9 @@ func InitVerifier() (*oidc.IDTokenVerifier, error) {
 	}
 
 	// 2. 创建 Verifier 配置
-	// 它会检查 Token 的发行者是否是 Dex，以及接收者（Audience）是否是你的 wireflow-server
+	// 它会检查 Token 的发行者是否是 Dex，以及接收者（Audience）是否是你的 lattice-server
 	cfg := &oidc.Config{
-		ClientID: "wireflow-server",
+		ClientID: "lattice-server",
 	}
 
 	return provider.Verifier(cfg), nil

@@ -26,7 +26,7 @@ type Handler interface {
 	ApplyFullConfig(ctx context.Context, msg *infra.Message) error
 }
 
-// event handler for wireflow to handle event from management
+// event handler for lattice to handle event from management
 type MessageHandler struct {
 	deviceManager infra.NodeInterface
 	logger        *log.Logger
@@ -122,7 +122,7 @@ func (h *MessageHandler) HandleEvent(ctx context.Context, msg *infra.Message) er
 	return nil
 }
 
-// ApplyFullConfig when wireflow start, apply full config
+// ApplyFullConfig when lattice start, apply full config
 func (h *MessageHandler) ApplyFullConfig(ctx context.Context, msg *infra.Message) error {
 	h.logger.Debug("reconciling full config", "version", msg.ConfigVersion)
 	var err error

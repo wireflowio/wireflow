@@ -25,9 +25,9 @@ import (
 var cfgManager = config.NewConfigManager()
 
 var rootCmd = &cobra.Command{
-	Use:           "wireflowd",
-	Short:         "Wireflow All-in-One Control Plane",
-	Long:          `Wireflowd manages encrypted private networks with embedded NATS and SQLite.`,
+	Use:           "latticed",
+	Short:         "Lattice All-in-One Control Plane",
+	Long:          `Latticed manages encrypted private networks with embedded NATS and SQLite.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -36,14 +36,14 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		isVersion, _ := cmd.Flags().GetBool("version")
 		if isVersion {
-			fmt.Println("wireflowd version: dev")
+			fmt.Println("latticed version: dev")
 			return nil
 		}
 		// pre-flight: 服务端模式——自动补全 signaling-url / database.dsn，不报错中断
 		if err := config.ValidateAndReport(config.GlobalConfig, true); err != nil {
 			return err
 		}
-		return runWireflowd(config.GlobalConfig)
+		return runLatticed(config.GlobalConfig)
 	},
 }
 
@@ -58,7 +58,7 @@ func Execute() {
 
 func init() {
 	fs := rootCmd.PersistentFlags()
-	fs.StringP("config-dir", "", "", "config directory (default ~/.wireflow)")
+	fs.StringP("config-dir", "", "", "config directory (default ~/.lattice)")
 	fs.StringP("server-url", "", "", "management server url")
 	fs.StringP("signaling-url", "", "", "signaling server url")
 	fs.BoolP("version", "", false, "Print version information")

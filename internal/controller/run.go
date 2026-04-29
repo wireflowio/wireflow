@@ -148,7 +148,7 @@ func Start(flags *config.Config) error {
 		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: flags.ProbeAddr,
 		LeaderElection:         flags.EnableLeaderElection,
-		LeaderElectionID:       "05657094.wireflow.run",
+		LeaderElectionID:       "05657094.alattice.io",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the
 		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
@@ -170,7 +170,7 @@ func Start(flags *config.Config) error {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowEnrollmentToken")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticeEnrollmentToken")
 		return err
 	}
 
@@ -180,7 +180,7 @@ func Start(flags *config.Config) error {
 		SnapshotCache: make(map[types.NamespacedName]*PeerStateSnapshot),
 		IPAM:          ipam.NewIPAM(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowPeer")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticePeer")
 		return err
 	}
 	if err := (&NetworkReconciler{
@@ -188,35 +188,35 @@ func Start(flags *config.Config) error {
 		Scheme: mgr.GetScheme(),
 		IPAM:   ipam.NewIPAM(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowNetwork")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticeNetwork")
 		return err
 	}
 	if err := (&NetworkPolicyReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowPolicy")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticePolicy")
 		return err
 	}
 	if err := (&RelayReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowRelayServer")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticeRelayServer")
 		return err
 	}
 	if err := (&NetworkPeeringReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowNetworkPeering")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticeNetworkPeering")
 		return err
 	}
 	if err := (&ClusterPeeringReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "WireflowClusterPeering")
+		setupLog.Error(err, "unable to create controller", "controller", "LatticeClusterPeering")
 		return err
 	}
 	//+kubebuilder:scaffold:builder

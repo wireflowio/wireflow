@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wireflow-manager
+  name: lattice-manager
 spec:
   replicas: 3  # 生产环境增加副本
   template:

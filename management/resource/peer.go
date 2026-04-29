@@ -35,7 +35,7 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 	log := logf.FromContext(ctx)
 	log.Info("Register node", "node", e)
 	var (
-		node v1alpha1.WireflowPeer
+		node v1alpha1.LatticePeer
 		err  error
 		key  wgtypes.Key
 	)
@@ -63,22 +63,22 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 
 	log.Info("Updating default net...")
 	// 使用SSA模式
-	manager := client.FieldOwner("wireflow-controller-manager")
+	manager := client.FieldOwner("lattice-controller-manager")
 
-	defaultNet := "wireflow-default-net"
-	node = v1alpha1.WireflowPeer{
+	defaultNet := "lattice-default-net"
+	node = v1alpha1.LatticePeer{
 		TypeMeta: v1.TypeMeta{
-			Kind:       "WireflowPeer",
-			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
+			Kind:       "LatticePeer",
+			APIVersion: "alattice.io/v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: namespace,
 			Name:      e.AppID,
 			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "wireflow-controller",
+				"app.kubernetes.io/managed-by": "lattice-controller",
 			},
 		},
-		Spec: v1alpha1.WireflowPeerSpec{
+		Spec: v1alpha1.LatticePeerSpec{
 			Network:       &defaultNet,
 			AppId:         e.AppID,
 			Platform:      e.Platform,
@@ -88,7 +88,7 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 			PeerId:        fmt.Sprintf("%d", peerId.ToUint64()),
 		},
 
-		Status: v1alpha1.WireflowPeerStatus{
+		Status: v1alpha1.LatticePeerStatus{
 			Status: "Inactive",
 		},
 	}
@@ -109,11 +109,11 @@ func (c *Client) Register(ctx context.Context, namespace string, e *dto.PeerDto)
 }
 
 // UpdateNodeStatus used to update node status
-func (c *Client) UpdateNodeStatus(ctx context.Context, namespace, name string, updateFunc func(status *v1alpha1.WireflowPeerStatus)) error {
+func (c *Client) UpdateNodeStatus(ctx context.Context, namespace, name string, updateFunc func(status *v1alpha1.LatticePeerStatus)) error {
 	logger := logf.FromContext(ctx)
 	logger.Info("Update node status", "namespace", namespace, "name", name)
 
-	var node v1alpha1.WireflowPeer
+	var node v1alpha1.LatticePeer
 	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
 		return err
 	}
@@ -123,10 +123,10 @@ func (c *Client) UpdateNodeStatus(ctx context.Context, namespace, name string, u
 	return c.Status().Update(ctx, &node)
 }
 
-func (c *Client) UpdateNodeSepc(ctx context.Context, namespace, name string, updateFunc func(node *v1alpha1.WireflowPeer)) error {
+func (c *Client) UpdateNodeSepc(ctx context.Context, namespace, name string, updateFunc func(node *v1alpha1.LatticePeer)) error {
 	logger := logf.FromContext(ctx)
 	logger.Info("Update node spec", "namespace", namespace, "name", name)
-	var node v1alpha1.WireflowPeer
+	var node v1alpha1.LatticePeer
 	if err := c.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &node); err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 	if tokenStr == "" {
 		return nil, fmt.Errorf("token is empty")
 	}
-	var list v1alpha1.WireflowEnrollmentTokenList
+	var list v1alpha1.LatticeEnrollmentTokenList
 	err := c.List(ctx, &list, client.MatchingFields{"spec.token": tokenStr})
 	if err != nil {
 		return nil, fmt.Errorf("get token failed: %v", err)
@@ -152,7 +152,7 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 		return nil, fmt.Errorf("token not exists")
 	}
 
-	var token *v1alpha1.WireflowEnrollmentToken
+	var token *v1alpha1.LatticeEnrollmentToken
 	for _, t := range list.Items {
 		if t.Status.Token == tokenStr {
 			token = &t
@@ -163,7 +163,7 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 		return nil, fmt.Errorf("token not exists")
 	}
 
-	var node v1alpha1.WireflowPeer
+	var node v1alpha1.LatticePeer
 	if err = c.Get(ctx, types.NamespacedName{Namespace: token.Namespace, Name: name}, &node); err != nil {
 		return nil, err
 	}
@@ -195,10 +195,10 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 }
 
 // CreateNetwork create a network
-func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*v1alpha1.WireflowNetwork, error) {
+func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*v1alpha1.LatticeNetwork, error) {
 	var (
 		err     error
-		network v1alpha1.WireflowNetwork
+		network v1alpha1.LatticeNetwork
 	)
 	err = c.Get(ctx, types.NamespacedName{
 		Namespace: "default",
@@ -207,18 +207,18 @@ func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*v1
 
 	if err != nil && errors.IsNotFound(err) {
 		// 使用SSA模式
-		manager := client.FieldOwner("wireflow-controller-manager")
+		manager := client.FieldOwner("lattice-controller-manager")
 
-		if err = c.Patch(ctx, &v1alpha1.WireflowNetwork{
+		if err = c.Patch(ctx, &v1alpha1.LatticeNetwork{
 			TypeMeta: v1.TypeMeta{
-				Kind:       "WireflowNetwork",
-				APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
+				Kind:       "LatticeNetwork",
+				APIVersion: "alattice.io/v1alpha1",
 			},
 			ObjectMeta: v1.ObjectMeta{
 				Namespace: "default",
 				Name:      networkId,
 			},
-			Spec: v1alpha1.WireflowNetworkSpec{
+			Spec: v1alpha1.LatticeNetworkSpec{
 				Name: networkId,
 				CIDR: cidr,
 			},

@@ -13,7 +13,7 @@ import (
 
 // Store 是顶层存储抽象，聚合所有子 Repository。
 // 调用方只依赖本接口，不感知底层数据库类型。
-// Peer 和 Token 数据已迁移到 K8s etcd（WireflowPeer CRD / WireflowEnrollmentToken CRD）。
+// Peer 和 Token 数据已迁移到 K8s etcd（LatticePeer CRD / LatticeEnrollmentToken CRD）。
 type Store interface {
 	Users() UserRepository
 	Workspaces() WorkspaceRepository

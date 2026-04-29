@@ -134,7 +134,7 @@ func (w *workspaceService) ListWorkspaces(ctx context.Context, request *dto.Page
 
 				// 使用 GetAPIReader 确保获取最新数据
 				if err := w.client.GetAPIReader().Get(gCtx, quotaKey, quota); err == nil {
-					nodeRes := corev1.ResourceName("count/nodes.wireflowcontroller.wireflow.run")
+					nodeRes := corev1.ResourceName("count/nodes.alattice.io")
 					if hard, ok := quota.Status.Hard[nodeRes]; ok {
 						v.NodeCount = hard.Value()
 					}
@@ -148,8 +148,8 @@ func (w *workspaceService) ListWorkspaces(ctx context.Context, request *dto.Page
 				}
 
 				// 查询默认网络信息 - 使用 GetAPIReader 确保获取最新数据
-				network := &v1alpha1.WireflowNetwork{}
-				networkKey := client.ObjectKey{Name: "wireflow-default-net", Namespace: ws.Namespace}
+				network := &v1alpha1.LatticeNetwork{}
+				networkKey := client.ObjectKey{Name: "lattice-default-net", Namespace: ws.Namespace}
 				if err := w.client.GetAPIReader().Get(gCtx, networkKey, network); err == nil {
 					v.NetworkName = network.Spec.Name
 					// 优先使用 Status.ActiveCIDR（Controller 实际分配的），如果没有则使用 Spec.CIDR
@@ -162,7 +162,7 @@ func (w *workspaceService) ListWorkspaces(ctx context.Context, request *dto.Page
 				}
 
 				// 统计 EnrollmentToken 数量
-				var tokenList v1alpha1.WireflowEnrollmentTokenList
+				var tokenList v1alpha1.LatticeEnrollmentTokenList
 				if err := w.client.GetAPIReader().List(gCtx, &tokenList, client.InNamespace(ws.Namespace)); err == nil {
 					v.TokenCount = int64(len(tokenList.Items))
 				}
@@ -363,7 +363,7 @@ func (w *workspaceService) InitializeTenant(ctx context.Context, wsID, role stri
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   nsName,
-			Labels: map[string]string{"wireflow.run/workspace-id": wsID},
+			Labels: map[string]string{"alattice.io/workspace-id": wsID},
 		},
 	}
 	if err := w.client.Create(ctx, ns); err != nil {
@@ -375,7 +375,7 @@ func (w *workspaceService) InitializeTenant(ctx context.Context, wsID, role stri
 		ObjectMeta: metav1.ObjectMeta{Name: "workspace-quota", Namespace: nsName},
 		Spec: corev1.ResourceQuotaSpec{
 			Hard: corev1.ResourceList{
-				corev1.ResourceName("count/nodes.wireflowcontroller.wireflow.run"): resource.MustParse("50"),
+				corev1.ResourceName("count/nodes.alattice.io"): resource.MustParse("50"),
 				corev1.ResourceSecrets: resource.MustParse("20"),
 			},
 		},
@@ -430,7 +430,7 @@ func (w *workspaceService) createRoleBinding(ctx context.Context, ns, wsID, role
 		}},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "ClusterRole",
-			Name:     fmt.Sprintf("wireflow-%s", roleName),
+			Name:     fmt.Sprintf("lattice-%s", roleName),
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
@@ -438,17 +438,17 @@ func (w *workspaceService) createRoleBinding(ctx context.Context, ns, wsID, role
 }
 
 func (w *workspaceService) createDefaultNetwork(ctx context.Context, nsName string) error {
-	var defaultNet v1alpha1.WireflowNetwork
-	if err := w.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "wireflow-default-net"}, &defaultNet); err != nil {
+	var defaultNet v1alpha1.LatticeNetwork
+	if err := w.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "lattice-default-net"}, &defaultNet); err != nil {
 		if k8serrors.IsNotFound(err) {
-			defaultNet = v1alpha1.WireflowNetwork{
+			defaultNet = v1alpha1.LatticeNetwork{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "wireflow-default-net",
+					Name:      "lattice-default-net",
 					Namespace: nsName,
-					Labels:    map[string]string{"app.kubernetes.io/managed-by": "wireflow-controller"},
+					Labels:    map[string]string{"app.kubernetes.io/managed-by": "lattice-controller"},
 				},
-				Spec: v1alpha1.WireflowNetworkSpec{
-					Name: "wireflow-default-net", // 使用固定的默认名称
+				Spec: v1alpha1.LatticeNetworkSpec{
+					Name: "lattice-default-net", // 使用固定的默认名称
 					CIDR: "100.64.0.0/16",        // 设置默认 CIDR，使用 CGNAT 地址段
 				},
 			}
@@ -464,16 +464,16 @@ func (w *workspaceService) createDefaultNetwork(ctx context.Context, nsName stri
 }
 
 func (w *workspaceService) createDefaultPolicy(ctx context.Context, nsName string) error {
-	var defaultPolicy v1alpha1.WireflowPolicy
-	if err := w.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "wireflow-deny-all"}, &defaultPolicy); err != nil {
+	var defaultPolicy v1alpha1.LatticePolicy
+	if err := w.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "lattice-deny-all"}, &defaultPolicy); err != nil {
 		if k8serrors.IsNotFound(err) {
-			defaultPolicy = v1alpha1.WireflowPolicy{
+			defaultPolicy = v1alpha1.LatticePolicy{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "wireflow-deny-all",
+					Name:      "lattice-deny-all",
 					Namespace: nsName,
-					Labels:    map[string]string{"app.kubernetes.io/managed-by": "wireflow-controller"},
+					Labels:    map[string]string{"app.kubernetes.io/managed-by": "lattice-controller"},
 				},
-				Spec: v1alpha1.WireflowPolicySpec{
+				Spec: v1alpha1.LatticePolicySpec{
 					Network: fmt.Sprintf("%s-net", nsName),
 					Action:  "DENY",
 				},

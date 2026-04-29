@@ -2,16 +2,16 @@ package models
 
 const (
 	// 节点
-	WIREFLOW_PEER_STATUS              = "wireflow_peer_status"
-	WIREFLOW_PEER_LATENCY_MS          = "wireflow_peer_latency_ms"
-	WIREFLOW_PEER_PACKET_LOSS_PERCENT = "wireflow_peer_packet_loss_percent"
-	WIREWFLOW_NODE_CPU_USEAGE         = "wireflow_node_cpu_useage"
-	WIREFLOW_NODE_UPTIME_SECONDS      = "wireflow_node_uptime_seconds"
-	WIREFLOW_NODE_MEMORY_BYTES        = "wireflow_node_memory_bytes"
+	LATTICE_PEER_STATUS              = "lattice_peer_status"
+	LATTICE_PEER_LATENCY_MS          = "lattice_peer_latency_ms"
+	LATTICE_PEER_PACKET_LOSS_PERCENT = "lattice_peer_packet_loss_percent"
+	WIREWFLOW_NODE_CPU_USEAGE         = "lattice_node_cpu_useage"
+	LATTICE_NODE_UPTIME_SECONDS      = "lattice_node_uptime_seconds"
+	LATTICE_NODE_MEMORY_BYTES        = "lattice_node_memory_bytes"
 
-	WIREFLOW_PEER_TRAFFIC_BYTES_TOTAL = "wireflow_peer_traffic_bytes_total"
+	LATTICE_PEER_TRAFFIC_BYTES_TOTAL = "lattice_peer_traffic_bytes_total"
 
-	WIREFLOW_PEER_HANDSHAKE_TIME_MS = "wireflow_peer_handshake_time_ms"
+	LATTICE_PEER_HANDSHAKE_TIME_MS = "lattice_peer_handshake_time_ms"
 )
 
 // NodeSnapshot 对应前端实体

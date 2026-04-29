@@ -19,7 +19,7 @@ type RelayVo struct {
 	QuicUrl     string `json:"quicUrl,omitempty"`
 	Enabled     bool   `json:"enabled"`
 
-	// Status mirrors WireflowRelayServerStatus.Health in lower-case.
+	// Status mirrors LatticeRelayServerStatus.Health in lower-case.
 	Status string `json:"status,omitempty"`
 
 	// LatencyMs is the last probe round-trip latency.

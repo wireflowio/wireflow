@@ -44,7 +44,7 @@ func newClient() (*cmd.Client, error) {
 	return cmd.NewClient(config.Conf.SignalingURL)
 }
 
-// workspaceAddCmd: wireflow workspace add <slug> [flags]
+// workspaceAddCmd: lattice workspace add <slug> [flags]
 func workspaceAddCmd() *cobra.Command {
 	var namespace, displayName string
 	c := &cobra.Command{
@@ -53,13 +53,13 @@ func workspaceAddCmd() *cobra.Command {
 		Long: `Create a workspace. The slug is a short, URL-safe identifier (e.g. "dev", "prod").
 The namespace is auto-generated from the workspace UUID if not provided.`,
 		Example: `  # minimal
-  wireflow workspace add dev
+  lattice workspace add dev
 
   # with display name
-  wireflow workspace add dev --display-name "Development"
+  lattice workspace add dev --display-name "Development"
 
   # with explicit namespace
-  wireflow workspace add dev -n wireflow-dev --display-name "Development"`,
+  lattice workspace add dev -n lattice-dev --display-name "Development"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			client, err := newClient()
@@ -74,13 +74,13 @@ The namespace is auto-generated from the workspace UUID if not provided.`,
 	return c
 }
 
-// workspaceRemoveCmd: wireflow workspace remove <namespace>
+// workspaceRemoveCmd: lattice workspace remove <namespace>
 func workspaceRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "remove <namespace>",
 		Short:   "Delete a workspace",
-		Long:    `Delete a workspace by its K8s namespace (shown in 'wireflow workspace list').`,
-		Example: `  wireflow workspace remove wf-550e8400-e29b-41d4-a716-446655440000`,
+		Long:    `Delete a workspace by its K8s namespace (shown in 'lattice workspace list').`,
+		Example: `  lattice workspace remove wf-550e8400-e29b-41d4-a716-446655440000`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			client, err := newClient()
@@ -92,7 +92,7 @@ func workspaceRemoveCmd() *cobra.Command {
 	}
 }
 
-// workspaceListCmd: wireflow workspace list
+// workspaceListCmd: lattice workspace list
 func workspaceListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "list",

@@ -24,14 +24,14 @@ import (
 	"text/tabwriter"
 )
 
-// call sends a NATS request to "wireflow.signals.service.<method>" and returns
+// call sends a NATS request to "lattice.signals.service.<method>" and returns
 // the raw JSON response body, or an error if the server returned one.
 func (c *Client) call(method string, payload any) ([]byte, error) {
 	bs, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
-	return c.client.Request(context.Background(), "wireflow.signals.service", method, bs)
+	return c.client.Request(context.Background(), "lattice.signals.service", method, bs)
 }
 
 // ── workspace ─────────────────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ type peerRow struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-// ListPeers prints all WireflowPeers in the given namespace.
+// ListPeers prints all LatticePeers in the given namespace.
 func (c *Client) ListPeers(namespace string) error {
 	data, err := c.call("peer.list", map[string]string{"namespace": namespace})
 	if err != nil {
@@ -200,7 +200,7 @@ func (c *Client) ListPeers(namespace string) error {
 	return w.Flush()
 }
 
-// PeerLabel merges the given labels into the WireflowPeer's metadata.labels.
+// PeerLabel merges the given labels into the LatticePeer's metadata.labels.
 // labels is a map of key → value parsed from "key=value" CLI args.
 func (c *Client) PeerLabel(namespace, peerName string, labels map[string]string) error {
 	data, err := c.call("peer.label", map[string]any{

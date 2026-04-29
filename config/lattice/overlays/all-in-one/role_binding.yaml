@@ -12,4 +12,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: wireflow-controller-admin   # 最终名称（namePrefix: wireflow- + controller-admin）
-    namespace: wireflow-system
+    namespace: lattice-system

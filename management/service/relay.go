@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// RelayService manages WireflowRelayServer CRDs.
+// RelayService manages LatticeRelayServer CRDs.
 type RelayService interface {
 	List(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.RelayVo], error)
 	Create(ctx context.Context, req *dto.RelayDto) (*vo.RelayVo, error)
@@ -47,7 +47,7 @@ func NewRelayService(c *resource.Client, st store.Store) RelayService {
 // --------------------------------------------------------------------------
 
 func (s *relayService) List(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.RelayVo], error) {
-	var list v1alpha1.WireflowRelayServerList
+	var list v1alpha1.LatticeRelayServerList
 	if err := s.client.GetAPIReader().List(ctx, &list); err != nil {
 		return nil, fmt.Errorf("relay list: %w", err)
 	}
@@ -119,23 +119,23 @@ func (s *relayService) Create(ctx context.Context, req *dto.RelayDto) (*vo.Relay
 	username, _ := ctx.Value(infra.UsernameKey).(string)
 	now := time.Now().UTC().Format(time.RFC3339)
 
-	obj := &v1alpha1.WireflowRelayServer{
+	obj := &v1alpha1.LatticeRelayServer{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "wireflowcontroller.wireflow.run/v1alpha1",
-			Kind:       "WireflowRelayServer",
+			APIVersion: "alattice.io/v1alpha1",
+			Kind:       "LatticeRelayServer",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: req.Name,
 			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "wireflow-controller",
+				"app.kubernetes.io/managed-by": "lattice-controller",
 			},
 			Annotations: map[string]string{
-				"wireflow.run/created-by": username,
-				"wireflow.run/updated-by": username,
-				"wireflow.run/updated-at": now,
+				"alattice.io/created-by": username,
+				"alattice.io/updated-by": username,
+				"alattice.io/updated-at": now,
 			},
 		},
-		Spec: v1alpha1.WireflowRelayServerSpec{
+		Spec: v1alpha1.LatticeRelayServerSpec{
 			DisplayName: req.DisplayName,
 			Description: req.Description,
 			TcpUrl:      req.TcpUrl,
@@ -156,7 +156,7 @@ func (s *relayService) Create(ctx context.Context, req *dto.RelayDto) (*vo.Relay
 // --------------------------------------------------------------------------
 
 func (s *relayService) Update(ctx context.Context, id string, req *dto.RelayDto) (*vo.RelayVo, error) {
-	var existing v1alpha1.WireflowRelayServer
+	var existing v1alpha1.LatticeRelayServer
 	if err := s.client.Get(ctx, client.ObjectKey{Name: id}, &existing); err != nil {
 		return nil, fmt.Errorf("relay get: %w", err)
 	}
@@ -178,11 +178,11 @@ func (s *relayService) Update(ctx context.Context, id string, req *dto.RelayDto)
 	if patch.Annotations == nil {
 		patch.Annotations = make(map[string]string)
 	}
-	patch.Annotations["wireflow.run/updated-by"] = username
-	patch.Annotations["wireflow.run/updated-at"] = time.Now().UTC().Format(time.RFC3339)
+	patch.Annotations["alattice.io/updated-by"] = username
+	patch.Annotations["alattice.io/updated-at"] = time.Now().UTC().Format(time.RFC3339)
 
 	if err = s.client.Patch(ctx, patch, client.MergeFrom(&existing),
-		client.FieldOwner("wireflow-management")); err != nil {
+		client.FieldOwner("lattice-management")); err != nil {
 		return nil, fmt.Errorf("relay update: %w", err)
 	}
 	return relayToVo(patch), nil
@@ -193,7 +193,7 @@ func (s *relayService) Update(ctx context.Context, id string, req *dto.RelayDto)
 // --------------------------------------------------------------------------
 
 func (s *relayService) Delete(ctx context.Context, id string) error {
-	obj := &v1alpha1.WireflowRelayServer{
+	obj := &v1alpha1.LatticeRelayServer{
 		ObjectMeta: metav1.ObjectMeta{Name: id},
 	}
 	if err := client.IgnoreNotFound(s.client.Delete(ctx, obj)); err != nil {
@@ -208,7 +208,7 @@ func (s *relayService) Delete(ctx context.Context, id string) error {
 
 // Test performs a TCP dial to the relay's TcpUrl and reports latency.
 func (s *relayService) Test(ctx context.Context, id string) (*vo.RelayTestVo, error) {
-	var relay v1alpha1.WireflowRelayServer
+	var relay v1alpha1.LatticeRelayServer
 	if err := s.client.Get(ctx, client.ObjectKey{Name: id}, &relay); err != nil {
 		return nil, fmt.Errorf("relay get: %w", err)
 	}
@@ -255,7 +255,7 @@ func (s *relayService) resolveNamespaces(ctx context.Context, workspaceIDs []str
 	return result, nil
 }
 
-func relayToVo(r *v1alpha1.WireflowRelayServer) *vo.RelayVo {
+func relayToVo(r *v1alpha1.LatticeRelayServer) *vo.RelayVo {
 	v := &vo.RelayVo{
 		ID:             r.Name,
 		Name:           r.Spec.DisplayName,
@@ -272,9 +272,9 @@ func relayToVo(r *v1alpha1.WireflowRelayServer) *vo.RelayVo {
 	if ann == nil {
 		ann = map[string]string{}
 	}
-	v.CreatedBy = ann["wireflow.run/created-by"]
-	v.UpdatedBy = ann["wireflow.run/updated-by"]
-	if ts := ann["wireflow.run/updated-at"]; ts != "" {
+	v.CreatedBy = ann["alattice.io/created-by"]
+	v.UpdatedBy = ann["alattice.io/updated-by"]
+	if ts := ann["alattice.io/updated-at"]; ts != "" {
 		if t, err := time.Parse(time.RFC3339, ts); err == nil {
 			v.UpdatedAt = t
 		}

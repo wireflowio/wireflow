@@ -64,12 +64,12 @@ type peerService struct {
 }
 
 const (
-	displayNameAnnotation = "wireflow.io/display-name"
-	disabledAnnotation    = "wireflow.io/disabled"
+	displayNameAnnotation = "lattice.io/display-name"
+	disabledAnnotation    = "lattice.io/disabled"
 )
 
 func (p *peerService) UpdatePeer(ctx context.Context, peerDto *dto.PeerDto) (*vo.PeerVo, error) {
-	var peer v1alpha1.WireflowPeer
+	var peer v1alpha1.LatticePeer
 	if err := p.client.GetAPIReader().Get(ctx, types.NamespacedName{Namespace: peerDto.Namespace, Name: peerDto.Name}, &peer); err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (p *peerService) UpdatePeer(ctx context.Context, peerDto *dto.PeerDto) (*vo
 
 func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.PeerVo], error) {
 	var (
-		peerList v1alpha1.WireflowPeerList
+		peerList v1alpha1.LatticePeerList
 		err      error
 	)
 
@@ -223,7 +223,7 @@ func (p *peerService) ListPeers(ctx context.Context, pageParam *dto.PageRequest)
 }
 
 func (p *peerService) CreateToken(ctx context.Context, tokenDto *dto.TokenDto) ([]byte, error) {
-	var token v1alpha1.WireflowEnrollmentToken
+	var token v1alpha1.LatticeEnrollmentToken
 	if err := p.client.Get(ctx, client.ObjectKey{Namespace: tokenDto.Namespace, Name: tokenDto.Name}, &token); err != nil {
 		if errors.IsNotFound(err) {
 			duration, err := time.ParseDuration(tokenDto.Expiry)
@@ -233,15 +233,15 @@ func (p *peerService) CreateToken(ctx context.Context, tokenDto *dto.TokenDto) (
 
 			expiryTimestamp := time.Now().Add(duration).Unix()
 
-			token = v1alpha1.WireflowEnrollmentToken{
+			token = v1alpha1.LatticeEnrollmentToken{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      strings.ToLower(tokenDto.Name),
 					Namespace: tokenDto.Namespace,
 					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "wireflow-controller",
+						"app.kubernetes.io/managed-by": "lattice-controller",
 					},
 				},
-				Spec: v1alpha1.WireflowEnrollmentTokenSpec{
+				Spec: v1alpha1.LatticeEnrollmentTokenSpec{
 					Token:      tokenDto.Name,
 					Namespace:  tokenDto.Namespace,
 					Expiry:     metav1.NewTime(time.Unix(expiryTimestamp, 0)),
@@ -278,7 +278,7 @@ func (p *peerService) GetNetmap(ctx context.Context, token string, appId string)
 func (p *peerService) UpdateStatus(_ context.Context, _ int) error { return nil }
 
 func (p *peerService) DisablePeer(ctx context.Context, namespace, name string) error {
-	var peer v1alpha1.WireflowPeer
+	var peer v1alpha1.LatticePeer
 	if err := p.client.GetAPIReader().Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &peer); err != nil {
 		return err
 	}
@@ -292,7 +292,7 @@ func (p *peerService) DisablePeer(ctx context.Context, namespace, name string) e
 }
 
 func (p *peerService) EnablePeer(ctx context.Context, namespace, name string) error {
-	var peer v1alpha1.WireflowPeer
+	var peer v1alpha1.LatticePeer
 	if err := p.client.GetAPIReader().Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &peer); err != nil {
 		return err
 	}
@@ -303,7 +303,7 @@ func (p *peerService) EnablePeer(ctx context.Context, namespace, name string) er
 }
 
 func (p *peerService) DeletePeer(ctx context.Context, namespace, name string) error {
-	var peer v1alpha1.WireflowPeer
+	var peer v1alpha1.LatticePeer
 	if err := p.client.GetAPIReader().Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &peer); err != nil {
 		return err
 	}
@@ -343,12 +343,12 @@ func (p *peerService) Register(ctx context.Context, dto *dto.PeerDto) (*infra.Pe
 	return node, nil
 }
 
-func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v1alpha1.WireflowEnrollmentToken, error) {
+func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v1alpha1.LatticeEnrollmentToken, error) {
 	if tokenStr == "" {
 		return false, nil, fmt.Errorf("token is empty")
 	}
 
-	var list v1alpha1.WireflowEnrollmentTokenList
+	var list v1alpha1.LatticeEnrollmentTokenList
 	err := p.client.List(ctx, &list, client.MatchingFields{"status.token": tokenStr})
 	if err != nil {
 		return false, nil, fmt.Errorf("get token failed: %v", err)
@@ -365,7 +365,7 @@ func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v
 		return false, nil, fmt.Errorf("token not exists")
 	}
 
-	var token *v1alpha1.WireflowEnrollmentToken
+	var token *v1alpha1.LatticeEnrollmentToken
 	for _, t := range list.Items {
 		if t.Status.Token == tokenStr || t.Spec.Token == tokenStr {
 			token = &t
@@ -377,7 +377,7 @@ func (p *peerService) checkToken(ctx context.Context, tokenStr string) (bool, *v
 	}
 
 	if err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		latestToken := &v1alpha1.WireflowEnrollmentToken{}
+		latestToken := &v1alpha1.LatticeEnrollmentToken{}
 		if err = p.client.GetCache().Get(ctx, client.ObjectKeyFromObject(token), latestToken); err != nil {
 			return err
 		}
@@ -405,7 +405,7 @@ func (p *peerService) ensureNamespace(ctx context.Context, nsName string) error 
 			if err = p.client.Create(ctx, &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   nsName,
-					Labels: map[string]string{"app.kubernetes.io/managed-by": "wireflow-controller"},
+					Labels: map[string]string{"app.kubernetes.io/managed-by": "lattice-controller"},
 				},
 			}); err != nil {
 				p.logger.Error("create namespace failed", err)
@@ -416,16 +416,16 @@ func (p *peerService) ensureNamespace(ctx context.Context, nsName string) error 
 }
 
 func (p *peerService) ensureDefaultNetwork(ctx context.Context, nsName string) error {
-	var defaultNet v1alpha1.WireflowNetwork
-	if err := p.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "wireflow-default-net"}, &defaultNet); err != nil {
+	var defaultNet v1alpha1.LatticeNetwork
+	if err := p.client.Get(ctx, client.ObjectKey{Namespace: nsName, Name: "lattice-default-net"}, &defaultNet); err != nil {
 		if errors.IsNotFound(err) {
-			defaultNet = v1alpha1.WireflowNetwork{
+			defaultNet = v1alpha1.LatticeNetwork{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "wireflow-default-net",
+					Name:      "lattice-default-net",
 					Namespace: nsName,
-					Labels:    map[string]string{"app.kubernetes.io/managed-by": "wireflow-controller"},
+					Labels:    map[string]string{"app.kubernetes.io/managed-by": "lattice-controller"},
 				},
-				Spec: v1alpha1.WireflowNetworkSpec{
+				Spec: v1alpha1.LatticeNetworkSpec{
 					Name: fmt.Sprintf("%s-net", nsName),
 				},
 			}

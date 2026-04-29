@@ -94,7 +94,7 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		logger.Warn("signaling-url is empty, NATS signal service disabled")
 		signal = managementnats.NewNoopSignalService()
 	} else {
-		svc, err := managementnats.NewNatsService(ctx, "wireflow-manager", "server", cfg.SignalingURL)
+		svc, err := managementnats.NewNatsService(ctx, "lattice-manager", "server", cfg.SignalingURL)
 		if err != nil {
 			logger.Warn("NATS init failed, falling back to noop signal service", "url", cfg.SignalingURL, "err", err)
 			signal = managementnats.NewNoopSignalService()
@@ -223,28 +223,28 @@ func (s *Server) Start(ctx context.Context) error {
 	//注册nats service
 	routes := map[string]Handler{
 		// agent ↔ server (peer signaling)
-		"wireflow.signals.peer.register":  s.Register,
-		"wireflow.signals.peer.GetNetMap": s.GetNetMap,
-		"wireflow.signals.peer.heartbeat": s.Heartbeat,
+		"lattice.signals.peer.register":  s.Register,
+		"lattice.signals.peer.GetNetMap": s.GetNetMap,
+		"lattice.signals.peer.heartbeat": s.Heartbeat,
 
 		// CLI ↔ server (service/admin plane)
-		"wireflow.signals.service.info":             s.Info,
-		"wireflow.signals.service.createToken":      s.CreateToken,
-		"wireflow.signals.service.workspace.add":    s.NatsAddWorkspace,
-		"wireflow.signals.service.workspace.remove": s.NatsRemoveWorkspace,
-		"wireflow.signals.service.workspace.list":   s.NatsListWorkspaces,
-		"wireflow.signals.service.policy.add":       s.NatsAddPolicy,
-		"wireflow.signals.service.policy.allow-all": s.NatsAllowAll,
-		"wireflow.signals.service.policy.remove":    s.NatsRemovePolicy,
-		"wireflow.signals.service.policy.list":      s.NatsListPolicies,
-		"wireflow.signals.service.token.list":       s.NatsListTokens,
-		"wireflow.signals.service.token.remove":     s.NatsRemoveToken,
-		"wireflow.signals.service.peer.list":        s.NatsPeerList,
-		"wireflow.signals.service.peer.label":       s.NatsPeerLabel,
+		"lattice.signals.service.info":             s.Info,
+		"lattice.signals.service.createToken":      s.CreateToken,
+		"lattice.signals.service.workspace.add":    s.NatsAddWorkspace,
+		"lattice.signals.service.workspace.remove": s.NatsRemoveWorkspace,
+		"lattice.signals.service.workspace.list":   s.NatsListWorkspaces,
+		"lattice.signals.service.policy.add":       s.NatsAddPolicy,
+		"lattice.signals.service.policy.allow-all": s.NatsAllowAll,
+		"lattice.signals.service.policy.remove":    s.NatsRemovePolicy,
+		"lattice.signals.service.policy.list":      s.NatsListPolicies,
+		"lattice.signals.service.token.list":       s.NatsListTokens,
+		"lattice.signals.service.token.remove":     s.NatsRemoveToken,
+		"lattice.signals.service.peer.list":        s.NatsPeerList,
+		"lattice.signals.service.peer.label":       s.NatsPeerLabel,
 	}
 
 	for route, handler := range routes {
-		s.nats.Service(route, "wireflow_queue", handler)
+		s.nats.Service(route, "lattice_queue", handler)
 	}
 
 	// 关键：确保订阅指令已经到达并被 NATS Server 处理

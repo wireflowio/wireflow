@@ -27,20 +27,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// NetworkPolicyReconciler reconciles a WireflowPolicy object
+// NetworkPolicyReconciler reconciles a LatticePolicy object
 type NetworkPolicyReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpolicies,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpolicies/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpolicies/finalizers,verbs=update
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepolicies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepolicies/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the WireflowPolicy object against the actual cluster state, and then
+// the LatticePolicy object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
@@ -48,12 +48,12 @@ type NetworkPolicyReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/reconcile
 func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Reconciling WireflowPolicy", "namespace", req.Namespace, "name", req.Name)
+	log.Info("Reconciling LatticePolicy", "namespace", req.Namespace, "name", req.Name)
 
-	var policy v1alpha1.WireflowPolicy
+	var policy v1alpha1.LatticePolicy
 	if err := r.Get(ctx, req.NamespacedName, &policy); err != nil {
 		if client.IgnoreNotFound(err) != nil {
-			log.Error(err, "Failed to get WireflowPolicy")
+			log.Error(err, "Failed to get LatticePolicy")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -65,7 +65,7 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 // SetupWithManager sets up the controller with the Manager.
 func (r *NetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.WireflowPolicy{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.LatticePolicy{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("networkpolicy").
 		Complete(r)
 }

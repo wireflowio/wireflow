@@ -18,7 +18,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	wireflowv1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	latticev1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
 	"github.com/alatticeio/lattice/internal/infra"
 	"strconv"
 	"strings"
@@ -26,26 +26,26 @@ import (
 
 const (
 	// LabelGateway marks a peer as the designated workspace gateway for peering.
-	LabelGateway = "wireflow.run/gateway"
+	LabelGateway = "alattice.io/gateway"
 
 	// LabelShadow marks a peer as a synthetic shadow peer managed by
 	// NetworkPeeringReconciler. PeerReconciler skips shadow peers.
-	LabelShadow = "wireflow.run/shadow"
+	LabelShadow = "alattice.io/shadow"
 
 	// AnnotationShadowAllowedIPs is set on shadow peers and contains the CIDR
 	// of the remote network that should be routed through this peer.
 	// Example: "10.0.1.0/24"
-	AnnotationShadowAllowedIPs = "wireflow.run/shadow-allowed-ips"
+	AnnotationShadowAllowedIPs = "alattice.io/shadow-allowed-ips"
 
 	// AnnotationPeeringRoutePrefix is the prefix for per-peering route annotations
-	// on gateway peers. The suffix is the WireflowNetworkPeering name.
-	// Example: "wireflow.run/peering-route-ws-a-to-ws-b" = "10.0.2.0/24"
+	// on gateway peers. The suffix is the LatticeNetworkPeering name.
+	// Example: "alattice.io/peering-route-ws-a-to-ws-b" = "10.0.2.0/24"
 	// When other local peers build their WireGuard config, they see this gateway
 	// with AllowedIPs expanded to include all annotated CIDRs.
-	AnnotationPeeringRoutePrefix = "wireflow.run/peering-route-"
+	AnnotationPeeringRoutePrefix = "alattice.io/peering-route-"
 
-	// PeeringFinalizer is the finalizer added to WireflowNetworkPeering resources.
-	PeeringFinalizer = "wireflow.run/peering-finalizer"
+	// PeeringFinalizer is the finalizer added to LatticeNetworkPeering resources.
+	PeeringFinalizer = "alattice.io/peering-finalizer"
 )
 
 // 辅助函数
@@ -98,11 +98,11 @@ func setsToSlice(set map[string]struct{}) []string {
 }
 
 // SpecEqual 比较两个 Spec 是否相等
-//func SpecEqual(old, new *wireflowcontrollerv1alpha1.WireflowPeerSpec) bool {
+//func SpecEqual(old, new *latticecontrollerv1alpha1.LatticePeerSpec) bool {
 //	if old.Address != new.Address {
 //		return false
 //	}
-//	if !stringSliceEqual(old.WireflowNetwork, new.WireflowNetwork) {
+//	if !stringSliceEqual(old.LatticeNetwork, new.LatticeNetwork) {
 //		return false
 //	}
 //	// 根据需要添加其他字段比较
@@ -143,15 +143,15 @@ func safeKeyName(prefix, name string) string {
 }
 
 // networkLabelKey returns the label key used to tag a peer as belonging to a
-// WireflowNetwork. The name segment is guaranteed to be ≤63 characters.
+// LatticeNetwork. The name segment is guaranteed to be ≤63 characters.
 func networkLabelKey(networkName string) string {
-	return "wireflow.run/" + safeKeyName("network-", networkName)
+	return "alattice.io/" + safeKeyName("network-", networkName)
 }
 
 // peeringRouteAnnotationKey returns the annotation key used to store a
 // per-peering CIDR route on gateway peers. The name segment is ≤63 characters.
 func peeringRouteAnnotationKey(peeringName string) string {
-	return "wireflow.run/" + safeKeyName("peering-route-", peeringName)
+	return "alattice.io/" + safeKeyName("peering-route-", peeringName)
 }
 
 // safeLabelValue returns a label value of at most 63 characters.
@@ -166,7 +166,7 @@ func safeLabelValue(name string) string {
 	return name[:maxLen-9] + "-" + hash
 }
 
-func transferToPeer(peer *wireflowv1alpha1.WireflowPeer) *infra.Peer {
+func transferToPeer(peer *latticev1alpha1.LatticePeer) *infra.Peer {
 	var peerID uint64
 	if peer.Spec.PeerId != "" {
 		peerID, _ = strconv.ParseUint(peer.Spec.PeerId, 10, 64)

@@ -27,26 +27,26 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// TokenReconciler reconciles a WireflowNetwork object
+// TokenReconciler reconciles a LatticeNetwork object
 type TokenReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowenrollmenttokens,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowenrollmenttokens/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowenrollmenttokens/finalizers,verbs=update
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeenrollmenttokens,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeenrollmenttokens/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeenrollmenttokens/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the WireflowNetwork object against the actual cluster state, and then
+// the LatticeNetwork object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var (
 		err   error
-		token v1alpha1.WireflowEnrollmentToken
+		token v1alpha1.LatticeEnrollmentToken
 	)
 	log := logf.FromContext(ctx)
 	log.Info("Reconciling Token", "namespace", req.NamespacedName, "name", req.Name)
@@ -55,7 +55,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to get WireflowEnrollmentToken")
+		log.Error(err, "Failed to get LatticeEnrollmentToken")
 		return ctrl.Result{}, err
 	}
 
@@ -67,7 +67,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	remaining := time.Until(token.Spec.Expiry.Time)
 
 	if remaining <= 0 {
-		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.WireflowEnrollmentToken) error {
+		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.LatticeEnrollmentToken) error {
 			token.Status.Phase = "Expired"
 			token.Status.IsExpired = true
 			return nil
@@ -84,7 +84,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// process token
 	if token.Status.Token == "" {
-		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.WireflowEnrollmentToken) error {
+		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.LatticeEnrollmentToken) error {
 			token.Status.Token = token.Spec.Token
 			return nil
 		})
@@ -101,7 +101,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// process bound peers & UsedCount
 	if !reflect.DeepEqual(token.Spec.BoundPeers, token.Status.BoundPeers) {
 		statusPeers := stringSet(token.Status.BoundPeers)
-		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.WireflowEnrollmentToken) error {
+		ok, err := r.updateStatus(ctx, &token, func(token *v1alpha1.LatticeEnrollmentToken) error {
 			for _, peer := range token.Spec.BoundPeers {
 				if _, ok := statusPeers[peer]; !ok {
 					token.Status.BoundPeers = append(token.Status.BoundPeers, peer)
@@ -125,7 +125,7 @@ func (r *TokenReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 }
 
-func (r *TokenReconciler) updateStatus(ctx context.Context, token *v1alpha1.WireflowEnrollmentToken, updateFunc func(token *v1alpha1.WireflowEnrollmentToken) error) (bool, error) {
+func (r *TokenReconciler) updateStatus(ctx context.Context, token *v1alpha1.LatticeEnrollmentToken, updateFunc func(token *v1alpha1.LatticeEnrollmentToken) error) (bool, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. 深度拷贝原始对象，避免副作用
@@ -148,15 +148,15 @@ func (r *TokenReconciler) updateStatus(ctx context.Context, token *v1alpha1.Wire
 			log.Info("Conflict detected during status patch, will retry on next reconcile.")
 			return false, nil // 冲突时让 Controller 重新 Reconcile 即可
 		}
-		log.Error(err, "Failed to patch WireflowEnrollmentToken status")
+		log.Error(err, "Failed to patch LatticeEnrollmentToken status")
 		return false, err
 	}
 
-	log.Info("WireflowEnrollmentToken status successfully updated.")
+	log.Info("LatticeEnrollmentToken status successfully updated.")
 	return true, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *TokenReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.WireflowEnrollmentToken{}).Named("token").Complete(r)
+	return ctrl.NewControllerManagedBy(mgr).For(&v1alpha1.LatticeEnrollmentToken{}).Named("token").Complete(r)
 }

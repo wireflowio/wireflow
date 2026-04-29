@@ -29,7 +29,7 @@ func NewPolicyCommand() *cobra.Command {
 		Use:   "policy <sub-command>",
 		Short: "Manage network policies",
 		Long: `Network policies control which peers can communicate with each other.
-Wireflow enforces default-deny: connected agents cannot exchange traffic
+Lattice enforces default-deny: connected agents cannot exchange traffic
 until an ALLOW policy is explicitly created for their workspace.`,
 		Args: cobra.MinimumNArgs(1),
 	}
@@ -46,7 +46,7 @@ func newClient() (*cmd.Client, error) {
 	return cmd.NewClient(config.Conf.SignalingURL)
 }
 
-// policyAddCmd: wireflow policy add <name> -n <namespace> [flags]
+// policyAddCmd: lattice policy add <name> -n <namespace> [flags]
 func policyAddCmd() *cobra.Command {
 	var namespace, action, description string
 	c := &cobra.Command{
@@ -56,14 +56,14 @@ func policyAddCmd() *cobra.Command {
 Action can be ALLOW or DENY (default: ALLOW).
 Empty ingress/egress rules mean "match all peers and all ports".`,
 		Example: `  # allow all traffic in a workspace
-  wireflow policy add allow-all -n <namespace> --action ALLOW
+  lattice policy add allow-all -n <namespace> --action ALLOW
 
   # deny a specific policy
-  wireflow policy add block-egress -n <namespace> --action DENY --desc "block outbound"`,
+  lattice policy add block-egress -n <namespace> --action DENY --desc "block outbound"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if namespace == "" {
-				return fmt.Errorf("namespace is required (-n <namespace>)\n  run 'wireflow workspace list' to see available namespaces")
+				return fmt.Errorf("namespace is required (-n <namespace>)\n  run 'lattice workspace list' to see available namespaces")
 			}
 			client, err := newClient()
 			if err != nil {
@@ -78,7 +78,7 @@ Empty ingress/egress rules mean "match all peers and all ports".`,
 	return c
 }
 
-// policyAllowAllCmd: wireflow policy allow-all -n <namespace>
+// policyAllowAllCmd: lattice policy allow-all -n <namespace>
 func policyAllowAllCmd() *cobra.Command {
 	var namespace string
 	c := &cobra.Command{
@@ -88,10 +88,10 @@ func policyAllowAllCmd() *cobra.Command {
 between every peer in the workspace. Ideal for development and single-tenant setups.
 
 For production, replace this with fine-grained rules via the Dashboard.`,
-		Example: `  wireflow policy allow-all -n wf-550e8400-e29b-41d4-a716-446655440000`,
+		Example: `  lattice policy allow-all -n wf-550e8400-e29b-41d4-a716-446655440000`,
 		RunE: func(c *cobra.Command, args []string) error {
 			if namespace == "" {
-				return fmt.Errorf("namespace is required (-n <namespace>)\n  run 'wireflow workspace list' to see available namespaces")
+				return fmt.Errorf("namespace is required (-n <namespace>)\n  run 'lattice workspace list' to see available namespaces")
 			}
 			client, err := newClient()
 			if err != nil {
@@ -104,14 +104,14 @@ For production, replace this with fine-grained rules via the Dashboard.`,
 	return c
 }
 
-// policyRemoveCmd: wireflow policy remove <name> -n <namespace>
+// policyRemoveCmd: lattice policy remove <name> -n <namespace>
 func policyRemoveCmd() *cobra.Command {
 	var namespace string
 	c := &cobra.Command{
 		Use:     "remove <name>",
 		Short:   "Delete a policy by name",
 		Aliases: []string{"rm", "delete"},
-		Example: `  wireflow policy remove allow-all -n wf-550e8400-e29b-41d4-a716-446655440000`,
+		Example: `  lattice policy remove allow-all -n wf-550e8400-e29b-41d4-a716-446655440000`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			if namespace == "" {
@@ -128,14 +128,14 @@ func policyRemoveCmd() *cobra.Command {
 	return c
 }
 
-// policyListCmd: wireflow policy list -n <namespace>
+// policyListCmd: lattice policy list -n <namespace>
 func policyListCmd() *cobra.Command {
 	var namespace string
 	c := &cobra.Command{
 		Use:     "list",
 		Short:   "List policies in a workspace",
 		Aliases: []string{"ls"},
-		Example: `  wireflow policy list -n wf-550e8400-e29b-41d4-a716-446655440000`,
+		Example: `  lattice policy list -n wf-550e8400-e29b-41d4-a716-446655440000`,
 		RunE: func(c *cobra.Command, args []string) error {
 			if namespace == "" {
 				return fmt.Errorf("namespace is required (-n <namespace>)")

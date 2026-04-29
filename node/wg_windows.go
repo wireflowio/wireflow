@@ -24,7 +24,7 @@ import (
 	"github.com/alatticeio/lattice/internal/log"
 	"io"
 	"net"
-	"wireflow/internal/wferrors"
+	"lattice/internal/wferrors"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"

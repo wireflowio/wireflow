@@ -37,7 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const clusterPeeringFinalizer = "wireflow.run/cluster-peering-finalizer"
+const clusterPeeringFinalizer = "alattice.io/cluster-peering-finalizer"
 
 // GatewayInfo is the response body returned by the remote cluster's
 // GET /api/v1/peering/gateway-info endpoint.
@@ -49,12 +49,12 @@ type GatewayInfo struct {
 	PeerID    string `json:"peerId"`
 }
 
-// ClusterPeeringReconciler reconciles WireflowClusterPeering resources.
+// ClusterPeeringReconciler reconciles LatticeClusterPeering resources.
 //
 // For each cross-cluster peering it:
-//  1. Loads the referenced WireflowCluster to obtain the remote management endpoint.
+//  1. Loads the referenced LatticeCluster to obtain the remote management endpoint.
 //  2. Calls GET /api/v1/peering/gateway-info on the remote cluster.
-//  3. Creates a WireflowNetworkPeering in the local cluster using a synthetic
+//  3. Creates a LatticeNetworkPeering in the local cluster using a synthetic
 //     shadow namespace for the remote side (using the local gateway + remote shadow).
 //
 // The actual WireGuard tunnel establishment reuses the existing WRRP relay
@@ -65,17 +65,17 @@ type ClusterPeeringReconciler struct {
 	httpClient *http.Client
 }
 
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowclusterpeerings,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowclusterpeerings/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowclusterpeerings/finalizers,verbs=update
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowclusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeclusterpeerings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeclusterpeerings/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeclusterpeerings/finalizers,verbs=update
+// +kubebuilder:rbac:groups=alattice.io,resources=latticeclusters,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 func (r *ClusterPeeringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Reconciling WireflowClusterPeering", "name", req.Name)
+	log.Info("Reconciling LatticeClusterPeering", "name", req.Name)
 
-	var cp v1alpha1.WireflowClusterPeering
+	var cp v1alpha1.LatticeClusterPeering
 	if err := r.Get(ctx, req.NamespacedName, &cp); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -98,13 +98,13 @@ func (r *ClusterPeeringReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return r.reconcileNormal(ctx, &cp)
 }
 
-func (r *ClusterPeeringReconciler) reconcileNormal(ctx context.Context, cp *v1alpha1.WireflowClusterPeering) (ctrl.Result, error) {
+func (r *ClusterPeeringReconciler) reconcileNormal(ctx context.Context, cp *v1alpha1.LatticeClusterPeering) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// 1. Load the referenced WireflowCluster.
-	var cluster v1alpha1.WireflowCluster
+	// 1. Load the referenced LatticeCluster.
+	var cluster v1alpha1.LatticeCluster
 	if err := r.Get(ctx, types.NamespacedName{Name: cp.Spec.RemoteCluster}, &cluster); err != nil {
-		return r.setClusterPeeringError(ctx, cp, fmt.Sprintf("WireflowCluster %q not found: %v", cp.Spec.RemoteCluster, err))
+		return r.setClusterPeeringError(ctx, cp, fmt.Sprintf("LatticeCluster %q not found: %v", cp.Spec.RemoteCluster, err))
 	}
 
 	// 2. Load the bearer token from the referenced Secret.
@@ -152,7 +152,7 @@ func (r *ClusterPeeringReconciler) reconcileNormal(ctx context.Context, cp *v1al
 	return r.setClusterPeeringReady(ctx, cp, localNetwork.Status.ActiveCIDR, info.CIDR)
 }
 
-func (r *ClusterPeeringReconciler) reconcileDelete(ctx context.Context, cp *v1alpha1.WireflowClusterPeering) (ctrl.Result, error) {
+func (r *ClusterPeeringReconciler) reconcileDelete(ctx context.Context, cp *v1alpha1.LatticeClusterPeering) (ctrl.Result, error) {
 	shadowName := fmt.Sprintf("cluster-shadow-%s", cp.Name)
 	annotationKey := AnnotationPeeringRoutePrefix + cp.Name
 
@@ -160,9 +160,9 @@ func (r *ClusterPeeringReconciler) reconcileDelete(ctx context.Context, cp *v1al
 		_ = r.removeAnnotationForCluster(ctx, gw, annotationKey)
 	}
 
-	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.WireflowPeer{}, cp.Spec.LocalNamespace, shadowName)
-	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.WireflowPolicy{}, cp.Spec.LocalNamespace, fmt.Sprintf("wireflow-cpeering-%s-gw-access", cp.Name))
-	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.WireflowPolicy{}, cp.Spec.LocalNamespace, fmt.Sprintf("wireflow-cpeering-%s-shadow", cp.Name))
+	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.LatticePeer{}, cp.Spec.LocalNamespace, shadowName)
+	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.LatticePolicy{}, cp.Spec.LocalNamespace, fmt.Sprintf("lattice-cpeering-%s-gw-access", cp.Name))
+	_ = r.deleteClusterResourceIfExists(ctx, &v1alpha1.LatticePolicy{}, cp.Spec.LocalNamespace, fmt.Sprintf("lattice-cpeering-%s-shadow", cp.Name))
 
 	controllerutil.RemoveFinalizer(cp, clusterPeeringFinalizer)
 	return ctrl.Result{}, r.Update(ctx, cp)
@@ -175,13 +175,13 @@ func (r *ClusterPeeringReconciler) loadCredential(ctx context.Context, secretNam
 	// Credentials are stored in the controller namespace; use label to discover it.
 	var secretList corev1.SecretList
 	if err := r.List(ctx, &secretList, client.MatchingLabels{
-		"wireflow.run/cluster-credential": secretName,
+		"alattice.io/cluster-credential": secretName,
 	}); err != nil {
 		return "", err
 	}
 	// Fallback: try by name in all namespaces.
 	if len(secretList.Items) == 0 {
-		return "", fmt.Errorf("secret %q not found (label wireflow.run/cluster-credential=%s)", secretName, secretName)
+		return "", fmt.Errorf("secret %q not found (label alattice.io/cluster-credential=%s)", secretName, secretName)
 	}
 	token, ok := secretList.Items[0].Data["token"]
 	if !ok {
@@ -228,11 +228,11 @@ func (r *ClusterPeeringReconciler) fetchGatewayInfo(ctx context.Context, endpoin
 
 // ensureRemoteGatewayShadow creates or updates the shadow peer in the local
 // namespace that represents the remote cluster's gateway.
-func (r *ClusterPeeringReconciler) ensureRemoteGatewayShadow(ctx context.Context, cp *v1alpha1.WireflowClusterPeering, info *GatewayInfo, networkName string) error {
+func (r *ClusterPeeringReconciler) ensureRemoteGatewayShadow(ctx context.Context, cp *v1alpha1.LatticeClusterPeering, info *GatewayInfo, networkName string) error {
 	name := fmt.Sprintf("cluster-shadow-%s", cp.Name)
-	networkLabel := fmt.Sprintf("wireflow.run/network-%s", networkName)
+	networkLabel := fmt.Sprintf("alattice.io/network-%s", networkName)
 
-	desired := &v1alpha1.WireflowPeer{
+	desired := &v1alpha1.LatticePeer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: cp.Spec.LocalNamespace,
@@ -244,14 +244,14 @@ func (r *ClusterPeeringReconciler) ensureRemoteGatewayShadow(ctx context.Context
 				AnnotationShadowAllowedIPs: info.CIDR,
 			},
 		},
-		Spec: v1alpha1.WireflowPeerSpec{
+		Spec: v1alpha1.LatticePeerSpec{
 			PublicKey: info.PublicKey,
 			AppId:     info.AppID,
 			PeerId:    info.PeerID,
 		},
 	}
 
-	var existing v1alpha1.WireflowPeer
+	var existing v1alpha1.LatticePeer
 	err := r.Get(ctx, client.ObjectKeyFromObject(desired), &existing)
 	if k8serrors.IsNotFound(err) {
 		if createErr := r.Create(ctx, desired); createErr != nil {
@@ -285,15 +285,15 @@ func (r *ClusterPeeringReconciler) ensureRemoteGatewayShadow(ctx context.Context
 	return nil
 }
 
-func (r *ClusterPeeringReconciler) ensurePoliciesForCluster(ctx context.Context, cp *v1alpha1.WireflowClusterPeering, networkName string) error {
+func (r *ClusterPeeringReconciler) ensurePoliciesForCluster(ctx context.Context, cp *v1alpha1.LatticeClusterPeering, networkName string) error {
 	ns := cp.Spec.LocalNamespace
-	gwPolicy := &v1alpha1.WireflowPolicy{
+	gwPolicy := &v1alpha1.LatticePolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("wireflow-cpeering-%s-gw-access", cp.Name),
+			Name:      fmt.Sprintf("lattice-cpeering-%s-gw-access", cp.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/cluster-peering": cp.Name},
+			Labels:    map[string]string{"alattice.io/cluster-peering": cp.Name},
 		},
-		Spec: v1alpha1.WireflowPolicySpec{
+		Spec: v1alpha1.LatticePolicySpec{
 			Network:      networkName,
 			PeerSelector: metav1.LabelSelector{},
 			Egress: []v1alpha1.EgressRule{
@@ -304,13 +304,13 @@ func (r *ClusterPeeringReconciler) ensurePoliciesForCluster(ctx context.Context,
 			},
 		},
 	}
-	shadowPolicy := &v1alpha1.WireflowPolicy{
+	shadowPolicy := &v1alpha1.LatticePolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("wireflow-cpeering-%s-shadow", cp.Name),
+			Name:      fmt.Sprintf("lattice-cpeering-%s-shadow", cp.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/cluster-peering": cp.Name},
+			Labels:    map[string]string{"alattice.io/cluster-peering": cp.Name},
 		},
-		Spec: v1alpha1.WireflowPolicySpec{
+		Spec: v1alpha1.LatticePolicySpec{
 			Network:      networkName,
 			PeerSelector: metav1.LabelSelector{MatchLabels: map[string]string{LabelGateway: "true"}},
 			Egress: []v1alpha1.EgressRule{
@@ -319,8 +319,8 @@ func (r *ClusterPeeringReconciler) ensurePoliciesForCluster(ctx context.Context,
 		},
 	}
 
-	for _, policy := range []*v1alpha1.WireflowPolicy{gwPolicy, shadowPolicy} {
-		var existing v1alpha1.WireflowPolicy
+	for _, policy := range []*v1alpha1.LatticePolicy{gwPolicy, shadowPolicy} {
+		var existing v1alpha1.LatticePolicy
 		err := r.Get(ctx, client.ObjectKeyFromObject(policy), &existing)
 		if k8serrors.IsNotFound(err) {
 			if createErr := r.Create(ctx, policy); createErr != nil {
@@ -340,8 +340,8 @@ func (r *ClusterPeeringReconciler) ensurePoliciesForCluster(ctx context.Context,
 	return nil
 }
 
-func (r *ClusterPeeringReconciler) getReadyNetworkForCluster(ctx context.Context, ns, name string) (*v1alpha1.WireflowNetwork, error) {
-	var network v1alpha1.WireflowNetwork
+func (r *ClusterPeeringReconciler) getReadyNetworkForCluster(ctx context.Context, ns, name string) (*v1alpha1.LatticeNetwork, error) {
+	var network v1alpha1.LatticeNetwork
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &network); err != nil {
 		return nil, err
 	}
@@ -351,11 +351,11 @@ func (r *ClusterPeeringReconciler) getReadyNetworkForCluster(ctx context.Context
 	return &network, nil
 }
 
-func (r *ClusterPeeringReconciler) findGatewayForCluster(ctx context.Context, ns, networkName string) (*v1alpha1.WireflowPeer, error) {
-	var list v1alpha1.WireflowPeerList
+func (r *ClusterPeeringReconciler) findGatewayForCluster(ctx context.Context, ns, networkName string) (*v1alpha1.LatticePeer, error) {
+	var list v1alpha1.LatticePeerList
 	if err := r.List(ctx, &list, client.InNamespace(ns), client.MatchingLabels{
 		LabelGateway: "true",
-		fmt.Sprintf("wireflow.run/network-%s", networkName): "true",
+		fmt.Sprintf("alattice.io/network-%s", networkName): "true",
 	}); err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func (r *ClusterPeeringReconciler) findGatewayForCluster(ctx context.Context, ns
 	return &list.Items[0], nil
 }
 
-func (r *ClusterPeeringReconciler) ensureAnnotationForCluster(ctx context.Context, peer *v1alpha1.WireflowPeer, key, value string) error {
+func (r *ClusterPeeringReconciler) ensureAnnotationForCluster(ctx context.Context, peer *v1alpha1.LatticePeer, key, value string) error {
 	if peer.GetAnnotations()[key] == value {
 		return nil
 	}
@@ -377,7 +377,7 @@ func (r *ClusterPeeringReconciler) ensureAnnotationForCluster(ctx context.Contex
 	return r.Patch(ctx, peerCopy, client.MergeFrom(peer))
 }
 
-func (r *ClusterPeeringReconciler) removeAnnotationForCluster(ctx context.Context, peer *v1alpha1.WireflowPeer, key string) error {
+func (r *ClusterPeeringReconciler) removeAnnotationForCluster(ctx context.Context, peer *v1alpha1.LatticePeer, key string) error {
 	if _, ok := peer.GetAnnotations()[key]; !ok {
 		return nil
 	}
@@ -396,7 +396,7 @@ func (r *ClusterPeeringReconciler) deleteClusterResourceIfExists(ctx context.Con
 	return err
 }
 
-func (r *ClusterPeeringReconciler) setClusterPeeringReady(ctx context.Context, cp *v1alpha1.WireflowClusterPeering, localCIDR, remoteCIDR string) (ctrl.Result, error) {
+func (r *ClusterPeeringReconciler) setClusterPeeringReady(ctx context.Context, cp *v1alpha1.LatticeClusterPeering, localCIDR, remoteCIDR string) (ctrl.Result, error) {
 	copy := cp.DeepCopy()
 	copy.Status.Phase = v1alpha1.ClusterPeeringPhaseReady
 	copy.Status.LocalCIDR = localCIDR
@@ -411,7 +411,7 @@ func (r *ClusterPeeringReconciler) setClusterPeeringReady(ctx context.Context, c
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, r.Status().Patch(ctx, copy, client.MergeFrom(cp))
 }
 
-func (r *ClusterPeeringReconciler) setClusterPeeringError(ctx context.Context, cp *v1alpha1.WireflowClusterPeering, msg string) (ctrl.Result, error) {
+func (r *ClusterPeeringReconciler) setClusterPeeringError(ctx context.Context, cp *v1alpha1.LatticeClusterPeering, msg string) (ctrl.Result, error) {
 	copy := cp.DeepCopy()
 	copy.Status.Phase = v1alpha1.ClusterPeeringPhaseError
 	copy.Status.Conditions = setCondition(copy.Status.Conditions, metav1.Condition{
@@ -428,7 +428,7 @@ func (r *ClusterPeeringReconciler) setClusterPeeringError(ctx context.Context, c
 // SetupWithManager registers the ClusterPeeringReconciler with the manager.
 func (r *ClusterPeeringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.WireflowClusterPeering{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.LatticeClusterPeering{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Named("cluster-peering").
 		Complete(r)
 }

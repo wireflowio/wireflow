@@ -10,22 +10,22 @@ import (
 // +kubebuilder:resource:shortName=wftoken
 // +kubebuilder:printcolumn:name="NAMESPACE",type="string",JSONPath=".spec.namespace",description="invite to namespace"
 // +kubebuilder:printcolumn:name="USAGELIMIT",type="string",JSONPath=".spec.usagelimit",description="limit to invite"
-type WireflowEnrollmentToken struct {
+type LatticeEnrollmentToken struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              WireflowEnrollmentTokenSpec   `json:"spec,omitempty"`
-	Status            WireflowEnrollmentTokenStatus `json:"status,omitempty"`
+	Spec              LatticeEnrollmentTokenSpec   `json:"spec,omitempty"`
+	Status            LatticeEnrollmentTokenStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-type WireflowEnrollmentTokenList struct {
+type LatticeEnrollmentTokenList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowEnrollmentToken `json:"items"`
+	Items           []LatticeEnrollmentToken `json:"items"`
 }
 
-type WireflowEnrollmentTokenSpec struct {
+type LatticeEnrollmentTokenSpec struct {
 	Token      string      `json:"token"`
 	Namespace  string      `json:"namespace"`
 	UsageLimit int         `json:"usageLimit"`
@@ -33,7 +33,7 @@ type WireflowEnrollmentTokenSpec struct {
 	BoundPeers []string    `json:"boundPeers,omitempty"`
 }
 
-type WireflowEnrollmentTokenStatus struct {
+type LatticeEnrollmentTokenStatus struct {
 	Token      string   `json:"token,omitempty"`
 	BoundPeers []string `json:"boundPeers,omitempty"`
 	Phase      string   `json:"phase,omitempty"` // Acitve / Expired / Exhausted
@@ -42,5 +42,5 @@ type WireflowEnrollmentTokenStatus struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowEnrollmentToken{}, &WireflowEnrollmentTokenList{})
+	SchemeBuilder.Register(&LatticeEnrollmentToken{}, &LatticeEnrollmentTokenList{})
 }

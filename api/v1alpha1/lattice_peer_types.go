@@ -21,8 +21,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// WireflowPeerSpec defines the desired state of WireflowPeer.
-type WireflowPeerSpec struct {
+// LatticePeerSpec defines the desired state of LatticePeer.
+type LatticePeerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -59,17 +59,17 @@ type WireflowPeerSpec struct {
 	WrrpQuicUrl string `json:"wrrpQuicUrl,omitempty"`
 }
 
-// WireflowPeerStatus defines the observed state of WireflowPeer.
-type WireflowPeerStatus struct {
+// LatticePeerStatus defines the observed state of LatticePeer.
+type LatticePeerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// WireflowPeer status
+	// LatticePeer status
 	Status Status `json:"status,omitempty"`
 
-	Phase WireflowPeerPhase `json:"phase,omitempty"`
+	Phase LatticePeerPhase `json:"phase,omitempty"`
 
 	// Active key
 	ActiveKey string `json:"activeKey,omitempty"`
@@ -102,13 +102,13 @@ const (
 	Stopped  Status = "stopped"
 )
 
-type WireflowPeerPhase string
+type LatticePeerPhase string
 
 const (
-	NodePhasePending      WireflowPeerPhase = "Pending"
-	NodePhaseProvisioning WireflowPeerPhase = "Provisioning"
-	NodePhaseFailed       WireflowPeerPhase = "Failed"
-	NodePhaseReady        WireflowPeerPhase = "Ready"
+	NodePhasePending      LatticePeerPhase = "Pending"
+	NodePhaseProvisioning LatticePeerPhase = "Provisioning"
+	NodePhaseFailed       LatticePeerPhase = "Failed"
+	NodePhaseReady        LatticePeerPhase = "Ready"
 )
 
 // Condition Types
@@ -148,7 +148,7 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// WireflowPeer is the Schema for the nodes API.
+// LatticePeer is the Schema for the nodes API.
 // +kubebuilder:resource:shortName=wfpeer
 // +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.status",description="The current status of the node"
 // +kubebuilder:printcolumn:name="PHASE",type="string",JSONPath=".status.phase",description="The current phase of the node"
@@ -156,12 +156,12 @@ const (
 // +kubebuilder:printcolumn:name="NETWORK",type="string",JSONPath=".spec.network",description="The network the node belongs to"
 // +kubebuilder:printcolumn:name="CONNECTED",type="integer",JSONPath=".status.connectionSummary.connected",description="Number of active connections"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-type WireflowPeer struct {
+type LatticePeer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   WireflowPeerSpec   `json:"spec,omitempty"`
-	Status WireflowPeerStatus `json:"status,omitempty"`
+	Spec   LatticePeerSpec   `json:"spec,omitempty"`
+	Status LatticePeerStatus `json:"status,omitempty"`
 }
 
 // ConnectionSummary represents connection summary
@@ -173,13 +173,13 @@ type ConnectionSummary struct {
 
 // +kubebuilder:object:root=true
 
-// WireflowPeerList contains a list of WireflowPeer.
-type WireflowPeerList struct {
+// LatticePeerList contains a list of LatticePeer.
+type LatticePeerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowPeer `json:"items"`
+	Items           []LatticePeer `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowPeer{}, &WireflowPeerList{})
+	SchemeBuilder.Register(&LatticePeer{}, &LatticePeerList{})
 }

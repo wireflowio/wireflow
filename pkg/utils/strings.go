@@ -87,7 +87,7 @@ func GenerateAppId() string {
 
 	randomPart := hex.EncodeToString(b)
 
-	return fmt.Sprintf("wireflow-%s-%s", date, randomPart)
+	return fmt.Sprintf("lattice-%s-%s", date, randomPart)
 }
 
 func GenerateSlug(input string) string {

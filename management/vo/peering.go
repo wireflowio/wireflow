@@ -8,7 +8,7 @@ type WorkspaceEndpointVo struct {
 	NodeCount int    `json:"nodeCount"` // real (non-shadow) peer count
 }
 
-// PeeringVo is the HTTP response type for a WireflowNetworkPeering resource.
+// PeeringVo is the HTTP response type for a LatticeNetworkPeering resource.
 type PeeringVo struct {
 	Name        string              `json:"name"`
 	Local       WorkspaceEndpointVo `json:"local"`

@@ -34,7 +34,7 @@ type Message struct {
 	Current       *Peer             `json:"peer"`                    //当前节点信息
 	Network       *Network          `json:"network"`                 //当前节点网络信息
 	Policies      []*Policy         `json:"policies,omitempty"`      //当前节点的策略
-	ComputedPeers []*Peer           `json:"computedpeers,omitempty"` //当前要连接的节点, 由controller计算完成返回给wireflow
+	ComputedPeers []*Peer           `json:"computedpeers,omitempty"` //当前要连接的节点, 由controller计算完成返回给lattice
 	ComputedRules *FirewallRule     `json:"computedrules,omitempty"`
 	Labels        map[string]string `json:"labels,omitempty"`
 }
@@ -116,7 +116,7 @@ func (c *DetailsInfo) Summary() string {
 	return strings.Join(result, "\n")
 }
 
-// Peer is the information of a wireflow peer, contains all the information of a peer
+// Peer is the information of a lattice peer, contains all the information of a peer
 type Peer struct {
 	Name                string            `json:"name,omitempty"`
 	InterfaceName       string            `json:"interfaceName,omitempty"`

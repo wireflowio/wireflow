@@ -27,7 +27,7 @@ import (
 // PeerResolver 根据network与policies来计算当前node的最后要连接peers
 // PeerResolver 只关注要连接的对象， 更细粒度的防火墙规则由FileWallResolver来实现
 type PeerResolver interface {
-	ResolvePeers(ctx context.Context, network *infra.Message, policies []*v1alpha1.WireflowPolicy) ([]*infra.Peer, error)
+	ResolvePeers(ctx context.Context, network *infra.Message, policies []*v1alpha1.LatticePolicy) ([]*infra.Peer, error)
 }
 
 type peerResolver struct {
@@ -38,12 +38,12 @@ func NewPeerResolver() PeerResolver {
 }
 
 // ResolvePeers zero trust, add when labeled peer matched
-func (p *peerResolver) ResolvePeers(ctx context.Context, msg *infra.Message, policies []*v1alpha1.WireflowPolicy) ([]*infra.Peer, error) {
+func (p *peerResolver) ResolvePeers(ctx context.Context, msg *infra.Message, policies []*v1alpha1.LatticePolicy) ([]*infra.Peer, error) {
 	return GetComputedPeers(msg.Current, msg.Network, policies), nil
 }
 
 // 假设我们要为当前节点 currPeer 生成连接列表
-func GetComputedPeers(current *infra.Peer, network *infra.Network, policies []*v1alpha1.WireflowPolicy) []*infra.Peer {
+func GetComputedPeers(current *infra.Peer, network *infra.Network, policies []*v1alpha1.LatticePolicy) []*infra.Peer {
 	allPeers := network.Peers
 	finalPeersMap := make(map[string]*infra.Peer)
 

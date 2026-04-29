@@ -2,8 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"github.com/alatticeio/lattice/internal/store"
 	"testing"
+
+	"github.com/alatticeio/lattice/management/models"
 )
 
 func TestGetJWTSecret(t *testing.T) {

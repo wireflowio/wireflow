@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// wrrper is the standalone Wireflow relay server.
+// wrrper is the standalone Lattice relay server.
 // It bridges WireGuard peers that cannot establish a direct ICE path
 // (e.g. symmetric NAT on both sides) by forwarding encrypted datagrams
 // over TCP (HTTP upgrade) and/or QUIC.
@@ -33,7 +33,7 @@ var cfgManager = config.NewConfigManager()
 func main() {
 	cmd := &cobra.Command{
 		Use:          "wrrper",
-		Short:        "WRRP relay server for Wireflow",
+		Short:        "WRRP relay server for Lattice",
 		Long:         `Standalone WRRP relay server. Bridges WireGuard peers that cannot reach each other directly.`,
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	fs := cmd.PersistentFlags()
-	fs.StringP("config-dir", "", "", "config directory (default ~/.wireflow)")
+	fs.StringP("config-dir", "", "", "config directory (default ~/.lattice)")
 	fs.StringP("listen", "l", ":6266", "TCP WRRP listen address")
 	fs.BoolP("enable-tls", "", false, "enable TLS on TCP listener")
 	fs.StringP("wrrp-quic-url", "", "", "QUIC WRRP listen address (e.g. :6267); empty disables QUIC")

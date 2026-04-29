@@ -88,7 +88,7 @@ type tokenRemoveReq struct {
 func (s *Server) workspaceCtxByNs(parent context.Context, namespace string) (context.Context, error) {
 	ws, err := s.store.Workspaces().GetByNamespace(parent, namespace)
 	if err != nil {
-		return nil, fmt.Errorf("no workspace for namespace %q — run 'wireflow workspace list': %w", namespace, err)
+		return nil, fmt.Errorf("no workspace for namespace %q — run 'lattice workspace list': %w", namespace, err)
 	}
 	return context.WithValue(parent, infra.WorkspaceKey, ws.ID), nil
 }
@@ -258,7 +258,7 @@ func (s *Server) NatsListTokens(data []byte) ([]byte, error) {
 
 // ── peer handlers ─────────────────────────────────────────────────────────────
 
-// NatsPeerList lists WireflowPeers in the given namespace.
+// NatsPeerList lists LatticePeers in the given namespace.
 func (s *Server) NatsPeerList(data []byte) ([]byte, error) {
 	var req peerListReq
 	if err := json.Unmarshal(data, &req); err != nil {
@@ -270,7 +270,7 @@ func (s *Server) NatsPeerList(data []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var peerList v1alpha1.WireflowPeerList
+	var peerList v1alpha1.LatticePeerList
 	if err := s.client.List(ctx, &peerList, client.InNamespace(req.Namespace)); err != nil {
 		return nil, fmt.Errorf("list peers: %w", err)
 	}
@@ -304,7 +304,7 @@ func (s *Server) NatsPeerList(data []byte) ([]byte, error) {
 	return marshal(rows)
 }
 
-// NatsPeerLabel merges new labels into a WireflowPeer's metadata.labels.
+// NatsPeerLabel merges new labels into a LatticePeer's metadata.labels.
 func (s *Server) NatsPeerLabel(data []byte) ([]byte, error) {
 	var req peerLabelReq
 	if err := json.Unmarshal(data, &req); err != nil {
@@ -319,7 +319,7 @@ func (s *Server) NatsPeerLabel(data []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	peer := &v1alpha1.WireflowPeer{}
+	peer := &v1alpha1.LatticePeer{}
 	if err := s.client.Get(ctx, types.NamespacedName{
 		Name:      req.PeerName,
 		Namespace: req.Namespace,
@@ -344,7 +344,7 @@ func (s *Server) NatsPeerLabel(data []byte) ([]byte, error) {
 }
 
 // NatsAllowAll creates a full-mesh ALLOW policy using the network label selector
-// that the peer controller automatically assigns: wireflow.run/network-{name}=true.
+// that the peer controller automatically assigns: alattice.io/network-{name}=true.
 func (s *Server) NatsAllowAll(data []byte) ([]byte, error) {
 	var req allowAllReq
 	if err := json.Unmarshal(data, &req); err != nil {
@@ -356,19 +356,19 @@ func (s *Server) NatsAllowAll(data []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Find the WireflowNetwork in this namespace to get the network name.
-	// The peer controller labels each WireflowPeer with
-	//   wireflow.run/network-{networkName}=true
+	// Find the LatticeNetwork in this namespace to get the network name.
+	// The peer controller labels each LatticePeer with
+	//   alattice.io/network-{networkName}=true
 	// so we need the network name to build the matching PeerSelector.
-	var netList v1alpha1.WireflowNetworkList
+	var netList v1alpha1.LatticeNetworkList
 	if err := s.client.List(ctx, &netList, client.InNamespace(req.Namespace)); err != nil {
-		return nil, fmt.Errorf("list WireflowNetworks: %w", err)
+		return nil, fmt.Errorf("list LatticeNetworks: %w", err)
 	}
 	if len(netList.Items) == 0 {
-		return nil, fmt.Errorf("no WireflowNetwork found in namespace %q — is the workspace ready?", req.Namespace)
+		return nil, fmt.Errorf("no LatticeNetwork found in namespace %q — is the workspace ready?", req.Namespace)
 	}
 	networkName := netList.Items[0].Name
-	labelKey := fmt.Sprintf("wireflow.run/network-%s", networkName)
+	labelKey := fmt.Sprintf("alattice.io/network-%s", networkName)
 
 	peerSel := metav1.LabelSelector{
 		MatchLabels: map[string]string{labelKey: "true"},
@@ -385,7 +385,7 @@ func (s *Server) NatsAllowAll(data []byte) ([]byte, error) {
 		Action:      "ALLOW",
 		Description: "full-mesh allow-all (created by CLI)",
 		PolicyTypes: []string{"Ingress", "Egress"},
-		WireflowPolicySpec: v1alpha1.WireflowPolicySpec{
+		LatticePolicySpec: v1alpha1.LatticePolicySpec{
 			Network:      networkName,
 			PeerSelector: peerSel,
 			Action:       "ALLOW",

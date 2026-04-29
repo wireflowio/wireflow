@@ -227,7 +227,7 @@ func NewManager() (manager.Manager, error) {
 			ByObject: map[client.Object]cache2.ByObject{
 				&corev1.ConfigMap{}: {
 					Label: labels.SelectorFromSet(map[string]string{
-						"app.kubernetes.io/managed-by": "wireflow-controller",
+						"app.kubernetes.io/managed-by": "lattice-controller",
 					}),
 				},
 			},
@@ -244,8 +244,8 @@ func NewManager() (manager.Manager, error) {
 
 	ctx := context.Background()
 	// 注册索引： status.token
-	if err = mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.WireflowEnrollmentToken{}, "status.token", func(rawObj client.Object) []string {
-		token, ok := rawObj.(*v1alpha1.WireflowEnrollmentToken)
+	if err = mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.LatticeEnrollmentToken{}, "status.token", func(rawObj client.Object) []string {
+		token, ok := rawObj.(*v1alpha1.LatticeEnrollmentToken)
 		if !ok {
 			return nil
 		}
@@ -258,9 +258,9 @@ func NewManager() (manager.Manager, error) {
 	}
 
 	// 注册索引： spec.token（兼容旧逻辑）
-	if err = mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.WireflowEnrollmentToken{}, "spec.token", func(rawObj client.Object) []string {
+	if err = mgr.GetFieldIndexer().IndexField(ctx, &v1alpha1.LatticeEnrollmentToken{}, "spec.token", func(rawObj client.Object) []string {
 		// 1. 断言对象类型
-		token, ok := rawObj.(*v1alpha1.WireflowEnrollmentToken)
+		token, ok := rawObj.(*v1alpha1.LatticeEnrollmentToken)
 		if !ok {
 			return nil
 		}
@@ -274,7 +274,7 @@ func NewManager() (manager.Manager, error) {
 	}
 
 	// 只要你调用了 GetInformer，Manager 就会在 Start 时去同步它
-	_, err = mgr.GetCache().GetInformer(ctx, &v1alpha1.WireflowEnrollmentToken{})
+	_, err = mgr.GetCache().GetInformer(ctx, &v1alpha1.LatticeEnrollmentToken{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to start informer: %w", err)
 	}

@@ -16,7 +16,7 @@ package service
 
 import (
 	"context"
-	wireflowv1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	latticev1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
 	"github.com/alatticeio/lattice/internal/infra"
 	"github.com/alatticeio/lattice/internal/store"
 	"github.com/alatticeio/lattice/management/dto"
@@ -41,7 +41,7 @@ type networkService struct {
 
 func (s *networkService) ListTokens(ctx context.Context, pageParam *dto.PageRequest) (*dto.PageResult[vo.TokenVo], error) {
 	var (
-		tokenList wireflowv1alpha1.WireflowEnrollmentTokenList
+		tokenList latticev1alpha1.LatticeEnrollmentTokenList
 		err       error
 	)
 
@@ -135,7 +135,7 @@ func (s *networkService) JoinNetwork(ctx context.Context, appIds []string, netwo
 		return nil
 	}
 	for _, appId := range appIds {
-		if err := s.client.UpdateNodeSepc(ctx, "default", appId, func(node *wireflowv1alpha1.WireflowPeer) {
+		if err := s.client.UpdateNodeSepc(ctx, "default", appId, func(node *latticev1alpha1.LatticePeer) {
 			node.Spec.Network = &networkId
 		}); err != nil {
 			return err
@@ -149,7 +149,7 @@ func (s *networkService) LeaveNetwork(ctx context.Context, appIds []string, netw
 		return nil
 	}
 	for _, appId := range appIds {
-		if err := s.client.UpdateNodeSepc(ctx, "default", appId, func(node *wireflowv1alpha1.WireflowPeer) {
+		if err := s.client.UpdateNodeSepc(ctx, "default", appId, func(node *latticev1alpha1.LatticePeer) {
 			node.Spec.Network = nil
 		}); err != nil {
 			return err

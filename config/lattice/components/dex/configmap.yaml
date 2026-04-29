@@ -5,7 +5,7 @@ metadata:
   namespace: auth
 data:
   config.yaml: |
-    issuer: http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex
+    issuer: http://wireflow-dex.lattice-system.svc.cluster.local:5556/dex
     storage:
       type: kubernetes
       config:

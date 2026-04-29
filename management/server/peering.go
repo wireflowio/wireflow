@@ -80,7 +80,7 @@ func (s *Server) deletePeering(c *gin.Context) {
 //
 // Query params:
 //   - namespace (required): the K8s namespace of the local network
-//   - network   (required): the WireflowNetwork name
+//   - network   (required): the LatticeNetwork name
 func (s *Server) gatewayInfo() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ns := c.Query("namespace")
@@ -92,7 +92,7 @@ func (s *Server) gatewayInfo() gin.HandlerFunc {
 
 		ctx := c.Request.Context()
 
-		var network v1alpha1.WireflowNetwork
+		var network v1alpha1.LatticeNetwork
 		if err := s.client.Get(ctx, types.NamespacedName{Namespace: ns, Name: networkName}, &network); err != nil {
 			if k8serrors.IsNotFound(err) {
 				resp.Error(c, fmt.Sprintf("network %s/%s not found", ns, networkName))
@@ -106,10 +106,10 @@ func (s *Server) gatewayInfo() gin.HandlerFunc {
 			return
 		}
 
-		var peerList v1alpha1.WireflowPeerList
+		var peerList v1alpha1.LatticePeerList
 		if err := s.client.List(ctx, &peerList, client.InNamespace(ns), client.MatchingLabels{
-			"wireflow.run/gateway":                              "true",
-			fmt.Sprintf("wireflow.run/network-%s", networkName): "true",
+			"alattice.io/gateway":                              "true",
+			fmt.Sprintf("alattice.io/network-%s", networkName): "true",
 		}); err != nil {
 			resp.Error(c, err.Error())
 			return

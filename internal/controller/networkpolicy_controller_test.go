@@ -28,7 +28,7 @@ import (
 	"github.com/alatticeio/lattice/api/v1alpha1"
 )
 
-var _ = Describe("WireflowPolicy Controller", func() {
+var _ = Describe("LatticePolicy Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -38,13 +38,13 @@ var _ = Describe("WireflowPolicy Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		networkpolicy := &v1alpha1.WireflowPolicy{}
+		networkpolicy := &v1alpha1.LatticePolicy{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind WireflowPolicy")
+			By("creating the custom resource for the Kind LatticePolicy")
 			err := k8sClient.Get(ctx, typeNamespacedName, networkpolicy)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &v1alpha1.WireflowPolicy{
+				resource := &v1alpha1.LatticePolicy{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -57,11 +57,11 @@ var _ = Describe("WireflowPolicy Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &v1alpha1.WireflowPolicy{}
+			resource := &v1alpha1.LatticePolicy{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance WireflowPolicy")
+			By("Cleanup the specific resource instance LatticePolicy")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {

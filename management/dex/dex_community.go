@@ -23,7 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var errProRequired = errors.New("Dex OIDC/SSO is a Wireflow Pro feature — upgrade at https://wireflow.run/pro")
+var errProRequired = errors.New("Dex OIDC/SSO is a Lattice Pro feature — upgrade at https://alattice.io/pro")
 
 // Dex stub: satisfies call sites in management/server/api.go.
 type Dex struct{}
@@ -33,5 +33,5 @@ func NewDex(_ service.UserService) (*Dex, error) {
 }
 
 func (d *Dex) Login(c *gin.Context) {
-	c.JSON(503, gin.H{"error": "OIDC authentication requires Wireflow Pro"})
+	c.JSON(503, gin.H{"error": "OIDC authentication requires Lattice Pro"})
 }

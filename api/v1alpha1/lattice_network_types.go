@@ -21,8 +21,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// WireflowNetworkSpec defines the desired state of WireflowNetwork.
-type WireflowNetworkSpec struct {
+// LatticeNetworkSpec defines the desired state of LatticeNetwork.
+type LatticeNetworkSpec struct {
 	// name of network
 	Name string `json:"name,omitempty"`
 
@@ -43,9 +43,9 @@ type WireflowNetworkSpec struct {
 	Policies []string `json:"policies,omitempty"`
 }
 
-// WireflowNetworkStatus defines the observed state of WireflowNetwork.
-type WireflowNetworkStatus struct {
-	Phase WireflowNetworkPhase `json:"phase,omitempty"`
+// LatticeNetworkStatus defines the observed state of LatticeNetwork.
+type LatticeNetworkStatus struct {
+	Phase LatticeNetworkPhase `json:"phase,omitempty"`
 
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
@@ -60,12 +60,12 @@ type WireflowNetworkStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 
-type WireflowNetworkPhase string
+type LatticeNetworkPhase string
 
 const (
-	NetworkPhaseCreating WireflowNetworkPhase = "Pending"
-	NetworkPhaseReady    WireflowNetworkPhase = "Ready"
-	NetworkPhaseFailed   WireflowNetworkPhase = "Failed"
+	NetworkPhaseCreating LatticeNetworkPhase = "Pending"
+	NetworkPhaseReady    LatticeNetworkPhase = "Ready"
+	NetworkPhaseFailed   LatticeNetworkPhase = "Failed"
 )
 
 // IPAllocation IP 分配记录
@@ -83,30 +83,30 @@ type DNSConfig struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// WireflowNetwork is the Schema for the networks API.
+// LatticeNetwork is the Schema for the networks API.
 // +kubebuilder:resource:shortName=wfnet;wfnetwork
 // +kubebuilder:printcolumn:name="PHASE",type="string",JSONPath=".status.phase",description="The current phase of the network"
 // +kubebuilder:printcolumn:name="CIDR",type="string",JSONPath=".spec.cidr",description="The CIDR block of the network"
 // +kubebuilder:printcolumn:name="NODES",type="integer",JSONPath=".status.addedNodes",description="Number of nodes in the network"
 // +kubebuilder:printcolumn:name="IPS-AVAIL",type="integer",JSONPath=".status.availableIPs",description="Number of available IP addresses"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-type WireflowNetwork struct {
+type LatticeNetwork struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   WireflowNetworkSpec   `json:"spec,omitempty"`
-	Status WireflowNetworkStatus `json:"status,omitempty"`
+	Spec   LatticeNetworkSpec   `json:"spec,omitempty"`
+	Status LatticeNetworkStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// WireflowNetworkList contains a list of WireflowNetwork.
-type WireflowNetworkList struct {
+// LatticeNetworkList contains a list of LatticeNetwork.
+type LatticeNetworkList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowNetwork `json:"items"`
+	Items           []LatticeNetwork `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowNetwork{}, &WireflowNetworkList{})
+	SchemeBuilder.Register(&LatticeNetwork{}, &LatticeNetworkList{})
 }

@@ -28,12 +28,12 @@ const (
 	PolicyTypeEgress  PolicyType = "egress"
 )
 
-// WireflowPolicySpec defines the desired state of WireflowPolicy. which used to control the wireflow's traffic flow.
-type WireflowPolicySpec struct {
+// LatticePolicySpec defines the desired state of LatticePolicy. which used to control the lattice's traffic flow.
+type LatticePolicySpec struct {
 	//
 	Network string `json:"network"`
 
-	// PeerSelector is a label query over node that should be applied to the wireflow policy.
+	// PeerSelector is a label query over node that should be applied to the lattice policy.
 	PeerSelector metav1.LabelSelector `json:"peerSelector,omitempty"`
 
 	Ingress []IngressRule `json:"ingress,omitempty"`
@@ -44,14 +44,14 @@ type WireflowPolicySpec struct {
 	Action string `json:"action,omitempty"` // DENY / ALLOW
 }
 
-// IngressRule and EgressRule are used to control the wireflow's traffic flow.
+// IngressRule and EgressRule are used to control the lattice's traffic flow.
 type IngressRule struct {
-	From  []PeerSelection     `json:"from,omitempty"` // from what peers connect to the wireflow which selected by this policy
+	From  []PeerSelection     `json:"from,omitempty"` // from what peers connect to the lattice which selected by this policy
 	Ports []NetworkPolicyPort `json:"ports,omitempty"`
 }
 
 type EgressRule struct {
-	To    []PeerSelection     `json:"to,omitempty"` // to what peers connect to the wireflow which selected by this policy
+	To    []PeerSelection     `json:"to,omitempty"` // to what peers connect to the lattice which selected by this policy
 	Ports []NetworkPolicyPort `json:"ports,omitempty"`
 }
 
@@ -69,7 +69,7 @@ type NetworkPolicyPort struct {
 	Protocol string `json:"protocol,omitempty"`
 }
 
-// NetworkPolicyStatus defines the observed state of WireflowPolicy.
+// NetworkPolicyStatus defines the observed state of LatticePolicy.
 type NetworkPolicyStatus struct {
 	// 策略当前匹配到的节点数量
 	TargetNodes int `json:"targetNodes"`
@@ -80,30 +80,30 @@ type NetworkPolicyStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// WireflowPolicy is the Schema for the networkpolicies API.
+// LatticePolicy is the Schema for the networkpolicies API.
 // +kubebuilder:resource:shortName=wfpolicy
 // +kubebuilder:printcolumn:name="TYPE",type="string",JSONPath=".spec.policyType",description="The type of the network policy (ingress or egress)"
 // +kubebuilder:printcolumn:name="NODE-SELECTOR",type="string",JSONPath=".spec.nodeSelector",description="The selector to identify nodes this policy applies to"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="TARGETS",type="integer",JSONPath=".status.targetNodes",description="Number of nodes targeted by this policy"
 // +kubebuilder:printcolumn:name="RULES",type="integer",JSONPath=".status.ruleCount",description="Number of rules defined in this policy"
-type WireflowPolicy struct {
+type LatticePolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   WireflowPolicySpec  `json:"spec,omitempty"`
+	Spec   LatticePolicySpec  `json:"spec,omitempty"`
 	Status NetworkPolicyStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// WireflowPolicyList contains a list of WireflowPolicy.
-type WireflowPolicyList struct {
+// LatticePolicyList contains a list of LatticePolicy.
+type LatticePolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowPolicy `json:"items"`
+	Items           []LatticePolicy `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowPolicy{}, &WireflowPolicyList{})
+	SchemeBuilder.Register(&LatticePolicy{}, &LatticePolicyList{})
 }

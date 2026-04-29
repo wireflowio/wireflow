@@ -8,5 +8,5 @@ type PolicyDto struct {
 	Action      string   `json:"action"` // Allow / Deny
 	Description string   `json:"description"`
 	PolicyTypes []string `json:"policyTypes"` // e.g. ["Ingress","Egress"]
-	v1alpha1.WireflowPolicySpec
+	v1alpha1.LatticePolicySpec
 }

@@ -23,5 +23,5 @@ data:
       # SQLite 路径相对于进程工作目录（Dockerfile WORKDIR=/app）
       # 实际文件：/app/data/wireflow.db（对应 PVC 挂载点 /app/data）
       # 如需接入外部 MariaDB（企业级），替换为：
-      # dsn: "root:pass@tcp(mariadb.wireflow-system.svc:3306)/wireflow?charset=utf8mb4&parseTime=True"
+      # dsn: "root:pass@tcp(mariadb.lattice-system.svc:3306)/wireflow?charset=utf8mb4&parseTime=True"
       dsn: "data/wireflow.db"

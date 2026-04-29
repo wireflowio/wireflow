@@ -31,12 +31,12 @@ type configField struct {
 
 // ValidateAndReport 是具备"环境感知"能力的启动前校验函数。
 //
-// isServer=true（wireflowd 服务端）：
+// isServer=true（latticed 服务端）：
 //   - SignalingURL 为空时自动设为 nats://127.0.0.1:4222 并打印 Info 日志。
-//   - DatabaseDSN 为空时明确退化为当前目录的 wireflow.db (SQLite)。
+//   - DatabaseDSN 为空时明确退化为当前目录的 lattice.db (SQLite)。
 //   - 忽略 ServerUrl / Token 校验，始终返回 nil。
 //
-// isServer=false（wireflow agent 客户端）：
+// isServer=false（lattice agent 客户端）：
 //   - 严格校验 SignalingURL、ServerUrl、Token 均非空。
 //   - TTY 环境：向 stderr 输出美化诊断报告后返回错误。
 //   - 非 TTY（Docker/K8s/CI）：直接返回简洁错误字符串。
@@ -58,7 +58,7 @@ func applyServerDefaults(cfg *Config) error {
 	}
 	if cfg.Database.DSN == "" {
 		wd, _ := os.Getwd()
-		cfg.Database.DSN = filepath.Join(wd, "wireflow.db")
+		cfg.Database.DSN = filepath.Join(wd, "lattice.db")
 		cfg.Database.Driver = "sqlite"
 		log.Info("All-in-One: applied default database DSN", "dsn", cfg.Database.DSN)
 	}
@@ -115,7 +115,7 @@ func printDiagnostic(fields []configField, missing []string) {
 	w := os.Stderr
 
 	// 1. 标题头：使用加粗或简单的分隔符
-	fmt.Fprintln(w, "\n--- WIREFLOW SETUP ASSISTANT (Agent Mode) ---")                                //nolint:errcheck
+	fmt.Fprintln(w, "\n--- LATTICE SETUP ASSISTANT (Agent Mode) ---")                                //nolint:errcheck
 	fmt.Fprintf(w, "Error: Required configuration is missing. [Config: %s]\n\n", GetConfigFilePath()) //nolint:errcheck
 
 	// 2. 配置状态表：简单的列对齐
@@ -134,7 +134,7 @@ func printDiagnostic(fields []configField, missing []string) {
 	// 3. 修复引导：直接给出 Copy-Paste 命令
 	fmt.Fprintln(w, "\n QUICK FIX:")                                                                                  //nolint:errcheck
 	fmt.Fprintln(w, "   Run the following command to initialize:")                                                    //nolint:errcheck
-	fmt.Fprintf(w, "   %s\n", "wireflow up --signaling-url <NATS_URL> --server-url <API_URL> --token <TOKEN> --save") //nolint:errcheck
+	fmt.Fprintf(w, "   %s\n", "lattice up --signaling-url <NATS_URL> --server-url <API_URL> --token <TOKEN> --save") //nolint:errcheck
 
 	// 4. 环境说明：简短的结语
 	fmt.Fprintln(w, "\n To use environment variables instead, check the documentation.") //nolint:errcheck

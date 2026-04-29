@@ -19,8 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// WireflowRelayServerSpec defines the desired state of a WRRP relay server.
-type WireflowRelayServerSpec struct {
+// LatticeRelayServerSpec defines the desired state of a WRRP relay server.
+type LatticeRelayServerSpec struct {
 	// DisplayName is the human-readable label shown in the management UI.
 	DisplayName string `json:"displayName"`
 
@@ -41,13 +41,13 @@ type WireflowRelayServerSpec struct {
 	Enabled bool `json:"enabled"`
 
 	// Namespaces is the list of Kubernetes namespaces (workspace namespaces)
-	// whose WireflowPeers should be configured to use this relay.
+	// whose LatticePeers should be configured to use this relay.
 	// An empty list means all namespaces.
 	Namespaces []string `json:"namespaces,omitempty"`
 }
 
-// WireflowRelayServerStatus defines the observed state of a WireflowRelayServer.
-type WireflowRelayServerStatus struct {
+// LatticeRelayServerStatus defines the observed state of a LatticeRelayServer.
+type LatticeRelayServerStatus struct {
 	// Phase summarises the lifecycle state of the relay.
 	Phase RelayPhase `json:"phase,omitempty"`
 
@@ -57,7 +57,7 @@ type WireflowRelayServerStatus struct {
 	// LatencyMs is the round-trip latency measured by the last probe, in milliseconds.
 	LatencyMs *int64 `json:"latencyMs,omitempty"`
 
-	// ConnectedPeers is the number of WireflowPeers currently configured to use this relay.
+	// ConnectedPeers is the number of LatticePeers currently configured to use this relay.
 	ConnectedPeers int `json:"connectedPeers,omitempty"`
 
 	// LastProbeTime is when the relay was last connectivity-tested.
@@ -93,11 +93,11 @@ const (
 )
 
 // Relay finalizer – used to clear peer relay URLs before the CRD is removed.
-const RelayFinalizer = "relay.wireflowcontroller.wireflow.run/finalizer"
+const RelayFinalizer = "relay.alattice.io/finalizer"
 
-// RelayPeerLabel is added to every WireflowPeer that is configured to use a
+// RelayPeerLabel is added to every LatticePeer that is configured to use a
 // given relay, keyed by the relay's metadata.Name.
-const RelayPeerLabel = "relay.wireflowcontroller.wireflow.run/name"
+const RelayPeerLabel = "relay.alattice.io/name"
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,shortName=wfrelay
@@ -109,49 +109,49 @@ const RelayPeerLabel = "relay.wireflowcontroller.wireflow.run/name"
 // +kubebuilder:printcolumn:name="ENABLED",type="boolean",JSONPath=".spec.enabled"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
-// WireflowRelayServer is the Schema for managing WRRP relay servers.
+// LatticeRelayServer is the Schema for managing WRRP relay servers.
 // It is cluster-scoped because relay infrastructure is shared across workspaces.
-type WireflowRelayServer struct {
+type LatticeRelayServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   WireflowRelayServerSpec   `json:"spec,omitempty"`
-	Status WireflowRelayServerStatus `json:"status,omitempty"`
+	Spec   LatticeRelayServerSpec   `json:"spec,omitempty"`
+	Status LatticeRelayServerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// WireflowRelayServerList contains a list of WireflowRelayServer.
-type WireflowRelayServerList struct {
+// LatticeRelayServerList contains a list of LatticeRelayServer.
+type LatticeRelayServerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowRelayServer `json:"items"`
+	Items           []LatticeRelayServer `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowRelayServer{}, &WireflowRelayServerList{})
+	SchemeBuilder.Register(&LatticeRelayServer{}, &LatticeRelayServerList{})
 }
 
 // DeepCopyObject implements runtime.Object.
-func (in *WireflowRelayServer) DeepCopyObject() runtime.Object {
+func (in *LatticeRelayServer) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
 	}
 	return nil
 }
 
-// DeepCopy returns a deep copy of the WireflowRelayServer.
-func (in *WireflowRelayServer) DeepCopy() *WireflowRelayServer {
+// DeepCopy returns a deep copy of the LatticeRelayServer.
+func (in *LatticeRelayServer) DeepCopy() *LatticeRelayServer {
 	if in == nil {
 		return nil
 	}
-	out := new(WireflowRelayServer)
+	out := new(LatticeRelayServer)
 	in.DeepCopyInto(out)
 	return out
 }
 
 // DeepCopyInto copies all fields into out.
-func (in *WireflowRelayServer) DeepCopyInto(out *WireflowRelayServer) {
+func (in *LatticeRelayServer) DeepCopyInto(out *LatticeRelayServer) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
@@ -159,8 +159,8 @@ func (in *WireflowRelayServer) DeepCopyInto(out *WireflowRelayServer) {
 	in.Status.DeepCopyInto(&out.Status)
 }
 
-// DeepCopyInto copies all fields of WireflowRelayServerSpec into out.
-func (in *WireflowRelayServerSpec) DeepCopyInto(out *WireflowRelayServerSpec) {
+// DeepCopyInto copies all fields of LatticeRelayServerSpec into out.
+func (in *LatticeRelayServerSpec) DeepCopyInto(out *LatticeRelayServerSpec) {
 	*out = *in
 	if in.Namespaces != nil {
 		in, out := &in.Namespaces, &out.Namespaces
@@ -169,18 +169,18 @@ func (in *WireflowRelayServerSpec) DeepCopyInto(out *WireflowRelayServerSpec) {
 	}
 }
 
-// DeepCopy returns a deep copy of WireflowRelayServerSpec.
-func (in *WireflowRelayServerSpec) DeepCopy() *WireflowRelayServerSpec {
+// DeepCopy returns a deep copy of LatticeRelayServerSpec.
+func (in *LatticeRelayServerSpec) DeepCopy() *LatticeRelayServerSpec {
 	if in == nil {
 		return nil
 	}
-	out := new(WireflowRelayServerSpec)
+	out := new(LatticeRelayServerSpec)
 	in.DeepCopyInto(out)
 	return out
 }
 
-// DeepCopyInto copies all fields of WireflowRelayServerStatus into out.
-func (in *WireflowRelayServerStatus) DeepCopyInto(out *WireflowRelayServerStatus) {
+// DeepCopyInto copies all fields of LatticeRelayServerStatus into out.
+func (in *LatticeRelayServerStatus) DeepCopyInto(out *LatticeRelayServerStatus) {
 	*out = *in
 	if in.LatencyMs != nil {
 		x := *in.LatencyMs
@@ -199,42 +199,42 @@ func (in *WireflowRelayServerStatus) DeepCopyInto(out *WireflowRelayServerStatus
 	}
 }
 
-// DeepCopy returns a deep copy of WireflowRelayServerStatus.
-func (in *WireflowRelayServerStatus) DeepCopy() *WireflowRelayServerStatus {
+// DeepCopy returns a deep copy of LatticeRelayServerStatus.
+func (in *LatticeRelayServerStatus) DeepCopy() *LatticeRelayServerStatus {
 	if in == nil {
 		return nil
 	}
-	out := new(WireflowRelayServerStatus)
+	out := new(LatticeRelayServerStatus)
 	in.DeepCopyInto(out)
 	return out
 }
 
-// DeepCopyObject implements runtime.Object for WireflowRelayServerList.
-func (in *WireflowRelayServerList) DeepCopyObject() runtime.Object {
+// DeepCopyObject implements runtime.Object for LatticeRelayServerList.
+func (in *LatticeRelayServerList) DeepCopyObject() runtime.Object {
 	if c := in.DeepCopy(); c != nil {
 		return c
 	}
 	return nil
 }
 
-// DeepCopy returns a deep copy of the WireflowRelayServerList.
-func (in *WireflowRelayServerList) DeepCopy() *WireflowRelayServerList {
+// DeepCopy returns a deep copy of the LatticeRelayServerList.
+func (in *LatticeRelayServerList) DeepCopy() *LatticeRelayServerList {
 	if in == nil {
 		return nil
 	}
-	out := new(WireflowRelayServerList)
+	out := new(LatticeRelayServerList)
 	in.DeepCopyInto(out)
 	return out
 }
 
 // DeepCopyInto copies all fields into out.
-func (in *WireflowRelayServerList) DeepCopyInto(out *WireflowRelayServerList) {
+func (in *LatticeRelayServerList) DeepCopyInto(out *LatticeRelayServerList) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ListMeta.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]WireflowRelayServer, len(*in))
+		*out = make([]LatticeRelayServer, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

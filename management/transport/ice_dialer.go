@@ -379,7 +379,7 @@ func (i *iceDialer) getAgent(remoteId infra.PeerIdentity) (*ice.Agent, error) {
 		ice.WithUDPMuxSrflx(i.filteringMux.UDPMuxSrflx()),
 		ice.WithNetworkTypes(i.networkTypes()),
 		ice.WithUrls([]*stun.URI{
-			{Scheme: stun.SchemeTypeSTUN, Host: "stun.wireflow.run", Port: 3478},
+			{Scheme: stun.SchemeTypeSTUN, Host: "stun.alattice.io", Port: 3478},
 		}),
 		ice.WithLoggerFactory(f),
 		ice.WithCandidateTypes([]ice.CandidateType{ice.CandidateTypeHost, ice.CandidateTypeServerReflexive}),

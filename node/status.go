@@ -47,7 +47,7 @@ func PrintStatus(interfaceName string) error {
 			return fmt.Errorf("failed to list WireGuard devices: %w", err)
 		}
 		if len(devices) == 0 {
-			return fmt.Errorf("wireflow is not running (no WireGuard interfaces found)")
+			return fmt.Errorf("lattice is not running (no WireGuard interfaces found)")
 		}
 	}
 

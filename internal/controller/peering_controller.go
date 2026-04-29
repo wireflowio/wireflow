@@ -36,33 +36,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// NetworkPeeringReconciler reconciles WireflowNetworkPeering resources.
+// NetworkPeeringReconciler reconciles LatticeNetworkPeering resources.
 //
 // For each peering it:
 //  1. Annotates the gateway peer in each namespace with a per-peering route so
 //     local peers include the remote CIDR in the gateway's AllowedIPs.
 //  2. Creates a "shadow peer" in each namespace representing the remote gateway,
 //     ensuring WireGuard can establish the inter-gateway tunnel.
-//  3. Creates WireflowPolicy objects that admit the gateway and shadow peers
+//  3. Creates LatticePolicy objects that admit the gateway and shadow peers
 //     into ComputedPeers for the relevant nodes.
 type NetworkPeeringReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflownetworkpeerings,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflownetworkpeerings/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflownetworkpeerings/finalizers,verbs=update
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpeers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpeers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpolicies,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflownetworks,verbs=get;list;watch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticenetworkpeerings,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticenetworkpeerings/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticenetworkpeerings/finalizers,verbs=update
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepeers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepeers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepolicies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticenetworks,verbs=get;list;watch
 
 func (r *NetworkPeeringReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Reconciling WireflowNetworkPeering", "name", req.Name)
+	log.Info("Reconciling LatticeNetworkPeering", "name", req.Name)
 
-	var peering v1alpha1.WireflowNetworkPeering
+	var peering v1alpha1.LatticeNetworkPeering
 	if err := r.Get(ctx, req.NamespacedName, &peering); err != nil {
 		if k8serrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -87,7 +87,7 @@ func (r *NetworkPeeringReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return r.reconcileNormal(ctx, &peering)
 }
 
-func (r *NetworkPeeringReconciler) reconcileNormal(ctx context.Context, peering *v1alpha1.WireflowNetworkPeering) (ctrl.Result, error) {
+func (r *NetworkPeeringReconciler) reconcileNormal(ctx context.Context, peering *v1alpha1.LatticeNetworkPeering) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	// 1. Fetch both networks and verify they are ready.
@@ -151,9 +151,9 @@ func (r *NetworkPeeringReconciler) reconcileNormal(ctx context.Context, peering 
 
 // reconcileDelete removes all resources created by this reconciler and drops
 // the finalizer so Kubernetes can delete the peering object.
-func (r *NetworkPeeringReconciler) reconcileDelete(ctx context.Context, peering *v1alpha1.WireflowNetworkPeering) (ctrl.Result, error) {
+func (r *NetworkPeeringReconciler) reconcileDelete(ctx context.Context, peering *v1alpha1.LatticeNetworkPeering) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.Info("Deleting WireflowNetworkPeering", "name", peering.Name)
+	log.Info("Deleting LatticeNetworkPeering", "name", peering.Name)
 
 	annotationKey := peeringRouteAnnotationKey(peering.Name)
 	shadowName := shadowPeerName(peering.Name)
@@ -173,19 +173,19 @@ func (r *NetworkPeeringReconciler) reconcileDelete(ctx context.Context, peering 
 
 	// Delete shadow peers and policies in both namespaces.
 	for _, ns := range []string{peering.Spec.NamespaceA, peering.Spec.NamespaceB} {
-		_ = r.deleteIfExists(ctx, &v1alpha1.WireflowPeer{}, ns, shadowName)
-		_ = r.deleteIfExists(ctx, &v1alpha1.WireflowPolicy{}, ns, gwAccessPolicyName(peering.Name))
-		_ = r.deleteIfExists(ctx, &v1alpha1.WireflowPolicy{}, ns, shadowPolicyName(peering.Name))
+		_ = r.deleteIfExists(ctx, &v1alpha1.LatticePeer{}, ns, shadowName)
+		_ = r.deleteIfExists(ctx, &v1alpha1.LatticePolicy{}, ns, gwAccessPolicyName(peering.Name))
+		_ = r.deleteIfExists(ctx, &v1alpha1.LatticePolicy{}, ns, shadowPolicyName(peering.Name))
 	}
 
 	controllerutil.RemoveFinalizer(peering, PeeringFinalizer)
 	return ctrl.Result{}, r.Update(ctx, peering)
 }
 
-// getReadyNetwork fetches a WireflowNetwork and returns an error if it is not
+// getReadyNetwork fetches a LatticeNetwork and returns an error if it is not
 // yet in Ready phase or if ActiveCIDR has not been allocated.
-func (r *NetworkPeeringReconciler) getReadyNetwork(ctx context.Context, ns, name string) (*v1alpha1.WireflowNetwork, error) {
-	var network v1alpha1.WireflowNetwork
+func (r *NetworkPeeringReconciler) getReadyNetwork(ctx context.Context, ns, name string) (*v1alpha1.LatticeNetwork, error) {
+	var network v1alpha1.LatticeNetwork
 	if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, &network); err != nil {
 		return nil, err
 	}
@@ -196,10 +196,10 @@ func (r *NetworkPeeringReconciler) getReadyNetwork(ctx context.Context, ns, name
 	return &network, nil
 }
 
-// findGateway returns the first WireflowPeer labeled wireflow.run/gateway=true
+// findGateway returns the first LatticePeer labeled alattice.io/gateway=true
 // in the given namespace that belongs to the given network.
-func (r *NetworkPeeringReconciler) findGateway(ctx context.Context, ns, networkName string) (*v1alpha1.WireflowPeer, error) {
-	var peerList v1alpha1.WireflowPeerList
+func (r *NetworkPeeringReconciler) findGateway(ctx context.Context, ns, networkName string) (*v1alpha1.LatticePeer, error) {
+	var peerList v1alpha1.LatticePeerList
 	if err := r.List(ctx, &peerList, client.InNamespace(ns), client.MatchingLabels{
 		LabelGateway:                 "true",
 		networkLabelKey(networkName): "true",
@@ -212,8 +212,8 @@ func (r *NetworkPeeringReconciler) findGateway(ctx context.Context, ns, networkN
 	return &peerList.Items[0], nil
 }
 
-// ensureAnnotation adds or updates a single annotation on a WireflowPeer.
-func (r *NetworkPeeringReconciler) ensureAnnotation(ctx context.Context, peer *v1alpha1.WireflowPeer, key, value string) error {
+// ensureAnnotation adds or updates a single annotation on a LatticePeer.
+func (r *NetworkPeeringReconciler) ensureAnnotation(ctx context.Context, peer *v1alpha1.LatticePeer, key, value string) error {
 	current := peer.GetAnnotations()
 	if current[key] == value {
 		return nil
@@ -226,8 +226,8 @@ func (r *NetworkPeeringReconciler) ensureAnnotation(ctx context.Context, peer *v
 	return r.Patch(ctx, peerCopy, client.MergeFrom(peer))
 }
 
-// removeAnnotation deletes a single annotation from a WireflowPeer.
-func (r *NetworkPeeringReconciler) removeAnnotation(ctx context.Context, peer *v1alpha1.WireflowPeer, key string) error {
+// removeAnnotation deletes a single annotation from a LatticePeer.
+func (r *NetworkPeeringReconciler) removeAnnotation(ctx context.Context, peer *v1alpha1.LatticePeer, key string) error {
 	if _, ok := peer.GetAnnotations()[key]; !ok {
 		return nil
 	}
@@ -236,18 +236,18 @@ func (r *NetworkPeeringReconciler) removeAnnotation(ctx context.Context, peer *v
 	return r.Patch(ctx, peerCopy, client.MergeFrom(peer))
 }
 
-// ensureShadowPeer creates or updates the shadow WireflowPeer that represents
+// ensureShadowPeer creates or updates the shadow LatticePeer that represents
 // srcGateway in the given target namespace.
 func (r *NetworkPeeringReconciler) ensureShadowPeer(
 	ctx context.Context,
-	peering *v1alpha1.WireflowNetworkPeering,
-	srcGateway *v1alpha1.WireflowPeer,
+	peering *v1alpha1.LatticeNetworkPeering,
+	srcGateway *v1alpha1.LatticePeer,
 	targetNS, targetNetwork, srcCIDR string,
 ) error {
 	name := shadowPeerName(peering.Name)
 	networkLabel := networkLabelKey(targetNetwork)
 
-	desired := &v1alpha1.WireflowPeer{
+	desired := &v1alpha1.LatticePeer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: targetNS,
@@ -259,14 +259,14 @@ func (r *NetworkPeeringReconciler) ensureShadowPeer(
 				AnnotationShadowAllowedIPs: srcCIDR,
 			},
 		},
-		Spec: v1alpha1.WireflowPeerSpec{
+		Spec: v1alpha1.LatticePeerSpec{
 			AppId:     srcGateway.Spec.AppId,
 			PublicKey: srcGateway.Spec.PublicKey,
 			PeerId:    srcGateway.Spec.PeerId,
 		},
 	}
 
-	var existing v1alpha1.WireflowPeer
+	var existing v1alpha1.LatticePeer
 	err := r.Get(ctx, types.NamespacedName{Namespace: targetNS, Name: name}, &existing)
 	if k8serrors.IsNotFound(err) {
 		if createErr := r.Create(ctx, desired); createErr != nil {
@@ -313,15 +313,15 @@ func (r *NetworkPeeringReconciler) ensureShadowPeer(
 //     peers get the gateway in ComputedPeers with expanded AllowedIPs).
 //  2. shadowPolicy    — allows the gateway to egress to shadow peers (so the
 //     gateway gets the remote shadow in ComputedPeers to establish the tunnel).
-func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *v1alpha1.WireflowNetworkPeering, networkName, ns string) error {
+func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *v1alpha1.LatticeNetworkPeering, networkName, ns string) error {
 	// Policy 1: all peers → gateway
-	gwPolicy := &v1alpha1.WireflowPolicy{
+	gwPolicy := &v1alpha1.LatticePolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gwAccessPolicyName(peering.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/peering": safeLabelValue(peering.Name)},
+			Labels:    map[string]string{"alattice.io/peering": safeLabelValue(peering.Name)},
 		},
-		Spec: v1alpha1.WireflowPolicySpec{
+		Spec: v1alpha1.LatticePolicySpec{
 			Network:      networkName,
 			PeerSelector: metav1.LabelSelector{}, // match all peers
 			Egress: []v1alpha1.EgressRule{
@@ -350,13 +350,13 @@ func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *
 	}
 
 	// Policy 2: gateway → shadow peers
-	shadowPolicy := &v1alpha1.WireflowPolicy{
+	shadowPolicy := &v1alpha1.LatticePolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      shadowPolicyName(peering.Name),
 			Namespace: ns,
-			Labels:    map[string]string{"wireflow.run/peering": safeLabelValue(peering.Name)},
+			Labels:    map[string]string{"alattice.io/peering": safeLabelValue(peering.Name)},
 		},
-		Spec: v1alpha1.WireflowPolicySpec{
+		Spec: v1alpha1.LatticePolicySpec{
 			Network: networkName,
 			PeerSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{LabelGateway: "true"},
@@ -375,7 +375,7 @@ func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *
 		},
 	}
 
-	for _, policy := range []*v1alpha1.WireflowPolicy{gwPolicy, shadowPolicy} {
+	for _, policy := range []*v1alpha1.LatticePolicy{gwPolicy, shadowPolicy} {
 		if err := r.applyPolicy(ctx, policy); err != nil {
 			return err
 		}
@@ -384,8 +384,8 @@ func (r *NetworkPeeringReconciler) ensurePolicies(ctx context.Context, peering *
 }
 
 // applyPolicy creates the policy if it does not exist, or patches it if the spec differs.
-func (r *NetworkPeeringReconciler) applyPolicy(ctx context.Context, desired *v1alpha1.WireflowPolicy) error {
-	var existing v1alpha1.WireflowPolicy
+func (r *NetworkPeeringReconciler) applyPolicy(ctx context.Context, desired *v1alpha1.LatticePolicy) error {
+	var existing v1alpha1.LatticePolicy
 	err := r.Get(ctx, client.ObjectKeyFromObject(desired), &existing)
 	if k8serrors.IsNotFound(err) {
 		return r.Create(ctx, desired)
@@ -409,7 +409,7 @@ func (r *NetworkPeeringReconciler) deleteIfExists(ctx context.Context, obj clien
 	return err
 }
 
-func (r *NetworkPeeringReconciler) setReady(ctx context.Context, peering *v1alpha1.WireflowNetworkPeering, cidrA, cidrB string) (ctrl.Result, error) {
+func (r *NetworkPeeringReconciler) setReady(ctx context.Context, peering *v1alpha1.LatticeNetworkPeering, cidrA, cidrB string) (ctrl.Result, error) {
 	copy := peering.DeepCopy()
 	copy.Status.Phase = v1alpha1.NetworkPhaseReady
 	copy.Status.CIDRA = cidrA
@@ -424,7 +424,7 @@ func (r *NetworkPeeringReconciler) setReady(ctx context.Context, peering *v1alph
 	return ctrl.Result{}, r.Status().Patch(ctx, copy, client.MergeFrom(peering))
 }
 
-func (r *NetworkPeeringReconciler) setError(ctx context.Context, peering *v1alpha1.WireflowNetworkPeering, msg string) (ctrl.Result, error) {
+func (r *NetworkPeeringReconciler) setError(ctx context.Context, peering *v1alpha1.LatticeNetworkPeering, msg string) (ctrl.Result, error) {
 	copy := peering.DeepCopy()
 	copy.Status.Phase = v1alpha1.NetworkPhaseFailed
 	copy.Status.Conditions = setCondition(copy.Status.Conditions, metav1.Condition{
@@ -460,11 +460,11 @@ func shadowPeerName(peeringName string) string {
 }
 
 func gwAccessPolicyName(peeringName string) string {
-	return fmt.Sprintf("wireflow-peering-%s-gw-access", peeringName)
+	return fmt.Sprintf("lattice-peering-%s-gw-access", peeringName)
 }
 
 func shadowPolicyName(peeringName string) string {
-	return fmt.Sprintf("wireflow-peering-%s-shadow", peeringName)
+	return fmt.Sprintf("lattice-peering-%s-shadow", peeringName)
 }
 
 // SetupWithManager registers the controller with the manager.
@@ -477,8 +477,8 @@ func (r *NetworkPeeringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldNet, ok1 := e.ObjectOld.(*v1alpha1.WireflowNetwork)
-			newNet, ok2 := e.ObjectNew.(*v1alpha1.WireflowNetwork)
+			oldNet, ok1 := e.ObjectOld.(*v1alpha1.LatticeNetwork)
+			newNet, ok2 := e.ObjectNew.(*v1alpha1.LatticeNetwork)
 			if !ok1 || !ok2 {
 				return false
 			}
@@ -488,23 +488,23 @@ func (r *NetworkPeeringReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.WireflowNetworkPeering{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.LatticeNetworkPeering{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Re-enqueue peerings when a gateway peer in either network comes online.
-		Watches(&v1alpha1.WireflowPeer{},
+		Watches(&v1alpha1.LatticePeer{},
 			handler.EnqueueRequestsFromMapFunc(r.mapPeerToPeerings),
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Re-enqueue only when a network's Phase or ActiveCIDR changes.
-		Watches(&v1alpha1.WireflowNetwork{},
+		Watches(&v1alpha1.LatticeNetwork{},
 			handler.EnqueueRequestsFromMapFunc(r.mapNetworkToPeerings),
 			builder.WithPredicates(networkReadyPredicate)).
 		Named("network-peering").
 		Complete(r)
 }
 
-// mapPeerToPeerings returns reconcile requests for all WireflowNetworkPeerings
+// mapPeerToPeerings returns reconcile requests for all LatticeNetworkPeerings
 // whose NamespaceA or NamespaceB matches the peer's namespace.
 func (r *NetworkPeeringReconciler) mapPeerToPeerings(ctx context.Context, obj client.Object) []reconcile.Request {
-	var list v1alpha1.WireflowNetworkPeeringList
+	var list v1alpha1.LatticeNetworkPeeringList
 	if err := r.List(ctx, &list); err != nil {
 		return nil
 	}
@@ -523,7 +523,7 @@ func (r *NetworkPeeringReconciler) mapPeerToPeerings(ctx context.Context, obj cl
 // mapNetworkToPeerings returns reconcile requests for peerings that reference
 // the changed network.
 func (r *NetworkPeeringReconciler) mapNetworkToPeerings(ctx context.Context, obj client.Object) []reconcile.Request {
-	var list v1alpha1.WireflowNetworkPeeringList
+	var list v1alpha1.LatticeNetworkPeeringList
 	if err := r.List(ctx, &list); err != nil {
 		return nil
 	}

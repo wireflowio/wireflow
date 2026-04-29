@@ -45,7 +45,7 @@ func (c *Node) StartHeartbeat(ctx context.Context) {
 	send := func() {
 		hbCtx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 		defer cancel()
-		if _, err := c.ctrClient.RequestNats(hbCtx, "wireflow.signals.peer", "heartbeat", data); err != nil {
+		if _, err := c.ctrClient.RequestNats(hbCtx, "lattice.signals.peer", "heartbeat", data); err != nil {
 			logger.Warn("heartbeat send failed", "err", err)
 		}
 	}

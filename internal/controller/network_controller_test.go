@@ -28,7 +28,7 @@ import (
 	"github.com/alatticeio/lattice/api/v1alpha1"
 )
 
-var _ = Describe("WireflowNetwork Controller", func() {
+var _ = Describe("LatticeNetwork Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -38,13 +38,13 @@ var _ = Describe("WireflowNetwork Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		network := &v1alpha1.WireflowNetwork{}
+		network := &v1alpha1.LatticeNetwork{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind WireflowNetwork")
+			By("creating the custom resource for the Kind LatticeNetwork")
 			err := k8sClient.Get(ctx, typeNamespacedName, network)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &v1alpha1.WireflowNetwork{
+				resource := &v1alpha1.LatticeNetwork{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -57,11 +57,11 @@ var _ = Describe("WireflowNetwork Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &v1alpha1.WireflowNetwork{}
+			resource := &v1alpha1.LatticeNetwork{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance WireflowNetwork")
+			By("Cleanup the specific resource instance LatticeNetwork")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {

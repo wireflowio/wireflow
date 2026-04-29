@@ -36,9 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// RelayReconciler reconciles WireflowRelayServer objects.
+// RelayReconciler reconciles LatticeRelayServer objects.
 // On every change it propagates the relay's TcpUrl / QuicUrl into the Spec of
-// every WireflowPeer that belongs to one of the relay's target namespaces
+// every LatticePeer that belongs to one of the relay's target namespaces
 // (or all namespaces when Namespaces is empty).  It also maintains a
 // per-peer label so cleanup on deletion is fast.
 type RelayReconciler struct {
@@ -46,15 +46,15 @@ type RelayReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowrelayservers,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowrelayservers/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowrelayservers/finalizers,verbs=update
-// +kubebuilder:rbac:groups=wireflowcontroller.wireflow.run,resources=wireflowpeers,verbs=get;list;watch;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticerelayservers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=alattice.io,resources=latticerelayservers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=alattice.io,resources=latticerelayservers/finalizers,verbs=update
+// +kubebuilder:rbac:groups=alattice.io,resources=latticepeers,verbs=get;list;watch;update;patch
 
 func (r *RelayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx).WithValues("relay", req.Name)
 
-	var relay v1alpha1.WireflowRelayServer
+	var relay v1alpha1.LatticeRelayServer
 	if err := r.Get(ctx, req.NamespacedName, &relay); err != nil {
 		if errors.IsNotFound(err) {
 			// Already deleted; peers were cleared by the finalizer path below.
@@ -123,10 +123,10 @@ func (r *RelayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	return ctrl.Result{RequeueAfter: 5 * time.Minute}, nil
 }
 
-// countConnectedPeers counts the WireflowPeers that are associated with this
+// countConnectedPeers counts the LatticePeers that are associated with this
 // relay via the RelayPeerLabel. Scope is limited to relay.Spec.Namespaces when
 // set, or all namespaces when empty.
-func (r *RelayReconciler) countConnectedPeers(ctx context.Context, relay *v1alpha1.WireflowRelayServer) (int, error) {
+func (r *RelayReconciler) countConnectedPeers(ctx context.Context, relay *v1alpha1.LatticeRelayServer) (int, error) {
 	selector := labels.SelectorFromSet(labels.Set{v1alpha1.RelayPeerLabel: relay.Name})
 	listOpts := []client.ListOption{client.MatchingLabelsSelector{Selector: selector}}
 
@@ -134,7 +134,7 @@ func (r *RelayReconciler) countConnectedPeers(ctx context.Context, relay *v1alph
 		listOpts = append(listOpts, client.InNamespace(relay.Spec.Namespaces[0]))
 	}
 
-	var peerList v1alpha1.WireflowPeerList
+	var peerList v1alpha1.LatticePeerList
 	if err := r.List(ctx, &peerList, listOpts...); err != nil {
 		return 0, err
 	}
@@ -162,7 +162,7 @@ func (r *RelayReconciler) clearPeers(ctx context.Context, relayName string) erro
 	log := logf.FromContext(ctx).WithValues("relay", relayName)
 
 	selector := labels.SelectorFromSet(labels.Set{v1alpha1.RelayPeerLabel: relayName})
-	var peerList v1alpha1.WireflowPeerList
+	var peerList v1alpha1.LatticePeerList
 	if err := r.List(ctx, &peerList, &client.ListOptions{LabelSelector: selector}); err != nil {
 		return err
 	}
@@ -181,7 +181,7 @@ func (r *RelayReconciler) clearPeers(ctx context.Context, relayName string) erro
 
 // SetupWithManager registers the reconciler with the controller-runtime manager.
 func (r *RelayReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	// Only react to WireflowRelayServer spec changes (GenerationChangedPredicate),
+	// Only react to LatticeRelayServer spec changes (GenerationChangedPredicate),
 	// not to status updates — status patches must not re-trigger reconcile.
 	relayLabelChangedPredicate := predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
@@ -200,17 +200,17 @@ func (r *RelayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.WireflowRelayServer{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&v1alpha1.LatticeRelayServer{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Re-count when a peer gains or loses the relay label.
-		Watches(&v1alpha1.WireflowPeer{},
+		Watches(&v1alpha1.LatticePeer{},
 			handler.EnqueueRequestsFromMapFunc(r.mapPeerToRelay),
 			builder.WithPredicates(relayLabelChangedPredicate)).
-		Named("wireflow-relay").
+		Named("lattice-relay").
 		Complete(r)
 }
 
 // mapPeerToRelay returns a reconcile request for the relay referenced by a
-// peer's RelayPeerLabel. Called when the label changes on a WireflowPeer.
+// peer's RelayPeerLabel. Called when the label changes on a LatticePeer.
 func (r *RelayReconciler) mapPeerToRelay(ctx context.Context, obj client.Object) []reconcile.Request {
 	// Check both old and new label values via the object passed by the watch.
 	// EnqueueRequestsFromMapFunc only receives the new object; for delete/update

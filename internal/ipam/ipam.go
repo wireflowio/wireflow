@@ -39,7 +39,7 @@ func NewIPAM(client client.Client) *IPAM {
 }
 
 // AllocateSubnet allocate a subnet for new network
-func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1alpha1.WireflowGlobalIPPool) (string, error) {
+func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1alpha1.LatticeGlobalIPPool) (string, error) {
 	const maxRetries = 10
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		// Re-query on every attempt to observe new allocations made by concurrent requests.
@@ -51,7 +51,7 @@ func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1a
 		subnetCIDR := fmt.Sprintf("%s/%d", ip.String(), pool.Spec.SubnetMask)
 		subnetName := fmt.Sprintf("subnet-%s", ipToHex(ip))
 
-		alloc := &v1alpha1.WireflowSubnetAllocation{
+		alloc := &v1alpha1.LatticeSubnetAllocation{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: subnetName,
 			},
@@ -83,7 +83,7 @@ func (m *IPAM) AllocateSubnet(ctx context.Context, networkName string, pool *v1a
 	return "", fmt.Errorf("no available subnet in pool")
 }
 
-func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.WireflowGlobalIPPool) (net.IP, error) {
+func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.LatticeGlobalIPPool) (net.IP, error) {
 
 	ip, ipnet, err := net.ParseCIDR(pool.Spec.CIDR)
 	if err != nil {
@@ -94,7 +94,7 @@ func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.WireflowGlobalI
 	startIP := ip.Mask(ipnet.Mask)
 
 	// 1. List all existing allocations from the Informer cache.
-	var allAllocations v1alpha1.WireflowSubnetAllocationList
+	var allAllocations v1alpha1.LatticeSubnetAllocationList
 	if err = m.client.List(ctx, &allAllocations); err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (m *IPAM) FindFirstFree(ctx context.Context, pool *v1alpha1.WireflowGlobalI
 	return nil, fmt.Errorf("no available subnet in pool")
 }
 
-func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork, peer *v1alpha1.WireflowPeer) (string, error) {
+func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.LatticeNetwork, peer *v1alpha1.LatticePeer) (string, error) {
 	// 1. Parse the network's assigned CIDR (e.g. 10.10.1.0/24).
 	ip, ipnet, err := net.ParseCIDR(network.Status.ActiveCIDR)
 	if err != nil {
@@ -124,7 +124,7 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 	}
 
 	// 2. List all occupied IP objects in the peer's namespace (tenant scope).
-	var existing v1alpha1.WireflowEndpointList
+	var existing v1alpha1.LatticeEndpointList
 	if err := m.client.List(ctx, &existing, client.InNamespace(peer.Namespace)); err != nil {
 		return "", err
 	}
@@ -157,13 +157,13 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 			continue // Already in use.
 		}
 
-		// 4. Atomically claim the IP by creating its WireflowEndpoint.
-		endpoint := &v1alpha1.WireflowEndpoint{
+		// 4. Atomically claim the IP by creating its LatticeEndpoint.
+		endpoint := &v1alpha1.LatticeEndpoint{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      hexName,
 				Namespace: peer.Namespace,
 			},
-			Spec: v1alpha1.WireflowEndpointSpec{
+			Spec: v1alpha1.LatticeEndpointSpec{
 				Address: currentIP.String(),
 				PeerRef: peer.Name,
 			},
@@ -187,7 +187,7 @@ func (m *IPAM) AllocateIP(ctx context.Context, network *v1alpha1.WireflowNetwork
 	return "", fmt.Errorf("no available IP addresses in network %s", network.Name)
 }
 
-// ReleaseIP deletes the WireflowEndpoint that holds the peer's allocated address,
+// ReleaseIP deletes the LatticeEndpoint that holds the peer's allocated address,
 // returning the IP to the pool. Safe to call when AllocatedAddress is nil.
 func (m *IPAM) ReleaseIP(ctx context.Context, namespace, allocatedAddress string) error {
 	if allocatedAddress == "" {
@@ -198,7 +198,7 @@ func (m *IPAM) ReleaseIP(ctx context.Context, namespace, allocatedAddress string
 		return nil
 	}
 	hexName := fmt.Sprintf("ip-%s", ipToHex(ip))
-	endpoint := &v1alpha1.WireflowEndpoint{
+	endpoint := &v1alpha1.LatticeEndpoint{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      hexName,
 			Namespace: namespace,

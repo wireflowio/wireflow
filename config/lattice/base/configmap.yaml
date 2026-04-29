@@ -16,5 +16,5 @@ data:
       secret: "your-super-secret-key"
       expire_hours: 24
 
-    signaling-url: "nats://wireflow-nats-service.wireflow-system.svc.cluster.local:4222"
+    signaling-url: "nats://wireflow-nats-service.lattice-system.svc.cluster.local:4222"
 

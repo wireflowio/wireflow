@@ -7,8 +7,8 @@ type PeeringDto struct {
 	// NamespaceB is the remote workspace's K8s namespace.
 	NamespaceB string `json:"namespaceB"`
 
-	// NetworkB is the WireflowNetwork name in NamespaceB.
-	// Defaults to "wireflow-default-net" when empty.
+	// NetworkB is the LatticeNetwork name in NamespaceB.
+	// Defaults to "lattice-default-net" when empty.
 	NetworkB string `json:"networkB,omitempty"`
 
 	// PeeringMode controls traffic forwarding: "gateway" (default) or "mesh".

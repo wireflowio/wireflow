@@ -4,8 +4,8 @@ kind: ClusterRole
 metadata:
   name: wf-resource-editor
 rules:
-  - apiGroups: ["wireflow.io"]
-    resources: ["wireflowpeers", "wireflownetworks", "wireflowpolicies"]
+  - apiGroups: ["lattice.io"]
+    resources: ["latticepeers", "latticenetworks", "latticepolicies"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
     resources: ["secrets", "configmaps"]

@@ -67,7 +67,7 @@ func (n *networkManager) CreateNetwork(ctx context.Context, opts *config.Network
 		return err
 	}
 
-	_, err = n.client.Request(ctx, "wireflow.signals.register", "create_network", bs)
+	_, err = n.client.Request(ctx, "lattice.signals.register", "create_network", bs)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (n *networkManager) JoinNetwork(ctx context.Context, opts *config.NetworkOp
 		return err
 	}
 
-	resp, err := n.client.Request(ctx, "wireflow.signals.register", "join_network", bs)
+	resp, err := n.client.Request(ctx, "lattice.signals.register", "join_network", bs)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (n *networkManager) LeaveNetwork(ctx context.Context, opts *config.NetworkO
 		return err
 	}
 
-	resp, err := n.client.Request(ctx, "wireflow.signals.register", "leave_network", bs)
+	resp, err := n.client.Request(ctx, "lattice.signals.register", "leave_network", bs)
 	if err != nil {
 		return err
 	}

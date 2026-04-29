@@ -20,11 +20,11 @@ func GenerateCommands(rules []Rule) ([]string, error) {
 	switch runtime.GOOS {
 	case "linux":
 		// 使用 nftables，建议先创建一个独立的 table 以便管理
-		cmds = append(cmds, "nft add table inet wireflow")
-		cmds = append(cmds, "nft add chain inet wireflow ingress { type filter hook input priority 0; policy drop; }")
+		cmds = append(cmds, "nft add table inet lattice")
+		cmds = append(cmds, "nft add chain inet lattice ingress { type filter hook input priority 0; policy drop; }")
 		for _, r := range rules {
 			cmds = append(cmds, fmt.Sprintf(
-				"nft add rule inet wireflow ingress ip saddr %s %s dport %d accept",
+				"nft add rule inet lattice ingress ip saddr %s %s dport %d accept",
 				r.RemoteIP, r.Protocol, r.Port,
 			))
 		}
@@ -42,7 +42,7 @@ func GenerateCommands(rules []Rule) ([]string, error) {
 		// Windows 使用 PowerShell 的 New-NetFirewallRule
 		for i, r := range rules {
 			cmds = append(cmds, fmt.Sprintf(
-				"New-NetFirewallRule -DisplayName 'Wireflow-%d' -Direction Inbound -Protocol %s -LocalPort %d -RemoteAddress %s -Action Allow",
+				"New-NetFirewallRule -DisplayName 'Lattice-%d' -Direction Inbound -Protocol %s -LocalPort %d -RemoteAddress %s -Action Allow",
 				i, strings.ToUpper(r.Protocol), r.Port, r.RemoteIP,
 			))
 		}

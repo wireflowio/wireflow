@@ -42,7 +42,7 @@ jobs:
         with:
           version: 10.32.1
 
-      # 只构建并推送 wireflowd（all-in-one）和 wireflow（边缘 agent）
+      # 只构建并推送 latticed（all-in-one）和 lattice（边缘 agent）
       - name: Build and Push Images
         run: |
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -55,10 +55,10 @@ jobs:
             TAG="pr-${{ github.event.pull_request.number }}"
           fi
 
-          make docker-build SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
-          make docker-build SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
-          make docker-push  SERVICE=wireflowd TAG="$TAG" REGISTRY="$REGISTRY"
-          make docker-push  SERVICE=wireflow  TAG="$TAG" REGISTRY="$REGISTRY"
+          make docker-build SERVICE=latticed TAG="$TAG" REGISTRY="$REGISTRY"
+          make docker-build SERVICE=lattice  TAG="$TAG" REGISTRY="$REGISTRY"
+          make docker-push  SERVICE=latticed TAG="$TAG" REGISTRY="$REGISTRY"
+          make docker-push  SERVICE=lattice  TAG="$TAG" REGISTRY="$REGISTRY"
 
   # 2. 在 Self-hosted 服务器上部署 all-in-one（仅 PR，不在 merge 后重复部署）
   deploy:
@@ -81,11 +81,11 @@ jobs:
 
           echo "🚀 Deploying pr-${{ github.event.pull_request.number }}"
           make undeploy-aio
-          make deploy-aio IMG="ghcr.io/${OWNER_LOWER}/wireflowd:${TAG}"
+          make deploy-aio IMG="ghcr.io/${OWNER_LOWER}/latticed:${TAG}"
 
 #      - name: Run E2E Tests
 #        if: contains(github.event.pull_request.labels.*.name, 'run-e2e')
 #        run: |
 #          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
 #          TAG="pr-${{ github.event.pull_request.number }}"
-#          make test-e2e LOCAL_AGENT_IMAGE="ghcr.io/${OWNER_LOWER}/wireflow:${TAG}"
+#          make test-e2e LOCAL_AGENT_IMAGE="ghcr.io/${OWNER_LOWER}/lattice:${TAG}"

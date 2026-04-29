@@ -5,7 +5,7 @@ metadata:
   namespace: auth
 data:
   config.yaml: |
-    issuer: http://wireflow-dex.wireflow-system.svc.cluster.local:5556/dex
+    issuer: http://lattice-dex.lattice-system.svc.cluster.local:5556/dex
     storage:
       type: kubernetes
       config:
@@ -20,10 +20,10 @@ data:
         name: Mock
     
     staticClients:
-      - id: wireflow-client
+      - id: lattice-client
         redirectURIs:
-          - 'http://your-wireflow-app.com/callback'
-        name: 'Wireflow API'
+          - 'http://your-lattice-app.com/callback'
+        name: 'Lattice API'
         secret: ZXhhbXBsZS1hcHAtc2VjcmV0 # 你的 Client Secret
 
     enablePasswordDB: true

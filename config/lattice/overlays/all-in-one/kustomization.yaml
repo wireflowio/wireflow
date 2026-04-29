@@ -13,7 +13,7 @@ kind: Kustomization
 #   kubectl apply -k config/wireflow/overlays/all-in-one
 # ─────────────────────────────────────────────────────────────────────────────
 
-namespace: wireflow-system
+namespace: lattice-system
 namePrefix: wireflow-
 
 resources:

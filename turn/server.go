@@ -26,7 +26,7 @@ import (
 	"github.com/pion/turn/v4"
 )
 
-const realm = "wireflow.run"
+const realm = "alattice.io"
 
 type TurnServer struct {
 	logger   *log.Logger

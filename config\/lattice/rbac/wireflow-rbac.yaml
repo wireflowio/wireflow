@@ -1,12 +1,12 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: wireflow-admin
+  name: lattice-admin
 rules:
   - apiGroups: [ "", "apps", "networking.k8s.io" ]
     resources: [ "pods", "deployments", "services", "ingresses", "configmaps", "secrets" ]
     verbs: [ "*" ]
-  - apiGroups: [ "wireflowcontroller.wireflow.run" ]
+  - apiGroups: [ "alattice.io" ]
     resources: [ "*" ]
     verbs: [ "*" ]
 
@@ -15,7 +15,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: wireflow-member
+  name: lattice-member
 rules:
   - apiGroups: [ "", "apps" ]
     resources: [ "pods", "services", "deployments" ]
@@ -23,7 +23,7 @@ rules:
   - apiGroups: [ "" ]
     resources: [ "configmaps" ]
     verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ ""wireflowcontroller.wireflow.run"" ]
+  - apiGroups: [ ""alattice.io"" ]
     resources: [ "*" ]
     verbs: [ "get", "list", "watch", "update" ]
 
@@ -32,12 +32,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: wireflow-viewer
+  name: lattice-viewer
 rules:
   - apiGroups: [ "", "apps", "networking.k8s.io" ]
     resources: [ "*" ]
     verbs: [ "get", "list", "watch" ]
-  - apiGroups: [ "wireflowcontroller.wireflow.run" ]
+  - apiGroups: [ "alattice.io" ]
     resources: [ "*" ]
     verbs: [ "get", "list", "watch" ]
 

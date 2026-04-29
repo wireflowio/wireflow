@@ -16,17 +16,17 @@ const (
 	PeeringModeMesh PeeringMode = "mesh"
 )
 
-// WireflowNetworkPeeringSpec declares a peering relationship between two networks
+// LatticeNetworkPeeringSpec declares a peering relationship between two networks
 // that may reside in different namespaces (workspaces).
-type WireflowNetworkPeeringSpec struct {
+type LatticeNetworkPeeringSpec struct {
 	// NamespaceA is the Kubernetes namespace of the first workspace.
 	NamespaceA string `json:"namespaceA"`
-	// NetworkA is the WireflowNetwork name in NamespaceA.
+	// NetworkA is the LatticeNetwork name in NamespaceA.
 	NetworkA string `json:"networkA"`
 
 	// NamespaceB is the Kubernetes namespace of the second workspace.
 	NamespaceB string `json:"namespaceB"`
-	// NetworkB is the WireflowNetwork name in NamespaceB.
+	// NetworkB is the LatticeNetwork name in NamespaceB.
 	NetworkB string `json:"networkB"`
 
 	// PeeringMode controls the traffic forwarding strategy.
@@ -35,10 +35,10 @@ type WireflowNetworkPeeringSpec struct {
 	PeeringMode PeeringMode `json:"peeringMode,omitempty"`
 }
 
-// WireflowNetworkPeeringStatus reports the observed state of the peering.
-type WireflowNetworkPeeringStatus struct {
+// LatticeNetworkPeeringStatus reports the observed state of the peering.
+type LatticeNetworkPeeringStatus struct {
 	// Phase summarises the peering lifecycle: Pending | Ready | Error.
-	Phase WireflowNetworkPhase `json:"phase,omitempty"`
+	Phase LatticeNetworkPhase `json:"phase,omitempty"`
 
 	// CIDRA is the ActiveCIDR of NetworkA, populated once the peering is Ready.
 	CIDRA string `json:"cidrA,omitempty"`
@@ -59,24 +59,24 @@ type WireflowNetworkPeeringStatus struct {
 // +kubebuilder:printcolumn:name="MODE",type="string",JSONPath=".spec.peeringMode"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
-// WireflowNetworkPeering connects two WireflowNetworks across different workspaces
+// LatticeNetworkPeering connects two LatticeNetworks across different workspaces
 // so their peers can communicate directly over WireGuard.
-type WireflowNetworkPeering struct {
+type LatticeNetworkPeering struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              WireflowNetworkPeeringSpec   `json:"spec,omitempty"`
-	Status            WireflowNetworkPeeringStatus `json:"status,omitempty"`
+	Spec              LatticeNetworkPeeringSpec   `json:"spec,omitempty"`
+	Status            LatticeNetworkPeeringStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// WireflowNetworkPeeringList contains a list of WireflowNetworkPeering.
-type WireflowNetworkPeeringList struct {
+// LatticeNetworkPeeringList contains a list of LatticeNetworkPeering.
+type LatticeNetworkPeeringList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowNetworkPeering `json:"items"`
+	Items           []LatticeNetworkPeering `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowNetworkPeering{}, &WireflowNetworkPeeringList{})
+	SchemeBuilder.Register(&LatticeNetworkPeering{}, &LatticeNetworkPeeringList{})
 }

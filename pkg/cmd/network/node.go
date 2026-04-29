@@ -33,7 +33,7 @@ func (n *networkManager) AddOrRmNode(ctx context.Context, networkId, action stri
 		return err
 	}
 
-	_, err = n.client.Request(ctx, "wireflow.signals.register", action+"_network", bs)
+	_, err = n.client.Request(ctx, "lattice.signals.register", action+"_network", bs)
 	if err != nil {
 		return err
 	}

@@ -10,30 +10,30 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +kubebuilder:printcolumn:name="AVAILABLE",type="integer",JSONPath=".status.availableSubnets"
 // +kubebuilder:printcolumn:name="USAGE",type="string",JSONPath=".status.usagePercentage"
 // +kubebuilder:resource:scope=Cluster,shortName=wfpool
-type WireflowGlobalIPPool struct {
+type LatticeGlobalIPPool struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              WireflowGlobalIPPoolSpec   `json:"spec"`
-	Status            WireflowGlobalIPPoolStatus `json:"status,omitempty"`
+	Spec              LatticeGlobalIPPoolSpec   `json:"spec"`
+	Status            LatticeGlobalIPPoolStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
 // +kubebuilder:resource:scope=Cluster
-type WireflowGlobalIPPoolList struct {
+type LatticeGlobalIPPoolList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowGlobalIPPool `json:"items"`
+	Items           []LatticeGlobalIPPool `json:"items"`
 }
 
-// WireflowGlobalIPPoolSpec define global ip pool
-type WireflowGlobalIPPoolSpec struct {
+// LatticeGlobalIPPoolSpec define global ip pool
+type LatticeGlobalIPPoolSpec struct {
 	CIDR       string `json:"cidr"`       // 例如 "10.0.0.0/8"
 	SubnetMask int    `json:"subnetMask"` // 每个 Network 分配多大，例如 24
 }
 
-// WireflowGlobalIPPoolStatus =
-type WireflowGlobalIPPoolStatus struct {
+// LatticeGlobalIPPoolStatus =
+type LatticeGlobalIPPoolStatus struct {
 	// TotalSubnets total subnets
 	TotalSubnets int `json:"totalSubnets"`
 
@@ -53,29 +53,29 @@ type WireflowGlobalIPPoolStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:shortName=wfsubnet
 
-// WireflowSubnetAllocation for store / search a network's cidr
+// LatticeSubnetAllocation for store / search a network's cidr
 // 它的 Name 格式定为: subnet-<hex-ip> (例如 subnet-0a0a0100)
 // +kubebuilder:resource:scope=Cluster,shortName=wfsubnet
-type WireflowSubnetAllocation struct {
+type LatticeSubnetAllocation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              WireflowSubnetAllocationSpec `json:"spec"`
+	Spec              LatticeSubnetAllocationSpec `json:"spec"`
 }
 
 // +kubebuilder:object:root=true
 
-type WireflowSubnetAllocationList struct {
+type LatticeSubnetAllocationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []WireflowSubnetAllocation `json:"items"`
+	Items           []LatticeSubnetAllocation `json:"items"`
 }
 
-type WireflowSubnetAllocationSpec struct {
+type LatticeSubnetAllocationSpec struct {
 	NetworkName string `json:"networkName"` // 归属于哪个 Network
 	CIDR        string `json:"cidr"`        // 实际分配的段，如 10.10.1.0/24
 }
 
 func init() {
-	SchemeBuilder.Register(&WireflowGlobalIPPool{}, &WireflowGlobalIPPoolList{})
-	SchemeBuilder.Register(&WireflowSubnetAllocation{}, &WireflowSubnetAllocationList{})
+	SchemeBuilder.Register(&LatticeGlobalIPPool{}, &LatticeGlobalIPPoolList{})
+	SchemeBuilder.Register(&LatticeSubnetAllocation{}, &LatticeSubnetAllocationList{})
 }

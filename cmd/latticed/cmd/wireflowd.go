@@ -30,14 +30,14 @@ import (
 
 const embeddedNATSPort = 4222
 
-func runWireflowd(flags *config.Config) error {
+func runLatticed(flags *config.Config) error {
 	// 1. 创建全局上下文，响应系统信号（Ctrl+C）
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
 	g, ctx := errgroup.WithContext(ctx)
 
-	fmt.Println("Wireflowd is starting all-in-one mode...")
+	fmt.Println("Latticed is starting all-in-one mode...")
 
 	// 2. 启动嵌入式 NATS (基础设施)；natsReady 在 NATS 就绪后关闭
 	natsReady := make(chan struct{})
@@ -55,7 +55,7 @@ func runWireflowd(flags *config.Config) error {
 
 	// 4. 启动 K8s 控制器和业务管理器 (逻辑层)
 	g.Go(func() error {
-		fmt.Println("Starting Wireflow Controllers...")
+		fmt.Println("Starting Lattice Controllers...")
 		return controller.Start(flags)
 	})
 
@@ -66,7 +66,7 @@ func runWireflowd(flags *config.Config) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
-		fmt.Println("Starting Wireflow Manager...")
+		fmt.Println("Starting Lattice Manager...")
 		// all-in-one 模式下，若用户未配置 signaling-url，则使用内嵌 NATS 地址
 		if flags.SignalingURL == "" {
 			flags.SignalingURL = fmt.Sprintf("nats://localhost:%d", embeddedNATSPort)
@@ -75,12 +75,12 @@ func runWireflowd(flags *config.Config) error {
 	})
 
 	// 5. 等待所有组件运行，或者其中一个报错退出
-	fmt.Println("All systems go! Wireflowd is ready.")
+	fmt.Println("All systems go! Latticed is ready.")
 
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("wireflowd stopped with error: %w", err)
+		return fmt.Errorf("latticed stopped with error: %w", err)
 	}
 
-	fmt.Println("Wireflowd stopped gracefully.")
+	fmt.Println("Latticed stopped gracefully.")
 	return nil
 }

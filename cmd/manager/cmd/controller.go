@@ -32,7 +32,7 @@ func newControllerCmd() *cobra.Command {
 		Short:        "controller",
 		Use:          "controller [command]",
 		SilenceUsage: true,
-		Long:         `wireflow core controller for CRDs reconcile`,
+		Long:         `lattice core controller for CRDs reconcile`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 1. 检查用户是否传了 --save
 			save, _ := cmd.Flags().GetBool("save")

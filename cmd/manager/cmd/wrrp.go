@@ -26,8 +26,8 @@ func newWrrpCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:          "wrrper",
 		SilenceUsage: true,
-		Short:        "wrrp using as relay server for wireflow",
-		Long:         `wrrp using as relay server for wireflow`,
+		Short:        "wrrp using as relay server for lattice",
+		Long:         `wrrp using as relay server for lattice`,
 
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return nil

@@ -23,7 +23,7 @@ import (
 	"github.com/alatticeio/lattice/internal/log"
 )
 
-var errProRequired = errors.New("TURN server is a Wireflow Pro feature — upgrade at https://wireflow.run/pro")
+var errProRequired = errors.New("TURN server is a Lattice Pro feature — upgrade at https://alattice.io/pro")
 
 // TurnServerConfig mirrors the Pro struct so cmd/manager/cmd/turn.go compiles in community builds.
 type TurnServerConfig struct {

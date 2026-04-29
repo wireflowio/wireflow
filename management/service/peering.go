@@ -33,7 +33,7 @@ func NewPeeringService(c *resource.Client, st store.Store) PeeringService {
 	return &peeringService{client: c, store: st}
 }
 
-// List returns all WireflowNetworkPeerings that involve the current workspace's namespace.
+// List returns all LatticeNetworkPeerings that involve the current workspace's namespace.
 func (s *peeringService) List(ctx context.Context) ([]vo.PeeringVo, error) {
 	wsID, _ := ctx.Value(infra.WorkspaceKey).(string)
 	ws, err := s.store.Workspaces().GetByID(ctx, wsID)
@@ -42,7 +42,7 @@ func (s *peeringService) List(ctx context.Context) ([]vo.PeeringVo, error) {
 	}
 	currentNs := ws.Namespace
 
-	var list v1alpha1.WireflowNetworkPeeringList
+	var list v1alpha1.LatticeNetworkPeeringList
 	if err := s.client.GetAPIReader().List(ctx, &list); err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (s *peeringService) List(ctx context.Context) ([]vo.PeeringVo, error) {
 	return vos, nil
 }
 
-// Create creates a new WireflowNetworkPeering between the current workspace and the remote.
+// Create creates a new LatticeNetworkPeering between the current workspace and the remote.
 func (s *peeringService) Create(ctx context.Context, d *dto.PeeringDto) (*vo.PeeringVo, error) {
 	wsID, _ := ctx.Value(infra.WorkspaceKey).(string)
 	ws, err := s.store.Workspaces().GetByID(ctx, wsID)
@@ -102,10 +102,10 @@ func (s *peeringService) Create(ctx context.Context, d *dto.PeeringDto) (*vo.Pee
 		return nil, fmt.Errorf("local network: %w", err)
 	}
 
-	// Remote network defaults to wireflow-default-net.
+	// Remote network defaults to lattice-default-net.
 	netB := d.NetworkB
 	if netB == "" {
-		netB = "wireflow-default-net"
+		netB = "lattice-default-net"
 	}
 
 	// Auto-generate name if not provided.
@@ -121,11 +121,11 @@ func (s *peeringService) Create(ctx context.Context, d *dto.PeeringDto) (*vo.Pee
 		mode = v1alpha1.PeeringModeGateway
 	}
 
-	peering := &v1alpha1.WireflowNetworkPeering{
+	peering := &v1alpha1.LatticeNetworkPeering{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: v1alpha1.WireflowNetworkPeeringSpec{
+		Spec: v1alpha1.LatticeNetworkPeeringSpec{
 			NamespaceA:  nsA,
 			NetworkA:    netA,
 			NamespaceB:  nsB,
@@ -158,31 +158,31 @@ func (s *peeringService) Create(ctx context.Context, d *dto.PeeringDto) (*vo.Pee
 	return result, nil
 }
 
-// Delete removes a WireflowNetworkPeering by name.
+// Delete removes a LatticeNetworkPeering by name.
 func (s *peeringService) Delete(ctx context.Context, name string) error {
-	var peering v1alpha1.WireflowNetworkPeering
+	var peering v1alpha1.LatticeNetworkPeering
 	if err := s.client.GetAPIReader().Get(ctx, client.ObjectKey{Name: name}, &peering); err != nil {
 		return err
 	}
 	return s.client.Delete(ctx, &peering)
 }
 
-// defaultNetwork returns the first WireflowNetwork found in the namespace,
-// preferring "wireflow-default-net".
+// defaultNetwork returns the first LatticeNetwork found in the namespace,
+// preferring "lattice-default-net".
 func (s *peeringService) defaultNetwork(ctx context.Context, ns string) (string, error) {
-	var list v1alpha1.WireflowNetworkList
+	var list v1alpha1.LatticeNetworkList
 	if err := s.client.GetAPIReader().List(ctx, &list, client.InNamespace(ns)); err != nil {
 		return "", err
 	}
 	for _, n := range list.Items {
-		if n.Name == "wireflow-default-net" {
+		if n.Name == "lattice-default-net" {
 			return n.Name, nil
 		}
 	}
 	if len(list.Items) > 0 {
 		return list.Items[0].Name, nil
 	}
-	return "wireflow-default-net", nil
+	return "lattice-default-net", nil
 }
 
 // buildEndpoint enriches a WorkspaceEndpointVo with CIDR and peer count from K8s.
@@ -192,15 +192,15 @@ func (s *peeringService) buildEndpoint(ctx context.Context, ns, networkName stri
 		Namespace: ns,
 	}
 
-	var network v1alpha1.WireflowNetwork
+	var network v1alpha1.LatticeNetwork
 	if err := s.client.GetAPIReader().Get(ctx, client.ObjectKey{Namespace: ns, Name: networkName}, &network); err == nil {
 		ep.CIDR = network.Status.ActiveCIDR
 	}
 
-	var peerList v1alpha1.WireflowPeerList
+	var peerList v1alpha1.LatticePeerList
 	if err := s.client.GetAPIReader().List(ctx, &peerList, client.InNamespace(ns)); err == nil {
 		for _, p := range peerList.Items {
-			if p.GetLabels()["wireflow.run/shadow"] != "true" {
+			if p.GetLabels()["alattice.io/shadow"] != "true" {
 				ep.NodeCount++
 			}
 		}
@@ -208,7 +208,7 @@ func (s *peeringService) buildEndpoint(ctx context.Context, ns, networkName stri
 	return ep
 }
 
-// phaseToStatus maps WireflowNetworkPhase to the frontend status string.
+// phaseToStatus maps LatticeNetworkPhase to the frontend status string.
 func phaseToStatus(phase string) string {
 	switch phase {
 	case string(v1alpha1.NetworkPhaseReady):

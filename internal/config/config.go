@@ -14,7 +14,7 @@
 
 // Package config 实现统一的配置中心，采用"洋葱模型"加载优先级：
 //
-//	默认值 < wireflow.yaml < wireflow.{env}.yaml < 环境变量(WIREFLOW_*) < 命令行参数
+//	默认值 < lattice.yaml < lattice.{env}.yaml < 环境变量(LATTICE_*) < 命令行参数
 //	                                               < K8s 服务发现兜底（仅空值生效）
 //
 // 推荐调用方式（在 cmd 的 PersistentPreRunE 中）：
@@ -77,7 +77,7 @@ func NewConfigManager() *ConfigManager { return GetManager() }
 type ConfigManager struct {
 	v    *viper.Viper
 	once sync.Once
-	dir  string // 解析后的配置目录（由 --config-dir / WIREFLOW_CONFIG_DIR / 默认值决定）
+	dir  string // 解析后的配置目录（由 --config-dir / LATTICE_CONFIG_DIR / 默认值决定）
 }
 
 // Viper 暴露底层实例，供需要精细控制的调用方使用。
@@ -86,9 +86,9 @@ func (cm *ConfigManager) Viper() *viper.Viper { return cm.v }
 // Load 按"洋葱模型"加载配置，只执行一次（幂等）。
 //
 //  1. 硬编码默认值
-//  2. wireflow.yaml（基础配置）
-//  3. wireflow.{env}.yaml（环境差异配置，MergeInConfig）
-//  4. 环境变量（WIREFLOW_ 前缀）
+//  2. lattice.yaml（基础配置）
+//  3. lattice.{env}.yaml（环境差异配置，MergeInConfig）
+//  4. 环境变量（LATTICE_ 前缀）
 //  5. 命令行参数（BindPFlags，最高优先级）
 //  6. K8s 服务发现兜底（仅对仍为空的字段生效）
 //  7. 数据库驱动推断
@@ -105,7 +105,7 @@ func (cm *ConfigManager) LoadConf(cmd *cobra.Command) error { return cm.Load(cmd
 
 // Save 将当前内存配置（含所有层的合并结果）写回配置文件。
 func (cm *ConfigManager) Save() error {
-	path := cm.dir + "/wireflow.yaml"
+	path := cm.dir + "/lattice.yaml"
 	if err := cm.v.WriteConfig(); err != nil {
 		return cm.v.WriteConfigAs(path)
 	}
@@ -118,7 +118,7 @@ func (cm *ConfigManager) Save() error {
 // 对比 Save()：Save() 写入 Viper 全部已知键（含默认值）；
 // SaveChangedFlags() 只写入本次 --xxx 参数中实际使用的键。
 func (cm *ConfigManager) SaveChangedFlags(cmd *cobra.Command) error {
-	path := cm.dir + "/wireflow.yaml"
+	path := cm.dir + "/lattice.yaml"
 	if err := os.MkdirAll(cm.dir, 0o755); err != nil {
 		return fmt.Errorf("create config dir: %w", err)
 	}
@@ -152,8 +152,8 @@ func (cm *ConfigManager) load(cmd *cobra.Command) error {
 	// ── 确定运行环境（提前 peek，不依赖完整加载）────────────────
 	env := peekEnv(cmd)
 
-	// ── 第二层：wireflow.yaml ─────────────────────────────────────
-	baseFile := cm.dir + "/wireflow.yaml"
+	// ── 第二层：lattice.yaml ─────────────────────────────────────
+	baseFile := cm.dir + "/lattice.yaml"
 	v.SetConfigFile(baseFile)
 	if _, err := os.Stat(baseFile); os.IsNotExist(err) {
 		log.Info("config file not found, writing defaults", "path", baseFile)
@@ -168,8 +168,8 @@ func (cm *ConfigManager) load(cmd *cobra.Command) error {
 		log.Warn("failed to read config file, ignoring", "err", err)
 	}
 
-	// ── 第三层：wireflow.{env}.yaml ──────────────────────────────
-	envFile := fmt.Sprintf("%s/wireflow.%s.yaml", cm.dir, env)
+	// ── 第三层：lattice.{env}.yaml ──────────────────────────────
+	envFile := fmt.Sprintf("%s/lattice.%s.yaml", cm.dir, env)
 	v.SetConfigFile(envFile)
 	if _, err := os.Stat(envFile); err == nil {
 		if err := v.MergeInConfig(); err != nil {
@@ -181,8 +181,8 @@ func (cm *ConfigManager) load(cmd *cobra.Command) error {
 	// 重置回 baseFile，确保后续 WriteConfig / Save 写入正确路径
 	v.SetConfigFile(baseFile)
 
-	// ── 第四层：环境变量（WIREFLOW_APP_LISTEN, WIREFLOW_SIGNALING_URL …）
-	v.SetEnvPrefix("WIREFLOW")
+	// ── 第四层：环境变量（LATTICE_APP_LISTEN, LATTICE_SIGNALING_URL …）
+	v.SetEnvPrefix("LATTICE")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
@@ -213,7 +213,7 @@ func (cm *ConfigManager) load(cmd *cobra.Command) error {
 	log.Debug("config loaded", "env", env, "listen", GlobalConfig.Listen, "driver", GlobalConfig.Database.Driver)
 
 	// ── --save：把本次命令行显式指定的参数持久化回配置文件 ───────
-	// 典型用法：wireflow up --signaling-url nats://x:4222 --server-url http://y --save
+	// 典型用法：lattice up --signaling-url nats://x:4222 --server-url http://y --save
 	if f := cmd.Flags().Lookup("save"); f != nil && f.Value.String() == "true" {
 		if err := cm.SaveChangedFlags(cmd); err != nil {
 			log.Warn("failed to save config", "err", err)
@@ -233,12 +233,12 @@ func (cm *ConfigManager) load(cmd *cobra.Command) error {
 // Config 是整个项目的统一配置结构体。
 //
 // 顶层扁平字段对应 CLI flag 名（BindPFlags 直接映射）；
-// 嵌套子结构体对应 YAML 中的块（也可通过 WIREFLOW_APP_NAME 等环境变量覆盖）。
+// 嵌套子结构体对应 YAML 中的块（也可通过 LATTICE_APP_NAME 等环境变量覆盖）。
 //
 // 三个关键连接字段均无硬编码默认值，必须由用户显式提供：
-//   - SignalingURL（NATS 信令，即 nats_url）：--signaling-url / WIREFLOW_SIGNALING_URL / NATS_SERVICE_HOST
-//   - ServerUrl  （Manager API，即 manager_api_url）：--server-url / WIREFLOW_SERVER_URL / WIREFLOW_MANAGER_SERVICE_HOST
-//   - Database.DSN：缺省时自动退化为本地 SQLite（wireflow.db），无需额外配置
+//   - SignalingURL（NATS 信令，即 nats_url）：--signaling-url / LATTICE_SIGNALING_URL / NATS_SERVICE_HOST
+//   - ServerUrl  （Manager API，即 manager_api_url）：--server-url / LATTICE_SERVER_URL / LATTICE_MANAGER_SERVICE_HOST
+//   - Database.DSN：缺省时自动退化为本地 SQLite（lattice.db），无需额外配置
 //
 // 多子服务端口分配约定（All-in-One 模式）：
 //   - Management API  → Listen      (默认 :8080)
@@ -266,7 +266,7 @@ type Config struct {
 
 	// ServerUrl 是 Manager API 地址（对应需求中的 manager_api_url）。
 	// agent 用于注册、获取 Token、上报状态等控制面操作。
-	// K8s 场景：由 WIREFLOW_MANAGER_SERVICE_HOST 等环境变量自动补全。
+	// K8s 场景：由 LATTICE_MANAGER_SERVICE_HOST 等环境变量自动补全。
 	ServerUrl     string `mapstructure:"server-url"`
 	WrrperURL     string `mapstructure:"wrrper-url"`    // Wrrper relay 地址，默认 :6266
 	WrrpQuicURL   string `mapstructure:"wrrp-quic-url"` // QUIC relay server address
@@ -296,7 +296,7 @@ type Config struct {
 	MetricsCertName      string `mapstructure:"metrics-cert-name"`
 	MetricsCertKey       string `mapstructure:"metrics-cert-key"`
 
-	// ── 服务端嵌套配置（YAML 块，环境变量 WIREFLOW_APP_*/WIREFLOW_DATABASE_* 覆盖）
+	// ── 服务端嵌套配置（YAML 块，环境变量 LATTICE_APP_*/LATTICE_DATABASE_* 覆盖）
 	App       AppConfig       `mapstructure:"app"`
 	Database  DatabaseConfig  `mapstructure:"database"`
 	Monitor   MonitorConfig   `mapstructure:"monitor"`
@@ -310,24 +310,24 @@ type Config struct {
 // AI 功能为弱依赖：Enabled=false 或 APIKey 为空时所有 /api/v1/ai/* 接口返回 503。
 type AIConfig struct {
 	// Enabled 是否启用 AI 功能，默认 false。
-	// 对应环境变量: WIREFLOW_AI_ENABLED
+	// 对应环境变量: LATTICE_AI_ENABLED
 	Enabled bool `mapstructure:"enabled"`
 
 	// Provider 指定 LLM 服务商：anthropic（默认）、deepseek、openai，
 	// 或配合 base-url 使用任意 OpenAI 兼容服务。
-	// 对应环境变量: WIREFLOW_AI_PROVIDER
+	// 对应环境变量: LATTICE_AI_PROVIDER
 	Provider string `mapstructure:"provider"`
 
 	// APIKey 服务商 API Key。
-	// 对应环境变量: WIREFLOW_AI_API_KEY
+	// 对应环境变量: LATTICE_AI_API_KEY
 	APIKey string `mapstructure:"api-key"`
 
 	// Model 指定模型名称，留空时各 Provider 使用内置默认值。
-	// 对应环境变量: WIREFLOW_AI_MODEL
+	// 对应环境变量: LATTICE_AI_MODEL
 	Model string `mapstructure:"model"`
 
 	// BaseURL 自定义 API 端点，用于 DeepSeek、私有部署或 API 中转代理。
-	// 对应环境变量: WIREFLOW_AI_BASE_URL
+	// 对应环境变量: LATTICE_AI_BASE_URL
 	BaseURL string `mapstructure:"base-url"`
 
 	// MaxToolCalls 单轮对话最大工具调用次数，默认 5。
@@ -352,9 +352,9 @@ type AdminConfig struct {
 // DatabaseConfig 数据库连接配置。
 //
 // 多环境 DSN 策略（对应需求中的 database_dsn 逻辑）：
-//   - DSN 为空（默认）→ Driver 自动设为 "sqlite"，db.NewStore 使用 wireflow.db；适合开发/开源场景。
+//   - DSN 为空（默认）→ Driver 自动设为 "sqlite"，db.NewStore 使用 lattice.db；适合开发/开源场景。
 //   - DSN 含 @tcp( / mysql:// / mariadb:// → Driver 自动推断为 "mariadb"，兼容 MySQL 协议。
-//   - 可通过 WIREFLOW_DATABASE_DSN / WIREFLOW_DATABASE_DRIVER 环境变量显式覆盖。
+//   - 可通过 LATTICE_DATABASE_DSN / LATTICE_DATABASE_DRIVER 环境变量显式覆盖。
 type DatabaseConfig struct {
 	Driver string `mapstructure:"driver"`
 	DSN    string `mapstructure:"dsn"`
@@ -426,7 +426,7 @@ func ValidateConfig(cfg *Config) error {
 //	<SERVICE_NAME>_SERVICE_PORT=<Port>
 //
 // 其中 Service 名中的 "-" 替换为 "_" 并全部大写。
-// 例如：Service "nats" → NATS_SERVICE_HOST；Service "wireflow-manager" → WIREFLOW_MANAGER_SERVICE_HOST。
+// 例如：Service "nats" → NATS_SERVICE_HOST；Service "lattice-manager" → LATTICE_MANAGER_SERVICE_HOST。
 func applyK8sFallbacks(cfg *Config) {
 	// ── NATS 信令地址 ─────────────────────────────────────────────
 	if cfg.SignalingURL == "" {
@@ -443,8 +443,8 @@ func applyK8sFallbacks(cfg *Config) {
 	// ── Manager API 地址：依次检测常见 Service 名对应的环境变量 ──
 	if cfg.ServerUrl == "" {
 		for _, prefix := range []string{
-			"WIREFLOW_MANAGER", // Service: wireflow-manager
-			"WIREFLOW_API",     // Service: wireflow-api
+			"LATTICE_MANAGER", // Service: lattice-manager
+			"LATTICE_API",     // Service: lattice-api
 			"MANAGER",          // Service: manager
 		} {
 			if host := os.Getenv(prefix + "_SERVICE_HOST"); host != "" {
@@ -463,7 +463,7 @@ func applyK8sFallbacks(cfg *Config) {
 // inferDatabaseDriver 根据 DSN 内容推断数据库驱动，处理用户未显式指定 driver 的场景。
 //
 // 推断规则：
-//   - DSN 为空 → driver="sqlite"（db.NewStore 自动使用 wireflow.db，零额外依赖）
+//   - DSN 为空 → driver="sqlite"（db.NewStore 自动使用 lattice.db，零额外依赖）
 //   - DSN 含 @tcp( 或前缀 mysql:// / mariadb:// → driver="mariadb"（MySQL 兼容协议）
 //   - 其他 DSN 格式（file:、*.db 路径等）→ driver="sqlite"
 //
@@ -472,7 +472,7 @@ func inferDatabaseDriver(cfg *Config) {
 	db := &cfg.Database
 
 	if db.DSN == "" {
-		// 无 DSN → 开源/开发默认：SQLite，db.NewStore 使用 "wireflow.db"
+		// 无 DSN → 开源/开发默认：SQLite，db.NewStore 使用 "lattice.db"
 		db.Driver = "sqlite"
 		return
 	}
@@ -502,22 +502,22 @@ func inferDatabaseDriver(cfg *Config) {
 // ─────────────────────────────────────────────
 
 // GetConfigFilePath 返回主配置文件路径（向后兼容）。
-func GetConfigFilePath() string { return GetManager().dir + "/wireflow.yaml" }
+func GetConfigFilePath() string { return GetManager().dir + "/lattice.yaml" }
 
 // peekConfigDir 在完整加载之前提前获取配置目录，优先级：
-// --config-dir > WIREFLOW_CONFIG_DIR > ~/.wireflow
+// --config-dir > LATTICE_CONFIG_DIR > ~/.lattice
 func peekConfigDir(cmd *cobra.Command) string {
 	if f := cmd.Flags().Lookup("config-dir"); f != nil && f.Changed {
 		return f.Value.String()
 	}
-	if dir := os.Getenv("WIREFLOW_CONFIG_DIR"); dir != "" {
+	if dir := os.Getenv("LATTICE_CONFIG_DIR"); dir != "" {
 		return dir
 	}
 	home, _ := os.UserHomeDir()
 	if home == "/" {
-		return "/etc/wireflow"
+		return "/etc/lattice"
 	}
-	return home + "/.wireflow"
+	return home + "/.lattice"
 }
 
 // ─────────────────────────────────────────────
@@ -540,11 +540,11 @@ func setDefaults(v *viper.Viper) {
 	// 关键连接地址：不设硬编码默认值，空值即"未配置"语义：
 	//   signaling-url = ""  → 信令服务不可用（server 端降级，agent 端 ValidateConfig 报错）
 	//   server-url    = ""  → Manager API 未知（agent 端 ValidateConfig 报错）
-	//   database.dsn  = ""  → 自动退化为本地 SQLite wireflow.db（inferDatabaseDriver 处理）
+	//   database.dsn  = ""  → 自动退化为本地 SQLite lattice.db（inferDatabaseDriver 处理）
 	v.SetDefault("signaling-url", "")
 	v.SetDefault("server-url", "")
 
-	v.SetDefault("stun-url", "stun.wireflow.run:3478")
+	v.SetDefault("stun-url", "stun.alattice.io:3478")
 	v.SetDefault("wrrper-url", ":6266")
 	v.SetDefault("wrrp-quic-url", "")
 	v.SetDefault("port", 3478)
@@ -578,7 +578,7 @@ func peekEnv(cmd *cobra.Command) string {
 	if f := cmd.Flags().Lookup("env"); f != nil && f.Changed {
 		return f.Value.String()
 	}
-	if e := os.Getenv("WIREFLOW_ENV"); e != "" {
+	if e := os.Getenv("LATTICE_ENV"); e != "" {
 		return e
 	}
 	return "dev"

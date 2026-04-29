@@ -88,7 +88,7 @@ func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
 	defer pfMu.Unlock()
 
 	var sb strings.Builder
-	anchor := "wireflow"
+	anchor := "lattice"
 
 	if err := ensurePFReady(anchor); err != nil {
 		return err
@@ -125,7 +125,7 @@ func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
 	}
 
 	// 3. 将规则写入临时文件并加载到 anchor
-	tmpFile := "/tmp/wireflow.pf"
+	tmpFile := "/tmp/lattice.pf"
 	if err := os.WriteFile(tmpFile, []byte(sb.String()), 0644); err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
 }
 
 func (p *ruleProvisioner) Cleanup() error {
-	return exec.Command("sudo", "pfctl", "-a", "wireflow", "-F", "all").Run()
+	return exec.Command("sudo", "pfctl", "-a", "lattice", "-F", "all").Run()
 }
 
 func (r *ruleProvisioner) SetupNAT(interfaceName string) error {

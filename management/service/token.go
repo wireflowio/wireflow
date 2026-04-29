@@ -40,7 +40,7 @@ func (t *tokenService) Delete(ctx context.Context, token string) error {
 		return err
 	}
 
-	res := &v1alpha1.WireflowEnrollmentToken{
+	res := &v1alpha1.LatticeEnrollmentToken{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      token,
 			Namespace: workspace.Namespace,

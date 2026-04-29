@@ -23,7 +23,7 @@ spec:
             - name: MARIADB_ROOT_PASSWORD
               value: "root"
             - name: MARIADB_DATABASE
-              value: "wireflow"
+              value: "lattice"
           ports:
             - containerPort: 3306
           resources:

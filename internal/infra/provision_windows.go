@@ -52,13 +52,13 @@ func (r *ruleProvisioner) Name() string {
 
 func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
 	// 1. 清理旧规则 (基于 Name 前缀)
-	r.execPS("Remove-NetFirewallRule -DisplayName 'Wireflow-*'")
+	r.execPS("Remove-NetFirewallRule -DisplayName 'Lattice-*'")
 
 	// 2. 处理 Ingress
 	for i, tr := range rule.Ingress {
 		ips := strings.Join(tr.Peers, ",")
 		cmd := fmt.Sprintf(
-			"New-NetFirewallRule -DisplayName 'Wireflow-In-%d' -Direction Inbound -Action Allow -Protocol %s -LocalPort %d -RemoteAddress %s",
+			"New-NetFirewallRule -DisplayName 'Lattice-In-%d' -Direction Inbound -Action Allow -Protocol %s -LocalPort %d -RemoteAddress %s",
 			i, strings.ToUpper(tr.Protocol), tr.Port, ips,
 		)
 		if err := r.execPS(cmd); err != nil {
@@ -70,7 +70,7 @@ func (r *ruleProvisioner) Provision(rule *FirewallRule) error {
 	for i, tr := range rule.Egress {
 		ips := strings.Join(tr.Peers, ",")
 		cmd := fmt.Sprintf(
-			"New-NetFirewallRule -DisplayName 'Wireflow-Out-%d' -Direction Outbound -Action Allow -Protocol %s -RemotePort %d -RemoteAddress %s",
+			"New-NetFirewallRule -DisplayName 'Lattice-Out-%d' -Direction Outbound -Action Allow -Protocol %s -RemotePort %d -RemoteAddress %s",
 			i, strings.ToUpper(tr.Protocol), tr.Port, ips,
 		)
 		if err := r.execPS(cmd); err != nil {

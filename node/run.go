@@ -39,13 +39,13 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
-// Start start wireflow
+// Start start lattice
 // nolint:all
 func Start(ctx context.Context, flags *config.Config) error {
 	log.SetLevel(flags.Level)
-	logger := log.GetLogger("wireflow")
+	logger := log.GetLogger("lattice")
 
-	if flags.EnableDaemon && os.Getenv("WIREFLOW_DAEMON") == "" {
+	if flags.EnableDaemon && os.Getenv("LATTICE_DAEMON") == "" {
 		return startDaemon(flags, logger)
 	}
 
@@ -58,7 +58,7 @@ func Start(ctx context.Context, flags *config.Config) error {
 		Flags:         flags,
 	}
 
-	// 写 PID 文件，让 wireflow stop 能发 SIGTERM
+	// 写 PID 文件，让 lattice stop 能发 SIGTERM
 	pidPath := pidFilePath(flags.InterfaceName)
 	if err := writePIDFile(pidPath); err != nil {
 		logger.Warn("failed to write PID file", "err", err)
@@ -156,33 +156,33 @@ func Start(ctx context.Context, flags *config.Config) error {
 		}
 	})
 
-	logger.Info("wireflow started")
+	logger.Info("lattice started")
 
 	if err = g.Wait(); err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("wireflow exited with error", err)
+		logger.Error("lattice exited with error", err)
 	}
 
 	if stopErr := c.Stop(); stopErr != nil {
-		logger.Warn("wireflow stop error", "err", stopErr)
+		logger.Warn("lattice stop error", "err", stopErr)
 	}
-	logger.Info("wireflow shutting down")
+	logger.Info("lattice shutting down")
 
 	return nil
 }
 
 // startDaemon forks the current process as a background daemon and exits the parent.
 func startDaemon(flags *config.Config, logger *log.Logger) error {
-	fmt.Println("Run wireflow in daemon mode")
+	fmt.Println("Run lattice in daemon mode")
 
 	var logDir string
 	switch runtime.GOOS {
 	case "darwin":
 		home, _ := os.UserHomeDir()
-		logDir = filepath.Join(home, "Library/Logs/wireflow")
+		logDir = filepath.Join(home, "Library/Logs/lattice")
 	case "windows":
-		logDir = `C:\ProgramData\wireflow\logs`
+		logDir = `C:\ProgramData\lattice\logs`
 	default:
-		logDir = "/var/log/wireflow"
+		logDir = "/var/log/lattice"
 	}
 
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -191,7 +191,7 @@ func startDaemon(flags *config.Config, logger *log.Logger) error {
 
 	var stdout, stderr *os.File
 	if flags.Level != "" && flags.Level != "silent" {
-		f, err := os.OpenFile(filepath.Join(logDir, "wireflow.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		f, err := os.OpenFile(filepath.Join(logDir, "lattice.log"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return fmt.Errorf("failed to open log file: %w", err)
 		}
@@ -205,7 +205,7 @@ func startDaemon(flags *config.Config, logger *log.Logger) error {
 	attr := &os.ProcAttr{
 		Files: []*os.File{devNull, stdout, stderr},
 		Dir:   ".",
-		Env:   append(os.Environ(), "WIREFLOW_DAEMON=true"),
+		Env:   append(os.Environ(), "LATTICE_DAEMON=true"),
 	}
 
 	path, err := os.Executable()
@@ -233,7 +233,7 @@ func startDaemon(flags *config.Config, logger *log.Logger) error {
 	return nil // unreachable
 }
 
-// Stop sends SIGTERM to the running wireflow daemon via its PID file.
+// Stop sends SIGTERM to the running lattice daemon via its PID file.
 func Stop(flags *config.Config) error {
 	interfaceName := flags.InterfaceName
 	if interfaceName == "" {
@@ -246,7 +246,7 @@ func Stop(flags *config.Config) error {
 			return err
 		}
 		if len(ifaces) == 0 {
-			return fmt.Errorf("wireflow daemon is not running, no interfaces found")
+			return fmt.Errorf("lattice daemon is not running, no interfaces found")
 		}
 		interfaceName = ifaces[0].Name
 	}
@@ -254,7 +254,7 @@ func Stop(flags *config.Config) error {
 	pidPath := pidFilePath(interfaceName)
 	data, err := os.ReadFile(pidPath)
 	if err != nil {
-		return fmt.Errorf("failed to read PID file %s: %w (is wireflow running?)", pidPath, err)
+		return fmt.Errorf("failed to read PID file %s: %w (is lattice running?)", pidPath, err)
 	}
 
 	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
@@ -271,7 +271,7 @@ func Stop(flags *config.Config) error {
 		return fmt.Errorf("failed to send SIGTERM to PID %d: %w", pid, err)
 	}
 
-	fmt.Printf("sent SIGTERM to wireflow daemon (interface: %s, PID: %d)\n", interfaceName, pid)
+	fmt.Printf("sent SIGTERM to lattice daemon (interface: %s, PID: %d)\n", interfaceName, pid)
 	return nil
 }
 

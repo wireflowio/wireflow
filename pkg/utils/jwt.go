@@ -94,7 +94,7 @@ func GenerateBusinessJWT(userID, email, username, systemRole string) (string, er
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "wireflow-bff",
+			Issuer:    "lattice-bff",
 			Subject:   userID,
 		},
 	}

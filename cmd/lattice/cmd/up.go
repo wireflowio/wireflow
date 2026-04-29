@@ -33,22 +33,22 @@ var log = wflog.GetLogger("node")
 func upCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "up",
-		Short: "Connect this node to a Wireflow workspace",
-		Long: `Start the Wireflow node and establish a WireGuard tunnel to the workspace
+		Short: "Connect this node to a Lattice workspace",
+		Long: `Start the Lattice node and establish a WireGuard tunnel to the workspace
 identified by the enrollment token. The node will register with the management
 server, negotiate peer connections via the signaling server, and apply the
 workspace's network policies.
 
-Configuration is read from ~/.wireflow/config.yaml. CLI flags override file values.
+Configuration is read from ~/.lattice/config.yaml. CLI flags override file values.
 Use --save to persist the current flags back to the config file.`,
 		Example: `  # minimal startup
-  wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url>
+  lattice up --token <token> --server-url <server-url> --signaling-url <signaling-url>
 
   # save flags to config file for future runs
-  wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url> --save
+  lattice up --token <token> --server-url <server-url> --signaling-url <signaling-url> --save
 
   # enable the WRRP relay for restrictive NAT environments
-  wireflow up --token <token> --server-url <server-url> --signaling-url <signaling-url> --enable-wrrp --wrrper-url <wrrp-url>`,
+  lattice up --token <token> --server-url <server-url> --signaling-url <signaling-url> --enable-wrrp --wrrper-url <wrrp-url>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

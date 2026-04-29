@@ -25,7 +25,7 @@ func TestClient_GetRelayInfo(t *testing.T) {
 	t.Run("TestClient_GetRelayInfo", func(t *testing.T) {
 
 		client, err := NewClient(&ClientConfig{
-			ServerUrl: "stun.wireflow.run:3478",
+			ServerUrl: "stun.alattice.io:3478",
 			Logger:    log.GetLogger("turn-client"),
 		})
 

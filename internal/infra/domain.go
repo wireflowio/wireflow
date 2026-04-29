@@ -23,10 +23,10 @@ var ShowNetLog bool
 const (
 	DefaultMTU = 1280
 	// ConsoleDomain domain for service
-	ConsoleDomain         = "http://console.wireflow.run"
-	ManagementDomain      = "console.wireflow.run"
-	SignalingDomain       = "signaling.wireflow.run"
-	TurnServerDomain      = "stun.wireflow.run"
+	ConsoleDomain         = "http://console.alattice.io"
+	ManagementDomain      = "console.alattice.io"
+	SignalingDomain       = "signaling.alattice.io"
+	TurnServerDomain      = "stun.alattice.io"
 	DefaultManagementPort = 6060
 	DefaultSignalingPort  = 4222
 	DEFAULT_WRRP_PORT     = 6266

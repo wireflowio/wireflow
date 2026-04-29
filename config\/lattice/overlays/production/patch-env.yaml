@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wireflow-manager
+  name: lattice-manager
 spec:
   template:
     spec:
@@ -13,4 +13,4 @@ spec:
         - name: LOG_LEVEL
           value: "warn"  # 生产环境只看警告和错误
         - name: DEX_ISSUER_URL
-          value: "https://auth.wireflow.io/dex" # 生产环境必须用 HTTPS 域名
+          value: "https://auth.lattice.io/dex" # 生产环境必须用 HTTPS 域名

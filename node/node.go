@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package agent implements the Wireflow data-plane node.
+// Package agent implements the Lattice data-plane node.
 // It wraps a WireGuard device and handles peer discovery, NAT traversal,
 // and network provisioning on behalf of the local host.
 package node
@@ -41,7 +41,7 @@ var (
 	_ infra.NodeInterface = (*Node)(nil)
 )
 
-// Node is the Wireflow data-plane node. It owns the WireGuard device and
+// Node is the Lattice data-plane node. It owns the WireGuard device and
 // coordinates peer discovery, ICE/WRRP hole-punching, and OS network
 // provisioning (routes, iptables rules, WireGuard peer config).
 type Node struct {
@@ -241,7 +241,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 
 	// Subscribe to this node's NATS signaling subject. All incoming ICE and
 	// WRRP signal packets are routed to probeFactory.Handle for dispatch.
-	if err = natsSignalService.Subscribe(fmt.Sprintf("%s.%s", "wireflow.signals.peers", localIdentity), node.probeFactory.Handle); err != nil {
+	if err = natsSignalService.Subscribe(fmt.Sprintf("%s.%s", "lattice.signals.peers", localIdentity), node.probeFactory.Handle); err != nil {
 		return nil, err
 	}
 
@@ -309,7 +309,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	node.token = cfg.Token
 
 	// Re-register and re-apply the network map whenever NATS reconnects.
-	// This covers the case where wireflow-aio restarts and loses all node state.
+	// This covers the case where lattice-aio restarts and loses all node state.
 	// The handler reads GetNetworkMap at call time (not at setup time), so it
 	// works even though GetNetworkMap is assigned externally after NewAgent returns.
 	natsSignalService.SetReconnectedHandler(func() {

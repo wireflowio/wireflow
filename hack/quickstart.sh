@@ -5,7 +5,7 @@ set -euo pipefail
 
 # ═══════════════════════════ Config ═══════════════════════════
 CLUSTER_NAME="wireflow"
-NAMESPACE="wireflow-system"
+NAMESPACE="lattice-system"
 GITHUB_RAW="https://raw.githubusercontent.com/wireflowio/wireflow/master"
 API_PORT=8080
 NATS_PORT=4222
@@ -116,9 +116,9 @@ for crd in \
 done
 ok "CRDs applied"
 
-info "Creating namespace wireflow-system"
-kubectl create ns wireflow-system > /dev/null
-ok "Namespace wireflow-system created"
+info "Creating namespace lattice-system"
+kubectl create ns lattice-system > /dev/null
+ok "Namespace lattice-system created"
 
 info "Applying app manifest (RBAC + Service + Deployment)..."
 kubectl apply -f "${GITHUB_RAW}/deploy/quickstart/wireflow-all-in-one.yaml" >/dev/null

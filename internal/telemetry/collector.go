@@ -14,7 +14,7 @@
 
 //go:build pro
 
-// Package telemetry provides a lightweight, push-only metric pipeline for wireflow-agent.
+// Package telemetry provides a lightweight, push-only metric pipeline for lattice-agent.
 //
 // # Architecture
 //
@@ -39,7 +39,7 @@
 //	func (m *MyMetrics) Name() string { return "my_metrics" }
 //	func (m *MyMetrics) Scrape(ctx context.Context, id Identity, nowMs int64) ([]Sample, error) {
 //	    return []Sample{
-//	        NewSample("wireflow_my_gauge",
+//	        NewSample("lattice_my_gauge",
 //	            Labels{"peer_id": id.PeerID, "network_id": id.NetworkID},
 //	            42.0, nowMs),
 //	    }, nil

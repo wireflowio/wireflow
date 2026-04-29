@@ -27,7 +27,7 @@ func NewTokenCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "token <sub-command>",
 		Short: "Manage enrollment tokens",
-		Long:  `Tokens authorize agents to join a workspace. Agents use tokens during 'wireflow up'.`,
+		Long:  `Tokens authorize agents to join a workspace. Agents use tokens during 'lattice up'.`,
 		Args:  cobra.MinimumNArgs(1),
 	}
 	cmd.AddCommand(tokenCreateCmd(), tokenListCmd(), tokenRemoveCmd())
@@ -46,10 +46,10 @@ func tokenCreateCmd() *cobra.Command {
     
 params description:
   token-name    token name`,
-		Example: `   wireflow token create dev-team
+		Example: `   lattice token create dev-team
   
   # set token limit and expiry time
-wireflow token create dev-team --limit 5 --expiry 168h -n wireflow-system`,
+lattice token create dev-team --limit 5 --expiry 168h -n lattice-system`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tokenName := args[0]
@@ -75,7 +75,7 @@ func runCreate(namespace, name, expiry string) error {
 	return client.CreateToken(namespace, name, expiry)
 }
 
-// tokenListCmd: wireflow token list [-n <namespace>]
+// tokenListCmd: lattice token list [-n <namespace>]
 func tokenListCmd() *cobra.Command {
 	var namespace string
 	c := &cobra.Command{
@@ -83,10 +83,10 @@ func tokenListCmd() *cobra.Command {
 		Short:   "List enrollment tokens",
 		Aliases: []string{"ls"},
 		Example: `  # all tokens
-  wireflow token list
+  lattice token list
 
   # tokens in a specific workspace
-  wireflow token list -n wf-550e8400-e29b-41d4-a716-446655440000`,
+  lattice token list -n wf-550e8400-e29b-41d4-a716-446655440000`,
 		RunE: func(c *cobra.Command, args []string) error {
 			client, err := cmd.NewClient(config.Conf.SignalingURL)
 			if err != nil {
@@ -99,14 +99,14 @@ func tokenListCmd() *cobra.Command {
 	return c
 }
 
-// tokenRemoveCmd: wireflow token remove <token> -n <namespace>
+// tokenRemoveCmd: lattice token remove <token> -n <namespace>
 func tokenRemoveCmd() *cobra.Command {
 	var namespace string
 	c := &cobra.Command{
 		Use:     "remove <token>",
 		Short:   "Revoke an enrollment token",
 		Aliases: []string{"rm", "delete"},
-		Example: `  wireflow token remove dev-team -n wireflow-system`,
+		Example: `  lattice token remove dev-team -n lattice-system`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
 			client, err := cmd.NewClient(config.Conf.SignalingURL)

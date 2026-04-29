@@ -20,8 +20,8 @@ const (
 	TOKEN    string = "token"
 )
 
-// User is a wireflow user, will be used to login and store token in local
-// user use token to fetch config from wireflow center
+// User is a lattice user, will be used to login and store token in local
+// user use token to fetch config from lattice center
 type User struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

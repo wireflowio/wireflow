@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/alatticeio/lattice/internal/infra"
+	nats2 "github.com/alatticeio/lattice/management/nats"
 	"github.com/alatticeio/lattice/management/transport"
 	"github.com/alatticeio/lattice/pkg/utils"
-	"os"
-	nats2 "wireflow/management/nats"
-	"wireflow/wrrper"
+	"github.com/alatticeio/lattice/wrrper"
 
 	"golang.zx2c4.com/wireguard/conn"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
@@ -69,7 +70,7 @@ func main() {
 		}
 	}()
 
-	if err = nats.Subscribe(fmt.Sprintf("%s.%s", "wireflow.signals.peers", localId), probeFactory.Handle); err != nil {
+	if err = nats.Subscribe(fmt.Sprintf("%s.%s", "lattice.signals.peers", localId), probeFactory.Handle); err != nil {
 		panic(err)
 	}
 
