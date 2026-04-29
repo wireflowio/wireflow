@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/transport"
+	"github.com/alatticeio/lattice/pkg/utils"
 	"os"
-	"wireflow/internal/infra"
 	nats2 "wireflow/management/nats"
-	"wireflow/management/transport"
-	"wireflow/pkg/utils"
 	"wireflow/wrrper"
 
 	"golang.zx2c4.com/wireguard/conn"

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 
-	"wireflow/internal/infra"
+	"github.com/alatticeio/lattice/internal/infra"
 )
 
 // WireGuardScraper collects per-peer WireGuard counters and computes aggregated

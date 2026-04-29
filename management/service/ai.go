@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"wireflow/api/v1alpha1"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/llm"
-	managementnats "wireflow/management/nats"
-	"wireflow/management/resource"
+	"github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/llm"
+	managementnats "github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/management/resource"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -47,7 +47,7 @@ type StreamWriter interface {
 
 // AuditFinding is a single security issue found during an audit scan.
 type AuditFinding struct {
-	Severity    string `json:"severity"`    // high | medium | low
+	Severity    string `json:"severity"` // high | medium | low
 	Rule        string `json:"rule"`
 	Resource    string `json:"resource"`
 	Description string `json:"description"`

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@ package management
 
 import (
 	"context"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/management/server"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	"wireflow/internal/config"
-	"wireflow/internal/log"
-	"wireflow/management/server"
 
 	"golang.org/x/sync/errgroup"
 )

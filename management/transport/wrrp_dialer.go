@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,12 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/pkg/wrrp"
 	"sync"
 	"time"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/pkg/wrrp"
 
 	"github.com/pion/ice/v4"
 	"google.golang.org/protobuf/proto"

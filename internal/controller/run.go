@@ -3,9 +3,10 @@ package controller
 import (
 	"crypto/tls"
 	"path/filepath"
-	"wireflow/api/v1alpha1"
-	"wireflow/internal/config"
-	"wireflow/internal/ipam"
+
+	"github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/ipam"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"

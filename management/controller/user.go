@@ -2,13 +2,14 @@ package controller
 
 import (
 	"context"
-	"wireflow/internal/config"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	"wireflow/management/service"
-	"wireflow/management/vo"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/management/vo"
 )
 
 type UserController interface {

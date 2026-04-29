@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/controller"
+	"github.com/alatticeio/lattice/internal/db"
+	internalnats "github.com/alatticeio/lattice/internal/nats"
+	"github.com/alatticeio/lattice/management"
 	"os/signal"
 	"syscall"
-	"wireflow/internal/config"
-	"wireflow/internal/controller"
-	"wireflow/internal/db"
-	internalnats "wireflow/internal/nats"
-	"wireflow/management"
 
 	"golang.org/x/sync/errgroup"
 )

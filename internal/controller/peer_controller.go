@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/ipam"
 	"reflect"
 	"strings"
 	"time"
-	"wireflow/internal/infra"
-	"wireflow/internal/ipam"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"wireflow/api/v1alpha1"
+	"github.com/alatticeio/lattice/api/v1alpha1"
 )
 
 // PeerReconciler reconciles a WireflowPeer object
@@ -597,7 +597,6 @@ func (r *PeerReconciler) lastReconcile(ctx context.Context, peer *v1alpha1.Wiref
 	}
 	return ctrl.Result{}, nil
 }
-
 
 func (r *PeerReconciler) newConfigmap(namespace, configMapName, message, hash string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package network
 import (
 	"context"
 	"encoding/json"
-	"wireflow/management/dto"
+	"github.com/alatticeio/lattice/management/dto"
 )
 
 // 指定网络里添加节点

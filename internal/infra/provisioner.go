@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,10 @@ package infra
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/log"
 	"strconv"
 	"strings"
 	"sync"
-	"wireflow/internal/log"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"

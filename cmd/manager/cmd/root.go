@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/alatticeio/lattice/internal/config"
 	"os"
-	"wireflow/internal/config"
 
 	"github.com/spf13/cobra"
 )

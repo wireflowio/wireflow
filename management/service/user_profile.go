@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/models"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
 )
 
 // ProfileService 定义个人信息业务接口

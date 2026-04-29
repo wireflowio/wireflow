@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
 package turn
 
 import (
+	"github.com/alatticeio/lattice/internal/log"
 	"testing"
-	"wireflow/internal/log"
 )
 
 func TestClient_GetRelayInfo(t *testing.T) {

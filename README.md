@@ -5,14 +5,14 @@
 **Cloud-Native WireGuard Network Orchestration**
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wireflowio/wireflow)](https://goreportcard.com/report/github.com/wireflowio/wireflow)
-[![Release](https://img.shields.io/github/v/release/wireflowio/wireflow)](https://github.com/wireflowio/wireflow/releases/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alatticeio/lattice)](https://goreportcard.com/report/github.com/alatticeio/lattice)
+[![Release](https://img.shields.io/github/v/release/wireflowio/wireflow)](https://github.com/alatticeio/lattice/releases/latest)
 [![Docker](https://img.shields.io/docker/pulls/wireflowio/wireflow)](https://hub.docker.com/r/wireflowio/wireflow)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 Wireflow simplifies the construction of encrypted overlay networks across multi-cloud, cross-datacenter, and edge environments — without touching firewalls or exposing public IPs.
 
-[**Website**](https://wireflow.run) · [**Documentation**](https://wireflow.run/docs) · [**Issues**](https://github.com/wireflowio/wireflow/issues)
+[**Website**](https://wireflow.run) · [**Documentation**](https://wireflow.run/docs) · [**Issues**](https://github.com/alatticeio/lattice/issues)
 
 </div>
 
@@ -66,7 +66,7 @@ The script will:
 **Existing cluster (kustomize):**
 
 ```bash
-kubectl apply -k https://github.com/wireflowio/wireflow/config/wireflow/overlays/all-in-one
+kubectl apply -k https://github.com/alatticeio/lattice/config/wireflow/overlays/all-in-one
 ```
 
 ---
@@ -253,7 +253,7 @@ wireflow policy remove <name> -n <namespace> --signaling-url nats://localhost:42
 Uninstall the control plane from Kubernetes:
 
 ```bash
-kubectl delete -k https://github.com/wireflowio/wireflow/config/wireflow/overlays/all-in-one
+kubectl delete -k https://github.com/alatticeio/lattice/config/wireflow/overlays/all-in-one
 ```
 
 ---
@@ -334,7 +334,7 @@ database:
 ### Build from source
 
 ```bash
-git clone https://github.com/wireflowio/wireflow.git
+git clone https://github.com/alatticeio/lattice.git
 cd wireflow
 make build-all
 ```
@@ -345,7 +345,7 @@ make build-all
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
 
-<a href="https://github.com/wireflowio/wireflow/graphs/contributors">
+<a href="https://github.com/alatticeio/lattice/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=wireflowio/wireflow" />
 </a>
 

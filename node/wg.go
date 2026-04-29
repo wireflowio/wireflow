@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,12 +20,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/wferrors"
 	"io"
 	"net"
 	"os"
 	"syscall"
-	"wireflow/internal/log"
-	"wireflow/internal/wferrors"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/ipc"

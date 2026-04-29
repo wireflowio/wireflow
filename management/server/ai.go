@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"wireflow/management/server/middleware"
-	"wireflow/management/service"
-	"wireflow/pkg/utils/resp"
+	"github.com/alatticeio/lattice/management/server/middleware"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )

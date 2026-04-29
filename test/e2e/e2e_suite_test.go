@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	wireflowv1 "github.com/alatticeio/lattice/api/v1alpha1"
 	"testing"
-	wireflowv1 "wireflow/api/v1alpha1"
 
 	"path/filepath"
 

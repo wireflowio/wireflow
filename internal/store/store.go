@@ -6,9 +6,9 @@ package store
 import (
 	"context"
 
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	"wireflow/management/vo"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/vo"
 )
 
 // Store 是顶层存储抽象，聚合所有子 Repository。

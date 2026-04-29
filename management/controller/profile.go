@@ -2,9 +2,10 @@ package controller
 
 import (
 	"context"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/service"
+
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/service"
 )
 
 type ProfileController interface {

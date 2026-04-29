@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"wireflow/api/v1alpha1"
+	"github.com/alatticeio/lattice/api/v1alpha1"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -201,7 +201,7 @@ func (r *NetworkPeeringReconciler) getReadyNetwork(ctx context.Context, ns, name
 func (r *NetworkPeeringReconciler) findGateway(ctx context.Context, ns, networkName string) (*v1alpha1.WireflowPeer, error) {
 	var peerList v1alpha1.WireflowPeerList
 	if err := r.List(ctx, &peerList, client.InNamespace(ns), client.MatchingLabels{
-		LabelGateway: "true",
+		LabelGateway:                 "true",
 		networkLabelKey(networkName): "true",
 	}); err != nil {
 		return nil, err
@@ -252,8 +252,8 @@ func (r *NetworkPeeringReconciler) ensureShadowPeer(
 			Name:      name,
 			Namespace: targetNS,
 			Labels: map[string]string{
-				LabelShadow:   "true",
-				networkLabel:  "true",
+				LabelShadow:  "true",
+				networkLabel: "true",
 			},
 			Annotations: map[string]string{
 				AnnotationShadowAllowedIPs: srcCIDR,

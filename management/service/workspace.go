@@ -3,15 +3,15 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	client_r "github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/vo"
+	"github.com/alatticeio/lattice/pkg/utils"
 	"time"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	client_r "wireflow/management/resource"
-	"wireflow/management/vo"
-	"wireflow/pkg/utils"
 
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"wireflow/api/v1alpha1"
+	"github.com/alatticeio/lattice/api/v1alpha1"
 )
 
 type WorkspaceService interface {

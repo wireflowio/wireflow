@@ -2,7 +2,7 @@ package llm
 
 import (
 	"fmt"
-	"wireflow/internal/config"
+	"github.com/alatticeio/lattice/internal/config"
 )
 
 // NewClient creates an LLMClient from the AI configuration.

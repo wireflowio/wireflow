@@ -1,7 +1,7 @@
 # Wireflow - 云原生 WireGuard 网络管理平台
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wireflowio/wireflow)](https://goreportcard.com/report/github.com/wireflowio/wireflow)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alatticeio/lattice)](https://goreportcard.com/report/github.com/alatticeio/lattice)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## 项目简介
@@ -131,7 +131,7 @@ k3d cluster delete wireflow
 ### 从源码构建
 
 ```bash
-git clone [https://github.com/wireflowio/wireflow.git](https://github.com/wireflowio/wireflow.git)
+git clone [https://github.com/alatticeio/lattice.git](https://github.com/alatticeio/lattice.git)
 cd wireflow
 make build-all
 ```

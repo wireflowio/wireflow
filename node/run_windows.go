@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-// // Copyright 2025 The Wireflow Authors, Inc.
+// // Copyright 2025 The Lattice Authors, Inc.
 // //
 // // Licensed under the Apache License, Version 2.0 (the "License");
 // // you may not use this file except in compliance with the License.
@@ -19,16 +19,16 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"golang.zx2c4.com/wireguard/ipc"
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"wireflow/dns"
-	"wireflow/internal/config"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"golang.zx2c4.com/wireguard/ipc"
-	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 func Start(ctx context.Context, flags *config.Config) error {

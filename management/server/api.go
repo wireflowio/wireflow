@@ -1,14 +1,14 @@
 package server
 
 import (
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/web"
+	"github.com/alatticeio/lattice/management/dex"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/server/middleware"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 	"strings"
-	"wireflow/internal/infra"
-	"wireflow/internal/web"
-	"wireflow/management/dex"
-	"wireflow/management/dto"
-	"wireflow/management/server/middleware"
-	"wireflow/management/service"
-	"wireflow/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

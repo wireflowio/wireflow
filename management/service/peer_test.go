@@ -2,8 +2,9 @@ package service
 
 import (
 	"testing"
-	"wireflow/internal/config"
-	"wireflow/pkg/utils"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/pkg/utils"
 )
 
 func TestToken(t *testing.T) {

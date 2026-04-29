@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ import (
 	"crypto/tls"
 	"net"
 	"time"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/pkg/wrrp"
+
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/pkg/wrrp"
 
 	"github.com/quic-go/quic-go"
 	wgconn "golang.zx2c4.com/wireguard/conn"

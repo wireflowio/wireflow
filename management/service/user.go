@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"wireflow/internal/config"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	"wireflow/management/vo"
-	"wireflow/pkg/utils"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/vo"
+	"github.com/alatticeio/lattice/pkg/utils"
 
 	"gorm.io/gorm"
 )

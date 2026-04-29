@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 
-	"wireflow/internal/infra"
-	"wireflow/management/dto"
-	"wireflow/management/service"
-	"wireflow/pkg/utils/resp"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )

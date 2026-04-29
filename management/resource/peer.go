@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	v1alpha1 "wireflow/api/v1alpha1"
-	"wireflow/internal/infra"
-	"wireflow/management/dto"
+	v1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/dto"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	corev1 "k8s.io/api/core/v1"
@@ -193,7 +193,6 @@ func (c *Client) GetNetworkMap(ctx context.Context, tokenStr, name string) (*inf
 	logger.Info("Get network map success", "namespace", token.Namespace, "name", name, "message", message)
 	return message, nil
 }
-
 
 // CreateNetwork create a network
 func (c *Client) CreateNetwork(ctx context.Context, networkId, cidr string) (*v1alpha1.WireflowNetwork, error) {

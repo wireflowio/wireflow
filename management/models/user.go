@@ -1,6 +1,6 @@
 package models
 
-import "wireflow/management/dto"
+import "github.com/alatticeio/lattice/management/dto"
 
 // User 结构体：对应用户名密码以及外部 SSO 同步进来的用户
 type User struct {

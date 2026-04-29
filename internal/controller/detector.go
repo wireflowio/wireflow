@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@ package controller
 import (
 	"context"
 	"fmt"
+	v1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/infra"
 	"sort"
 	"sync"
 	"time"
-	v1alpha1 "wireflow/api/v1alpha1"
-	"wireflow/internal/infra"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

@@ -3,9 +3,9 @@
 package server
 
 import (
-	"wireflow/internal/infra"
-	"wireflow/management/server/middleware"
-	"wireflow/pkg/utils/resp"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/server/middleware"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )

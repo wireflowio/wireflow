@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,14 +19,14 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
 	"sync"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
-	"wireflow/api/v1alpha1"
+	"github.com/alatticeio/lattice/api/v1alpha1"
 
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"

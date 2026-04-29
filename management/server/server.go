@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/db"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/controller"
+	"github.com/alatticeio/lattice/management/llm"
+	managementnats "github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/server/middleware"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/pkg/version"
 	"time"
-	"wireflow/internal/config"
-	"wireflow/internal/db"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/controller"
-	"wireflow/management/llm"
-	managementnats "wireflow/management/nats"
-	"wireflow/management/resource"
-	"wireflow/management/server/middleware"
-	"wireflow/management/service"
-	"wireflow/pkg/version"
 
 	"github.com/gin-gonic/gin"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -191,9 +191,9 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		tenantMiddleware:     middleware.NewTenantMiddleware(st),
 		auditService:         auditSvc,
 		workflowService:      workflowSvc,
-		store:          st,
-		aiService:      aiSvc,
-		peeringService: service.NewPeeringService(client, st),
+		store:                st,
+		aiService:            aiSvc,
+		peeringService:       service.NewPeeringService(client, st),
 	}
 
 	// initAdmins：DB 已就绪后执行；失败只告警，不阻断启动。

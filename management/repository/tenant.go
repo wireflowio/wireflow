@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"wireflow/internal/infra"
+	"github.com/alatticeio/lattice/internal/infra"
 
 	"gorm.io/gorm"
 )

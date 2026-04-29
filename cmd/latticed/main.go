@@ -1,7 +1,7 @@
 package main
 
 import (
-	"wireflow/cmd/wireflowd/cmd"
+	"github.com/alatticeio/lattice/cmd/latticed/cmd"
 )
 
 func main() {

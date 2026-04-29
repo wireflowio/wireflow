@@ -1,7 +1,7 @@
 package vo
 
 import (
-	"wireflow/internal/infra"
+	"github.com/alatticeio/lattice/internal/infra"
 )
 
 type NetworkMap struct {

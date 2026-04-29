@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"context"
-	"wireflow/internal/infra"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/pkg/utils/resp"
+
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )

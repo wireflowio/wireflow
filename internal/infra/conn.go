@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,9 +25,10 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"wireflow/internal/config"
-	"wireflow/internal/log"
-	"wireflow/pkg/wrrp"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/pkg/wrrp"
 
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -52,7 +53,7 @@ type DefaultBind struct {
 
 	// passThroughCh receives non-STUN packets forwarded by FilteringUDPMux (v4).
 	// makeReceiveIPv4 reads from here instead of the raw socket.
-	passThroughCh  <-chan PassThroughPacket
+	passThroughCh <-chan PassThroughPacket
 	// passThrough6Ch receives non-STUN packets forwarded by FilteringUDPMux (v6).
 	// makeReceiveIPv6 reads from here instead of the raw socket.
 	passThrough6Ch <-chan PassThroughPacket
@@ -86,13 +87,13 @@ type BindConfig struct {
 
 func NewBind(cfg *BindConfig) *DefaultBind {
 	return &DefaultBind{
-		logger:        cfg.Logger,
-		v4conn:        cfg.V4Conn,
-		v6conn:        cfg.V6Conn,
+		logger:         cfg.Logger,
+		v4conn:         cfg.V4Conn,
+		v6conn:         cfg.V6Conn,
 		passThroughCh:  cfg.PassThrough,
 		passThrough6Ch: cfg.PassThrough6,
-		keyManager:    cfg.KeyManager,
-		wrrperClient:  cfg.WrrpClient,
+		keyManager:     cfg.KeyManager,
+		wrrperClient:   cfg.WrrpClient,
 		udpAddrPool: sync.Pool{
 			New: func() any {
 				return &net.UDPAddr{

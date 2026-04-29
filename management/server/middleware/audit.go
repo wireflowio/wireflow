@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"wireflow/management/models"
-	"wireflow/management/service"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -159,19 +159,18 @@ func AuditMiddleware(svc service.AuditService) gin.HandlerFunc {
 		}
 
 		entry := models.AuditLog{
-			UserID:    c.GetString("user_id"),
-			UserName:  c.GetString("username"),
-			UserEmail: c.GetString("email"),
-			UserIP:    c.ClientIP(),
+			UserID:      c.GetString("user_id"),
+			UserName:    c.GetString("username"),
+			UserEmail:   c.GetString("email"),
+			UserIP:      c.ClientIP(),
 			WorkspaceID: c.GetHeader("X-Workspace-Id"),
-			Action:     actionFromMethod(c.Request.Method, c.FullPath()),
-			Resource:   resourceFromPath(c.FullPath()),
-			Scope:      scopeStr,
-			Status:     status,
-			StatusCode: code,
+			Action:      actionFromMethod(c.Request.Method, c.FullPath()),
+			Resource:    resourceFromPath(c.FullPath()),
+			Scope:       scopeStr,
+			Status:      status,
+			StatusCode:  code,
 		}
 
 		svc.Log(entry)
 	}
 }
-

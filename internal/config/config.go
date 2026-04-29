@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 	"strings"
 	"sync"
 
-	wflog "wireflow/internal/log"
+	wflog "github.com/alatticeio/lattice/internal/log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -268,9 +268,9 @@ type Config struct {
 	// agent 用于注册、获取 Token、上报状态等控制面操作。
 	// K8s 场景：由 WIREFLOW_MANAGER_SERVICE_HOST 等环境变量自动补全。
 	ServerUrl     string `mapstructure:"server-url"`
-	WrrperURL     string `mapstructure:"wrrper-url"`   // Wrrper relay 地址，默认 :6266
+	WrrperURL     string `mapstructure:"wrrper-url"`    // Wrrper relay 地址，默认 :6266
 	WrrpQuicURL   string `mapstructure:"wrrp-quic-url"` // QUIC relay server address
-	TurnServerURL string `mapstructure:"stun-url"`   // TURN/STUN 地址
+	TurnServerURL string `mapstructure:"stun-url"`      // TURN/STUN 地址
 	PublicIP      string `mapstructure:"public-ip"`
 	Port          int    `mapstructure:"port"`    // TURN 业务端口，默认 3478
 	WgPort        int    `mapstructure:"wg-port"` // WireGuard/ICE UDP 监听端口，默认 51820

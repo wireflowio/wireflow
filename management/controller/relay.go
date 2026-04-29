@@ -2,11 +2,12 @@ package controller
 
 import (
 	"context"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/resource"
-	"wireflow/management/service"
-	"wireflow/management/vo"
+
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/management/vo"
 )
 
 // RelayController handles HTTP-layer relay management operations.

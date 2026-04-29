@@ -25,7 +25,7 @@ This will append a line to your commit message: Signed-off-by: Your Name <your.e
 
 ```bash
 # Clone the repo
-git clone https://github.com/wireflowio/wireflow.git
+git clone https://github.com/alatticeio/lattice.git
 cd wireflow
 
 # Install dependencies

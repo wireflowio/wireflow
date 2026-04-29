@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"wireflow/internal/store"
-	"wireflow/internal/log"
-	"wireflow/management/models"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/models"
 
 	"github.com/google/uuid"
 )

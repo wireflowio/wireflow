@@ -1,11 +1,11 @@
 package server
 
 import (
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/server/middleware"
+	"github.com/alatticeio/lattice/pkg/utils"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 	"net/http"
-	"wireflow/management/dto"
-	"wireflow/management/server/middleware"
-	"wireflow/pkg/utils"
-	"wireflow/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 )

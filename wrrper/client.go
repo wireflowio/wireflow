@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/pkg/wrrp"
+
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/pkg/wrrp"
 
 	"golang.zx2c4.com/wireguard/conn"
 	"google.golang.org/protobuf/proto"
@@ -43,7 +44,7 @@ const (
 // WRRPClient multiplexes WireGuard traffic for multiple peers over a single
 // persistent TCP connection to the WRRP relay server.
 //
-// Write-path design
+// # Write-path design
 //
 // The naive approach of calling Conn.Write twice per frame (header then
 // payload) has two problems:

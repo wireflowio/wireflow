@@ -7,9 +7,10 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"wireflow/internal/log"
-	"wireflow/management/models"
-	"wireflow/pkg/utils"
+
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/pkg/utils"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/prometheus/client_golang/api"

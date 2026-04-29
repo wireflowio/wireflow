@@ -1,8 +1,8 @@
 package models
 
 import (
+	"github.com/alatticeio/lattice/management/dto"
 	"time"
-	"wireflow/management/dto"
 
 	"gorm.io/gorm"
 )
@@ -77,7 +77,7 @@ type WorkspaceInvitation struct {
 	InviterID   string            `json:"inviterId"`
 	Email       string            `json:"email"` // invitee email (may not be a user yet)
 	Role        dto.WorkspaceRole `gorm:"type:varchar(20)" json:"role"`
-	Token       string            `gorm:"uniqueIndex" json:"token"` // secure random hex token
+	Token       string            `gorm:"uniqueIndex" json:"token"`                         // secure random hex token
 	Status      string            `gorm:"type:varchar(20);default:'pending'" json:"status"` // pending|accepted|expired|revoked
 	ExpiresAt   time.Time         `json:"expiresAt"`
 }

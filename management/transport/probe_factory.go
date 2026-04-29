@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
 	"sync"
 	"sync/atomic"
 	"time"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
 
 	"github.com/pion/ice/v4"
 )
@@ -53,30 +53,30 @@ type ProbeFactory struct {
 }
 
 type ProbeFactoryConfig struct {
-	LocalId       infra.PeerIdentity
-	Signal        infra.SignalService
-	GetOnMessage  func() func(context.Context, *infra.Message) error
-	PeerManager   *infra.PeerManager
-	GetWrrp       func() infra.Wrrp
-	FilteringMux  *infra.FilteringUDPMux
-	FilteringMux6 *infra.FilteringUDPMux
-	GetProvisioner         func() infra.Provisioner
-	ShowLog                bool
+	LocalId        infra.PeerIdentity
+	Signal         infra.SignalService
+	GetOnMessage   func() func(context.Context, *infra.Message) error
+	PeerManager    *infra.PeerManager
+	GetWrrp        func() infra.Wrrp
+	FilteringMux   *infra.FilteringUDPMux
+	FilteringMux6  *infra.FilteringUDPMux
+	GetProvisioner func() infra.Provisioner
+	ShowLog        bool
 }
 
 func NewProbeFactory(cfg *ProbeFactoryConfig) *ProbeFactory {
 	return &ProbeFactory{
-		log:                    log.GetLogger("probe-factory"),
-		localId:                cfg.LocalId,
-		signal:                 cfg.Signal,
-		probes:                 make(map[string]*Probe),
-		peerManager:            cfg.PeerManager,
-		getWrrp:                cfg.GetWrrp,
-		showLog:                cfg.ShowLog,
-		FilteringMux:  cfg.FilteringMux,
-		FilteringMux6: cfg.FilteringMux6,
-		getProvisioner:         cfg.GetProvisioner,
-		getOnMessage:           cfg.GetOnMessage,
+		log:            log.GetLogger("probe-factory"),
+		localId:        cfg.LocalId,
+		signal:         cfg.Signal,
+		probes:         make(map[string]*Probe),
+		peerManager:    cfg.PeerManager,
+		getWrrp:        cfg.GetWrrp,
+		showLog:        cfg.ShowLog,
+		FilteringMux:   cfg.FilteringMux,
+		FilteringMux6:  cfg.FilteringMux6,
+		getProvisioner: cfg.GetProvisioner,
+		getOnMessage:   cfg.GetOnMessage,
 	}
 }
 
@@ -305,14 +305,14 @@ func (p *ProbeFactory) NewProbe(remoteId infra.PeerIdentity) (*Probe, error) {
 	// no restart callback, eliminating the double-restart race condition.
 	makeIceDialer := func() infra.Dialer {
 		return NewIceDialer(&ICEDialerConfig{
-			LocalId:                p.localId,
-			RemoteId:               remoteId,
-			Sender:                 p.signal.Send,
-			GetLocalPeer:           getLocalPeer,
-			OnPeerReceived:         onPeerReceived,
-			FilteringMux: p.FilteringMux,
+			LocalId:        p.localId,
+			RemoteId:       remoteId,
+			Sender:         p.signal.Send,
+			GetLocalPeer:   getLocalPeer,
+			OnPeerReceived: onPeerReceived,
+			FilteringMux:   p.FilteringMux,
 			// FilteringMux6: p.FilteringMux6, // IPv6 ICE disabled until e2e tests pass
-			ShowLog:                p.showLog,
+			ShowLog: p.showLog,
 		})
 	}
 	probe.newIceDialer = makeIceDialer

@@ -2,9 +2,10 @@ package dex
 
 import (
 	"strings"
-	"wireflow/management/models"
-	"wireflow/pkg/utils"
-	"wireflow/pkg/utils/resp"
+
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/pkg/utils"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

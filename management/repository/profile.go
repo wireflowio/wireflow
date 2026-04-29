@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"wireflow/internal/log"
-	"wireflow/management/models"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/management/models"
 
 	"gorm.io/gorm"
 )

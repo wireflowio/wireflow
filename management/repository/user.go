@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	"wireflow/internal/log"
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	"wireflow/management/vo"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/vo"
 
 	"gorm.io/gorm"
 )

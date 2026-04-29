@@ -1,7 +1,7 @@
 package server
 
 import (
-	"wireflow/management/server/middleware"
+	"github.com/alatticeio/lattice/management/server/middleware"
 
 	"github.com/gin-gonic/gin"
 )

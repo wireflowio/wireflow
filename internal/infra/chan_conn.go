@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,9 +82,9 @@ func (c *ChanPacketConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return c.realConn.WriteTo(p, addr)
 }
 
-func (c *ChanPacketConn) LocalAddr() net.Addr             { return c.local }
-func (c *ChanPacketConn) SetDeadline(_ time.Time) error    { return nil }
-func (c *ChanPacketConn) SetReadDeadline(_ time.Time) error { return nil }
+func (c *ChanPacketConn) LocalAddr() net.Addr                { return c.local }
+func (c *ChanPacketConn) SetDeadline(_ time.Time) error      { return nil }
+func (c *ChanPacketConn) SetReadDeadline(_ time.Time) error  { return nil }
 func (c *ChanPacketConn) SetWriteDeadline(_ time.Time) error { return nil }
 
 // Close signals ReadFrom to return net.ErrClosed, allowing the mux's

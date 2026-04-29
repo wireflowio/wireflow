@@ -1,6 +1,6 @@
 package vo
 
-import "wireflow/management/dto"
+import "github.com/alatticeio/lattice/management/dto"
 
 // MemberVo is the HTTP response type for a workspace member, combining WorkspaceMember + User fields.
 type MemberVo struct {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"wireflow/internal/infra"
-	"wireflow/management/dto"
-	"wireflow/management/nats"
-	"wireflow/pkg/version"
+
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/pkg/version"
 )
 
 type Client struct {

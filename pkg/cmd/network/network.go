@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,10 +21,11 @@ import (
 	"math/rand"
 	"os"
 	"time"
-	"wireflow/internal/config"
-	"wireflow/internal/infra"
-	"wireflow/management/dto"
-	"wireflow/management/nats"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/nats"
 
 	"github.com/spf13/viper"
 )

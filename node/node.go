@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,17 +20,17 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/alatticeio/lattice/internal"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	ctrclient "github.com/alatticeio/lattice/management/client"
+	"github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/management/transport"
+	"github.com/alatticeio/lattice/pkg/utils"
+	"github.com/alatticeio/lattice/wrrper"
 	"net"
 	"strings"
-	"wireflow/internal"
-	"wireflow/internal/config"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	ctrclient "wireflow/management/client"
-	"wireflow/management/nats"
-	"wireflow/management/transport"
-	"wireflow/pkg/utils"
-	"wireflow/wrrper"
 
 	wg "golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/tun"
@@ -219,12 +219,12 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// so they always see the values assigned in phase 3, without any two-phase
 	// Configure() call.
 	node.probeFactory = transport.NewProbeFactory(&transport.ProbeFactoryConfig{
-		LocalId:                localIdentity,
-		Signal:                 natsSignalService,
-		PeerManager:            node.manager.peerManager,
+		LocalId:       localIdentity,
+		Signal:        natsSignalService,
+		PeerManager:   node.manager.peerManager,
 		FilteringMux:  filteringMux,
 		FilteringMux6: filteringMux6,
-		ShowLog:                cfg.ShowLog,
+		ShowLog:       cfg.ShowLog,
 		GetProvisioner: func() infra.Provisioner {
 			return node.provisioner
 		},
@@ -275,13 +275,13 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// and uses KeyManager to match inbound packets to the right WireGuard peer
 	// during the handshake.
 	node.bind = infra.NewBind(&infra.BindConfig{
-		Logger:          cfg.Logger,
+		Logger:       cfg.Logger,
 		PassThrough:  passThroughCh,
 		PassThrough6: passThroughCh6,
-		V4Conn:          v4conn,
-		V6Conn:          v6conn,
-		WrrpClient:      wrrp,
-		KeyManager:      node.manager.keyManager,
+		V4Conn:       v4conn,
+		V6Conn:       v6conn,
+		WrrpClient:   wrrp,
+		KeyManager:   node.manager.keyManager,
 	})
 
 	wgLogLevel := wg.LogLevelError

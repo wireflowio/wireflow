@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/models"
-	"wireflow/management/vo"
-	"wireflow/pkg/utils"
+
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/vo"
+	"github.com/alatticeio/lattice/pkg/utils"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,9 +25,10 @@ import (
 	"os"
 	"sync"
 	"time"
-	"wireflow/internal/config"
-	internallog "wireflow/internal/log"
-	"wireflow/pkg/wrrp"
+
+	"github.com/alatticeio/lattice/internal/config"
+	internallog "github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/pkg/wrrp"
 
 	quic "github.com/quic-go/quic-go"
 )
@@ -87,7 +88,6 @@ func (w *WRRPManager) Relay(toID uint64, frame []byte) error {
 	}
 	return fmt.Errorf("relay target not found: %d", toID)
 }
-
 
 type Server struct {
 	log         *internallog.Logger

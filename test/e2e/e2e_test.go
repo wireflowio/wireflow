@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"wireflow/api/v1alpha1"
-	"wireflow/management/dto"
-	"wireflow/pkg/utils/resp"
+	"github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

@@ -3,13 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
-	"wireflow/api/v1alpha1"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/resource"
-	"wireflow/pkg/utils"
+
+	"github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/pkg/utils"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"

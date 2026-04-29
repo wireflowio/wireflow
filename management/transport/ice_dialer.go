@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/grpc"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	"wireflow/internal/grpc"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
 
 	"github.com/pion/ice/v4"
 	"github.com/pion/logging"
@@ -44,22 +44,22 @@ var (
 var ErrDialerClosed = errors.New("iceDialer explicitly closed")
 
 type iceDialer struct {
-	mu             sync.Mutex
-	log            *log.Logger
-	localId        infra.PeerIdentity
-	remoteId       infra.PeerIdentity
-	sender         func(ctx context.Context, peerId infra.PeerID, data []byte) error
-	provisioner    infra.Provisioner // nolint
-	agent               *ice.Agent
-	credentialsInited   atomic.Bool
-	rUfrag              string
-	rPwd                string
-	closeOnce           sync.Once
-	offerOnce           sync.Once
-	closed              atomic.Bool
-	showLog             bool
-	getLocalPeer        func() *infra.Peer
-	onPeerReceived      func(peer infra.Peer)
+	mu                sync.Mutex
+	log               *log.Logger
+	localId           infra.PeerIdentity
+	remoteId          infra.PeerIdentity
+	sender            func(ctx context.Context, peerId infra.PeerID, data []byte) error
+	provisioner       infra.Provisioner // nolint
+	agent             *ice.Agent
+	credentialsInited atomic.Bool
+	rUfrag            string
+	rPwd              string
+	closeOnce         sync.Once
+	offerOnce         sync.Once
+	closed            atomic.Bool
+	showLog           bool
+	getLocalPeer      func() *infra.Peer
+	onPeerReceived    func(peer infra.Peer)
 
 	// offerReady is closed when the first remote candidate OFFER is received,
 	// signalling Dial() that it can call StartDial/StartAccept + AwaitConnect.
@@ -77,9 +77,9 @@ type iceDialer struct {
 }
 
 type ICEDialerConfig struct {
-	Sender       func(ctx context.Context, peerId infra.PeerID, data []byte) error
-	LocalId      infra.PeerIdentity
-	RemoteId     infra.PeerIdentity
+	Sender        func(ctx context.Context, peerId infra.PeerID, data []byte) error
+	LocalId       infra.PeerIdentity
+	RemoteId      infra.PeerIdentity
 	FilteringMux  *infra.FilteringUDPMux
 	FilteringMux6 *infra.FilteringUDPMux // nil when IPv6 unavailable
 	Configurer    infra.Provisioner
@@ -206,18 +206,18 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 
 func NewIceDialer(cfg *ICEDialerConfig) infra.Dialer {
 	return &iceDialer{
-		log:                    log.GetLogger("ice-dialer"),
-		sender:                 cfg.Sender,
-		localId:                cfg.LocalId,
-		remoteId:               cfg.RemoteId,
-		filteringMux:  cfg.FilteringMux,
-		filteringMux6: cfg.FilteringMux6,
-		showLog:                cfg.ShowLog,
-		getLocalPeer:           cfg.GetLocalPeer,
-		onPeerReceived:         cfg.OnPeerReceived,
-		offerReady:             make(chan struct{}),
-		closeChan:              make(chan struct{}),
-		cancel:                 func() {}, // no-op until Prepare sets a real one
+		log:            log.GetLogger("ice-dialer"),
+		sender:         cfg.Sender,
+		localId:        cfg.LocalId,
+		remoteId:       cfg.RemoteId,
+		filteringMux:   cfg.FilteringMux,
+		filteringMux6:  cfg.FilteringMux6,
+		showLog:        cfg.ShowLog,
+		getLocalPeer:   cfg.GetLocalPeer,
+		onPeerReceived: cfg.OnPeerReceived,
+		offerReady:     make(chan struct{}),
+		closeChan:      make(chan struct{}),
+		cancel:         func() {}, // no-op until Prepare sets a real one
 	}
 }
 

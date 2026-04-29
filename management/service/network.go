@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@ package service
 
 import (
 	"context"
+	wireflowv1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/vo"
 	"strings"
-	wireflowv1alpha1 "wireflow/api/v1alpha1"
-	"wireflow/internal/infra"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	"wireflow/management/resource"
-	"wireflow/management/vo"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,13 +17,13 @@ package controller
 import (
 	"context"
 	"encoding/json"
-	"wireflow/internal/infra"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	managementnats "wireflow/management/nats"
-	"wireflow/management/resource"
-	"wireflow/management/service"
-	"wireflow/management/vo"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	managementnats "github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/management/vo"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

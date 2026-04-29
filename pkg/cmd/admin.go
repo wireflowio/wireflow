@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/alatticeio/lattice/management/vo"
 	"os"
 	"strings"
 	"text/tabwriter"
-	"wireflow/management/vo"
 )
 
 // call sends a NATS request to "wireflow.signals.service.<method>" and returns

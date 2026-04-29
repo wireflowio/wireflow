@@ -3,10 +3,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/models"
-	"wireflow/management/service"
+
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/service"
 )
 
 type MonitorController interface {

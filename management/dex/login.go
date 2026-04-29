@@ -6,11 +6,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"wireflow/internal/config"
-	"wireflow/management/models"
-	"wireflow/management/service"
-	"wireflow/pkg/utils"
-	"wireflow/pkg/utils/resp"
+
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/management/models"
+	"github.com/alatticeio/lattice/management/service"
+	"github.com/alatticeio/lattice/pkg/utils"
+	"github.com/alatticeio/lattice/pkg/utils/resp"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/gin-gonic/gin"

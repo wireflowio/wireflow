@@ -2,7 +2,8 @@ package infra
 
 import (
 	"context"
-	"wireflow/internal/grpc"
+
+	"github.com/alatticeio/lattice/internal/grpc"
 )
 
 type Dialer interface {

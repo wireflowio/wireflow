@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/models"
 	"time"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/models"
 
 	"github.com/google/uuid"
 )
@@ -177,4 +177,3 @@ func (s *workflowService) execute(ctx context.Context, wr *models.WorkflowReques
 func executorKey(resourceType, action string) string {
 	return resourceType + ":" + action
 }
-

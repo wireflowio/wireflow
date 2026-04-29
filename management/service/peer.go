@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/alatticeio/lattice/internal/infra"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/internal/store"
+	"github.com/alatticeio/lattice/management/dto"
+	managementnats "github.com/alatticeio/lattice/management/nats"
+	"github.com/alatticeio/lattice/management/resource"
+	"github.com/alatticeio/lattice/management/vo"
 	"strings"
 	"time"
-	"wireflow/internal/infra"
-	"wireflow/internal/log"
-	"wireflow/internal/store"
-	"wireflow/management/dto"
-	managementnats "wireflow/management/nats"
-	"wireflow/management/resource"
-	"wireflow/management/vo"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"wireflow/api/v1alpha1"
+	"github.com/alatticeio/lattice/api/v1alpha1"
 )
 
 var (

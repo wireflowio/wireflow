@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	wireflowv1alpha1 "github.com/alatticeio/lattice/api/v1alpha1"
+	"github.com/alatticeio/lattice/internal/infra"
 	"strconv"
 	"strings"
-	wireflowv1alpha1 "wireflow/api/v1alpha1"
-	"wireflow/internal/infra"
 )
 
 const (
@@ -132,7 +132,7 @@ func safeKeyName(prefix, name string) string {
 	}
 	h := sha256.Sum256([]byte(name))
 	hash := hex.EncodeToString(h[:4]) // 8 hex chars
-	keep := 63 - len(prefix) - 9     // room for "-" + 8 hash chars
+	keep := 63 - len(prefix) - 9      // room for "-" + 8 hash chars
 	if keep < 0 {
 		keep = 0
 	}

@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
-	"wireflow/management/models"
+
+	"github.com/alatticeio/lattice/management/models"
 
 	"github.com/golang-jwt/jwt/v5"
 )

@@ -1,4 +1,4 @@
-// Copyright 2025 The Wireflow Authors, Inc.
+// Copyright 2025 The Lattice Authors, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"wireflow/internal/config"
-	"wireflow/internal/log"
-	"wireflow/wrrper"
+	"github.com/alatticeio/lattice/internal/config"
+	"github.com/alatticeio/lattice/internal/log"
+	"github.com/alatticeio/lattice/wrrper"
 
 	"github.com/spf13/cobra"
 )
