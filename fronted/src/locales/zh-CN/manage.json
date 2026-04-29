@@ -472,7 +472,8 @@
       "pendingTip": "Controller 正在建立通道：查找两端 Gateway 节点 → 配置路由 annotation → 创建 Shadow Peer → 应用访问策略。就绪后状态变为「已连接」。",
       "failedTip1": "连接建立失败，常见原因：两端网络尚未 Ready、未找到 Gateway 节点（需打标签 ",
       "failedTip2": "）。",
-      "deleteBtn": "删除连接"
+      "deleteBtn": "删除连接",
+      "errorTitle": "连接错误"
     },
     "createDialog": {
       "title": "新建对等连接",
@@ -489,6 +490,7 @@
       "nameOptional": "(可选)",
       "namePlaceholder": "留空则自动生成",
       "modeLabel": "路由模式",
+      "meshWarning": "网状模式会为每对节点建立直连通道，仅适用于小型部署。",
       "zapTip1": "提交后 Controller 自动配置路由 annotation、Shadow Peer 和访问策略。需要两端各有一个打了 ",
       "zapTip2": " 标签的 Gateway 节点。",
       "submit": "发起连接"
@@ -500,6 +502,55 @@
       "deleted": "对等连接已删除",
       "deleteFailed": "删除失败",
       "nsRequired": "请填写对端命名空间"
+    }
+  },
+  "clusterPeering": {
+    "title": "集群对等连接",
+    "desc": "管理跨集群网络对等连接。",
+    "stats": {
+      "all": "全部连接",
+      "allDesc": "全部跨集群隧道",
+      "active": "已就绪",
+      "activeDesc": "对等连接已建立",
+      "pending": "建立中",
+      "pendingDesc": "等待 Controller 配置",
+      "failed": "连接失败",
+      "failedOk": "一切正常",
+      "failedDesc": "需检查排查原因"
+    },
+    "searchPlaceholder": "搜索连接名称、集群、命名空间...",
+    "createBtn": "新建集群连接",
+    "empty": "暂无集群对等连接",
+    "emptyDesc": "创建连接以打通不同集群之间的网络",
+    "local": "本端",
+    "remote": "对端",
+    "actions": {
+      "delete": "删除"
+    },
+    "deleteDialog": {
+      "title": "删除集群对等连接",
+      "desc": "确认删除「{name}」？跨集群隧道将立即断开。"
+    },
+    "createDialog": {
+      "title": "新建集群对等连接",
+      "desc": "将本地工作空间与远程集群通过加密隧道互通",
+      "remoteClusterLabel": "远程集群",
+      "remoteClusterPlaceholder": "例如：cluster-prod-us",
+      "remoteClusterHint": "LatticeCluster CR 的名称",
+      "localNamespaceLabel": "本地命名空间",
+      "localNamespacePlaceholder": "例如：wf-workspace-a",
+      "remoteNamespaceLabel": "远程命名空间",
+      "remoteNamespacePlaceholder": "例如：wf-workspace-x",
+      "localNetLabel": "本地网络",
+      "remoteNetLabel": "远程网络",
+      "submit": "发起集群连接"
+    },
+    "toast": {
+      "loadFailed": "加载失败",
+      "created": "集群连接已发起",
+      "createFailed": "创建失败",
+      "deleted": "集群对等连接已删除",
+      "deleteFailed": "删除失败"
     }
   },
   "stepper": {
