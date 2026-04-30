@@ -295,10 +295,20 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	node.iface = wg.NewDevice(iface, node.bind, wg.NewLogger(wgLogLevel, fmt.Sprintf("(%s) ", cfg.InterfaceName)))
 
 	// Provisioner abstracts all OS network-stack mutations: IP address assignment,
-	// routing table entries, iptables rules, and WireGuard peer configuration.
+	// routing table entries, policy enforcement rules, and WireGuard peer configuration.
 	// It must be created after the WireGuard device because it holds a reference to it.
-	node.provisioner = provision.NewProvisioner(provision.NewRouteProvisioner(cfg.Logger),
-		provision.NewRuleProvisioner(cfg.Logger, node.Name), &provision.Params{
+	enforcerMode := provision.SelectEnforcerMode(cfg.Logger)
+	var policyEnforcer provision.PolicyEnforcer
+	switch enforcerMode {
+	case provision.ModeEBPF:
+		policyEnforcer = provision.NewEBPFEnforcer(node.Name, cfg.Logger)
+	default:
+		policyEnforcer = provision.NewIptablesEnforcer(cfg.Logger, node.Name)
+	}
+	node.provisioner = provision.NewProvisioner(
+		provision.NewRouteProvisioner(cfg.Logger),
+		policyEnforcer,
+		&provision.Params{
 			Device:    node.iface,
 			IfaceName: node.Name,
 		})

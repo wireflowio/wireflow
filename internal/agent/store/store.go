@@ -28,6 +28,9 @@ type Store interface {
 	// Tx 在同一个数据库事务中执行 fn，fn 内通过参数 s 访问所有 Repository。
 	Tx(ctx context.Context, fn func(s Store) error) error
 
+	Alerts() AlertRepository
+	CustomMetrics() CustomMetricRepository
+
 	Close() error
 }
 
@@ -153,4 +156,37 @@ type WorkflowRepository interface {
 	UpdateStatus(ctx context.Context, id string, status models.WorkflowStatus, fields map[string]interface{}) error
 	Delete(ctx context.Context, id string) error
 	List(ctx context.Context, filter WorkflowFilter) ([]*models.WorkflowRequest, int64, error)
+}
+
+// AlertRepository manages alert rules, history, channels, and silences.
+type AlertRepository interface {
+	GetAlertRule(ctx context.Context, id string) (*models.AlertRule, error)
+	CreateAlertRule(ctx context.Context, rule *models.AlertRule) error
+	UpdateAlertRule(ctx context.Context, rule *models.AlertRule) error
+	DeleteAlertRule(ctx context.Context, id string) error
+	ListAlertRulesByWorkspace(ctx context.Context, wsID string) ([]*models.AlertRule, error)
+	ListEnabledAlertRules(ctx context.Context) ([]*models.AlertRule, error)
+
+	ListAlertHistory(ctx context.Context, wsID string, page, pageSize int) ([]*models.AlertHistory, int64, error)
+	CreateAlertHistory(ctx context.Context, h *models.AlertHistory) error
+	UpdateAlertHistory(ctx context.Context, h *models.AlertHistory) error
+
+	ListAlertChannels(ctx context.Context, wsID string) ([]*models.AlertChannel, error)
+	CreateAlertChannel(ctx context.Context, c *models.AlertChannel) error
+	UpdateAlertChannel(ctx context.Context, c *models.AlertChannel) error
+	DeleteAlertChannel(ctx context.Context, id string) error
+	GetAlertChannel(ctx context.Context, id string) (*models.AlertChannel, error)
+
+	ListAlertSilences(ctx context.Context, wsID string) ([]*models.AlertSilence, error)
+	CreateAlertSilence(ctx context.Context, s *models.AlertSilence) error
+	DeleteAlertSilence(ctx context.Context, id string) error
+}
+
+// CustomMetricRepository manages user-defined metric DB operations.
+type CustomMetricRepository interface {
+	GetByID(ctx context.Context, id string) (*models.CustomMetric, error)
+	Create(ctx context.Context, m *models.CustomMetric) error
+	Update(ctx context.Context, m *models.CustomMetric) error
+	Delete(ctx context.Context, id string) error
+	ListByWorkspace(ctx context.Context, wsID string) ([]*models.CustomMetric, error)
 }

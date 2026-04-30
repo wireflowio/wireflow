@@ -103,7 +103,11 @@ func (s *Server) handleUpdateMemberRole() gin.HandlerFunc {
 
 		// Prevent privilege escalation: cannot assign a role higher than your own.
 		callerID := c.GetString("user_id")
-		caller, _ := s.store.Users().GetByID(c.Request.Context(), callerID)
+		caller, err := s.store.Users().GetByID(c.Request.Context(), callerID)
+		if err != nil {
+			resp.Error(c, "caller not found")
+			return
+		}
 		if caller.SystemRole != dto.SystemRolePlatformAdmin {
 			callerMember, err := s.store.WorkspaceMembers().GetMembership(c.Request.Context(), wsID, callerID)
 			if err == nil && dto.GetRoleWeight(req.Role) > dto.GetRoleWeight(callerMember.Role) {

@@ -365,7 +365,8 @@ type NatsConfig struct {
 }
 
 type MonitorConfig struct {
-	Address string `mapstructure:"address"`
+	Address     string `mapstructure:"address"`
+	TemplateDir string `mapstructure:"templateDir"` // YAML template path, default "config/metrics/templates.yaml"
 }
 
 // TelemetryConfig configures the lightweight VM telemetry push module in the agent.

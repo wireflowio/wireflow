@@ -23,6 +23,7 @@ import (
 	"github.com/alatticeio/lattice/internal/agent/log"
 	"github.com/alatticeio/lattice/internal/agent/store"
 	"github.com/alatticeio/lattice/internal/db"
+	"github.com/alatticeio/lattice/internal/monitor"
 	"github.com/alatticeio/lattice/internal/server/controller"
 	"github.com/alatticeio/lattice/internal/server/llm"
 	managementnats "github.com/alatticeio/lattice/internal/server/nats"
@@ -33,6 +34,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -61,6 +63,8 @@ type Server struct {
 	invitationController controller.InvitationController
 
 	monitorController  controller.MonitorController
+	alertController    controller.AlertController
+	customMetricController controller.CustomMetricController
 	profileController  controller.ProfileController
 	auditController    controller.AuditController
 	workflowController controller.WorkflowController
@@ -74,6 +78,7 @@ type Server struct {
 
 	store    store.Store
 	presence *managementnats.NodePresenceStore
+	monitor  *monitor.Monitor
 }
 
 // ServerConfig is the server configuration.
@@ -165,6 +170,20 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		logger.Info("AI service disabled (set ai.enabled=true and ai.api-key to enable)")
 	}
 
+	// ── 弱依赖④：Monitor（可选）────────────────────────────────────
+	var mon *monitor.Monitor
+	var heartbeatDB *gorm.DB
+	if gs, ok := st.(interface{ DB() *gorm.DB }); ok {
+		heartbeatDB = gs.DB()
+	}
+	mon, monErr := monitor.NewMonitor(cfg.Monitor.Address, st, heartbeatDB)
+	if monErr != nil {
+		logger.Warn("monitor init failed, monitoring features disabled", "err", monErr)
+	} else {
+		logger.Info("monitor initialized")
+		mon.StartAlertEngine(context.Background())
+	}
+
 	s := &Server{
 		Engine:               gin.Default(),
 		logger:               logger,
@@ -185,7 +204,9 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		relayController:      controller.NewRelayController(client, st),
 		invitationController: controller.NewInvitationController(st),
 		monitorController:    controller.NewMonitorController(cfg.Monitor.Address, st),
-		profileController:    controller.NewProfileController(st),
+		alertController:          controller.NewAlertController(st),
+		customMetricController:   controller.NewCustomMetricController(st),
+		profileController:        controller.NewProfileController(st),
 		auditController:      controller.NewAuditController(auditSvc),
 		workflowController:   controller.NewWorkflowController(workflowSvc),
 		tenantMiddleware:     middleware.NewTenantMiddleware(st),
@@ -194,6 +215,7 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		store:                st,
 		aiService:            aiSvc,
 		peeringService:       service.NewPeeringService(client, st),
+		monitor:              mon,
 	}
 
 	// initAdmins：DB 已就绪后执行；失败只告警，不阻断启动。

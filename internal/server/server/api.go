@@ -87,6 +87,10 @@ func (s *Server) apiRouter() error {
 
 	s.monitorRouter()
 
+	s.alertRouter()
+
+	s.customMetricRouter()
+
 	s.profileRouter()
 
 	s.dashboardRouter()
