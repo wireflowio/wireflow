@@ -43,7 +43,6 @@ type Probe struct {
 	iceState  ice.ConnectionState
 	signal    infra.SignalService
 	log       *log.Logger
-	rtt       time.Duration
 
 	// State machine guards lifecycle transitions.
 	sm *StateMachine
@@ -66,10 +65,7 @@ type Probe struct {
 	// currentTransport holds the active transport.
 	currentTransport infra.Transport
 
-	// Remote peer info received from SYN/ACK.
-	muPeer     sync.Mutex
-	remotePeer *infra.Peer
-
+	// Remote peer identity received from SYN/ACK.
 	// firstFailureAt tracks consecutive failure duration for 60s timeout.
 	muFail       sync.Mutex
 	firstFailureAt time.Time

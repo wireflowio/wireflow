@@ -28,7 +28,7 @@ import (
 
 	internallog "github.com/alatticeio/lattice/internal/agent/log"
 
-	quic "github.com/quic-go/quic-go"
+	"github.com/quic-go/quic-go"
 )
 
 // quicControlStream wraps a *quic.Stream and its parent *quic.Conn to implement Stream.
@@ -53,17 +53,17 @@ func (s *quicControlStream) RemoteAddr() net.Addr {
 	return s.conn.RemoteAddr()
 }
 
-// QUICServer accepts QUIC connections and multiplexes WRRP sessions.
+// QUICServer accepts QUIC connections and multiplexes LRP sessions.
 type QUICServer struct {
-	log         *internallog.Logger
-	wrrpManager *WRRPManager
+	log        *internallog.Logger
+	sessionMgr *SessionManager
 }
 
-// NewQUICServer creates a new QUICServer backed by the given WRRPManager.
-func NewQUICServer(manager *WRRPManager) *QUICServer {
+// NewQUICServer creates a new QUICServer backed by the given SessionManager.
+func NewQUICServer(manager *SessionManager) *QUICServer {
 	return &QUICServer{
-		log:         internallog.GetLogger("wrrp-quic"),
-		wrrpManager: manager,
+		log:        internallog.GetLogger("lrp-quic"),
+		sessionMgr: manager,
 	}
 }
 
@@ -79,7 +79,7 @@ func (s *QUICServer) Start(addr string, tlsCfg *tls.Config) error {
 	if err != nil {
 		return err
 	}
-	s.log.Info("QUIC WRRP relay server listening", "addr", addr)
+	s.log.Info("QUIC LRP relay server listening", "addr", addr)
 
 	for {
 		conn, err := ln.Accept(context.Background())
@@ -113,10 +113,10 @@ func (s *QUICServer) handleConn(conn *quic.Conn) {
 		return
 	}
 
-	fromId := h.FromID
+	fromId := uint64(h.ToID)
 	ctrlStream := &quicControlStream{stream: ctrl, conn: conn}
-	s.wrrpManager.RegisterQUIC(fromId, ctrlStream, conn)
-	defer s.wrrpManager.Unregister(fromId)
+	s.sessionMgr.RegisterQUIC(fromId, ctrlStream, conn)
+	defer s.sessionMgr.Unregister(fromId)
 
 	s.log.Info("QUIC session registered", "from", fromId)
 
@@ -148,7 +148,7 @@ func (s *QUICServer) relayDatagrams(conn *quic.Conn, fromId uint64) {
 			continue
 		}
 
-		if relayErr := s.wrrpManager.Relay(h.ToID, data); relayErr != nil {
+		if relayErr := s.sessionMgr.Relay(uint64(h.ToID), data); relayErr != nil {
 			s.log.Warn("datagram relay failed", "from", fromId, "to", h.ToID, "err", relayErr)
 		} else {
 			s.log.Debug("datagram relayed", "from", fromId, "to", h.ToID)
@@ -171,8 +171,8 @@ func (s *QUICServer) handleControlStream(ctrl *quic.Stream, fromId uint64) {
 			return
 		}
 
-		if h.Cmd == Ping {
-			s.log.Debug("ping received on control stream", "from", fromId)
+		if h.Cmd == KeepAlive {
+			s.log.Debug("keepalive received on control stream", "from", fromId)
 		}
 	}
 }
@@ -205,6 +205,6 @@ func GenerateSelfSignedTLS() (*tls.Config, error) {
 
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
-		NextProtos:   []string{"wrrp"},
+		NextProtos:   []string{"lrp"},
 	}, nil
 }

@@ -9,8 +9,6 @@ name: Test README Scripts
 # Test:   README Steps 1-6
 
 on:
-  push:
-    branches: [dev]
   pull_request:
     branches: [master, main]
   workflow_dispatch:
@@ -223,7 +221,7 @@ jobs:
             --signaling-url "$AGENT_NATS" \
             --server-url "$AGENT_API" \
             --token "$TOKEN" \
-            -- level debug
+            --level debug
 
           echo ">>> docker run -d --name wf-agent-b --privileged --network wf-test-net $AGENT_IMAGE up ..."
           docker run -d \

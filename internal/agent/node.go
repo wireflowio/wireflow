@@ -251,7 +251,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// fails (e.g. symmetric NAT on both sides).
 	if cfg.Flags.EnableWrrp {
 		if cfg.Flags.WrrpQuicURL != "" {
-			wrrp, err = relay.NewQUICWrrpClient(ctx, localIdentity.ID(), cfg.Flags.WrrpQuicURL, node.probeFactory.Handle)
+			wrrp, err = relay.NewQUICClient(ctx, localIdentity.ID(), cfg.Flags.WrrpQuicURL, node.probeFactory.Handle)
 		} else {
 			wrrpUrl := cfg.Flags.WrrperURL
 			if wrrpUrl == "" {
@@ -261,7 +261,7 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 			if wrrpUrl != "" {
 				// probeFactory.Handle is passed directly: probeFactory already exists
 				// at this point so no closure is needed on this side of the circular dep.
-				wrrp, err = relay.NewWrrpClient(ctx, localIdentity.ID(), wrrpUrl, node.probeFactory.Handle)
+				wrrp, err = relay.NewTCPClient(ctx, localIdentity.ID(), wrrpUrl, node.probeFactory.Handle)
 			}
 		}
 		if err != nil {

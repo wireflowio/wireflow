@@ -43,7 +43,7 @@ func main() {
 	// probeFactory is declared first so its Handle method can be passed directly
 	// to NewWrrpClient; wrrpClient is captured by the GetWrrp closure so
 	// probeFactory sees it once assigned — no Configure() on either side.
-	var wrrpClient *relay.WRRPClient
+	var wrrpClient *relay.TCPClient
 	probeFactory := transport.NewProbeFactory(&transport.ProbeFactoryConfig{
 		LocalId:     localId,
 		Signal:      nats,
@@ -51,7 +51,7 @@ func main() {
 		GetWrrp:     func() infra.Wrrp { return wrrpClient },
 	})
 
-	wrrpClient, err = relay.NewWrrpClient(ctx, localId.ID(), "127.0.0.1:6266", probeFactory.Handle)
+	wrrpClient, err = relay.NewTCPClient(ctx, localId.ID(), "127.0.0.1:6266", probeFactory.Handle)
 	if err != nil {
 		panic(err)
 	}

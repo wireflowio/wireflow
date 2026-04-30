@@ -183,19 +183,25 @@ func (i *iceDialer) Handle(ctx context.Context, remoteId infra.PeerIdentity, pac
 	case grpc.PacketType_OFFER, grpc.PacketType_ANSWER:
 		i.log.Debug("receive offer", "remoteId", remoteId)
 		offer := packet.GetOffer()
-		// Use double-checked locking so that IsCredentialsInited.Store(true)
-		// only happens AFTER onPeerReceived sets remotePeer.  Without this,
-		// a concurrent OFFER handler that sees IsCredentialsInited=true can
-		// skip the block and fire offerOnce.Do(close(offerReady)) while
-		// remotePeer is still nil, causing onSuccess to fail.
+
+		// Always ensure remote ICE credentials are set — credentialsInited may
+		// already be true from an earlier ACK/SYN (which don't carry ICE creds).
+		// Without this check a late OFFER could skip the credential assignment,
+		// leaving rUfrag empty and causing StartDial("") to fail.
+		if i.rUfrag == "" {
+			i.mu.Lock()
+			if i.rUfrag == "" {
+				i.rUfrag = offer.Ufrag
+				i.rPwd = offer.Pwd
+			}
+			i.mu.Unlock()
+		}
+
+		// Extract peer info from OFFER (backward compatibility with
+		// older nodes that don't send peer_info in SYN/ACK).
 		if !i.credentialsInited.Load() {
 			i.mu.Lock()
 			if !i.credentialsInited.Load() {
-				i.rUfrag = offer.Ufrag
-				i.rPwd = offer.Pwd
-
-				// Parse peer info from OFFER (backward compatibility with
-				// older nodes that don't send peer_info in SYN/ACK).
 				if len(offer.Current) > 0 {
 					var remotePeer infra.Peer
 					if err := json.Unmarshal(offer.Current, &remotePeer); err == nil {

@@ -33,8 +33,8 @@ var cfgManager = config.NewConfigManager()
 func main() {
 	cmd := &cobra.Command{
 		Use:          "wrrper",
-		Short:        "WRRP relay server for Lattice",
-		Long:         `Standalone WRRP relay server. Bridges WireGuard peers that cannot reach each other directly.`,
+		Short:        "LRP relay server for Lattice",
+		Long:         `Standalone LRP relay server. Bridges WireGuard peers that cannot reach each other directly.`,
 		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return cfgManager.LoadConf(cmd)
@@ -46,9 +46,9 @@ func main() {
 
 	fs := cmd.PersistentFlags()
 	fs.StringP("config-dir", "", "", "config directory (default ~/.lattice)")
-	fs.StringP("listen", "l", ":6266", "TCP WRRP listen address")
+	fs.StringP("listen", "l", ":6266", "TCP LRP listen address")
 	fs.BoolP("enable-tls", "", false, "enable TLS on TCP listener")
-	fs.StringP("wrrp-quic-url", "", "", "QUIC WRRP listen address (e.g. :6267); empty disables QUIC")
+	fs.StringP("wrrp-quic-url", "", "", "QUIC LRP listen address (e.g. :6267); empty disables QUIC")
 	fs.StringP("level", "", "info", "log level: debug, info, warn, error, silent")
 
 	if err := cmd.Execute(); err != nil {

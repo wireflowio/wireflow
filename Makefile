@@ -42,6 +42,10 @@ endif
 # tools. (i.e. podman)
 CONTAINER_TOOL ?= docker
 
+# Optional Docker BuildKit cache flags. Set in CI:
+#   BUILD_CACHE_ARGS="--cache-from type=gha --cache-to type=gha,mode=max"
+BUILD_CACHE_ARGS ?=
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -73,7 +77,7 @@ build-all: ## 构建所有服务
 	done
 
 .PHONY: build
-build: fmt vet ## 构建单个服务 (使用: make build SERVICE=lattice)
+build: ## 构建单个服务 (使用: make build SERVICE=lattice)
 	@if [ -z "$(SERVICE)" ]; then \
 		echo "❌ Error: SERVICE is required. Usage: make build SERVICE=lattice"; \
 		exit 1; \
@@ -93,41 +97,9 @@ build: fmt vet ## 构建单个服务 (使用: make build SERVICE=lattice)
 	@echo "✅ Built: bin/$(SERVICE)"
 	@ls -lh bin/$(SERVICE)
 
-.PHONY: build-latticed
-build-latticed: fmt vet ## 构建 latticed all-in-one 二进制
-	@echo ">>> Building latticed (all-in-one)..."
-	@mkdir -p bin
-	CGO_ENABLED=0 GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) \
-		go build \
-		-ldflags="-s -w $(LDFLAGS)" \
-		-o bin/latticed \
-		./cmd/latticed/main.go
-	@echo "✅ Built: bin/latticed"
-	@ls -lh bin/latticed
-
 .PHONY: test-latticed
 test-latticed: ## 运行 latticed 相关单元测试
 	go test ./cmd/latticed/... ./internal/nats/... ./internal/db/... -v -count=1
-
-.PHONY: docker-build-latticed
-docker-build-latticed: ## 构建 latticed Docker 镜像
-	$(CONTAINER_TOOL) build \
-		--build-arg TARGETSERVICE=latticed \
-		--build-arg TARGETOS=linux \
-		--build-arg TARGETARCH=$(TARGETARCH) \
-		--build-arg VERSION=$(TAG) \
-		-t $(LATTICED_IMG) \
-		-f Dockerfile \
-		.
-	@echo "✅ Built image: $(LATTICED_IMG)"
-
-.PHONY: docker-push-latticed
-docker-push-latticed: ## 推送 latticed Docker 镜像
-	$(CONTAINER_TOOL) push $(LATTICED_IMG)
-	@echo "✅ Pushed: $(LATTICED_IMG)"
-
-.PHONY: docker-latticed
-docker-latticed: docker-build-latticed docker-push-latticed ## 构建并推送 latticed 镜像
 
 # ============ Docker 构建 ============
 ##@ General
@@ -301,6 +273,7 @@ docker-build: ## 构建单个服务的 Docker 镜像 (使用: make docker-build 
 		$(MAKE) build-ui; \
 	fi
 	$(CONTAINER_TOOL) build \
+		$(BUILD_CACHE_ARGS) \
 		--build-arg TARGETSERVICE=$(SERVICE) \
 		--build-arg TARGETOS=$(TARGETOS) \
 		--build-arg TARGETARCH=$(TARGETARCH) \
@@ -404,9 +377,9 @@ deploy-aio: manifests kustomize ## 部署 all-in-one 模式到已有 K8s 集群 
 	@echo "等待 CRDs 就绪..."
 	$(KUBECTL) wait --for=condition=Established crd --all --timeout=60s
 	@echo "正在部署 all-in-one latticed (IMG=$(IMG))..."
-	cd config/lattice/overlays/all-in-one && $(KUSTOMIZE) edit set image ghcr.io/alatticeio/latticed=$(IMG)
-	$(KUSTOMIZE) build config/lattice/overlays/all-in-one | $(KUBECTL) apply -f -
-	git checkout config/lattice/overlays/all-in-one/kustomization.yaml
+	$(KUSTOMIZE) build config/lattice/overlays/all-in-one | \
+		sed "s|ghcr.io/alatticeio/latticed:.*|$(IMG)|g" | \
+		$(KUBECTL) apply -f -
 	$(KUBECTL) rollout status deployment/lattice-aio -n lattice-system --timeout=180s
 	@echo "✅ All-in-one 部署完成。API: $(KUBECTL) port-forward svc/lattice-api-service 8080:8080 -n lattice-system"
 
@@ -416,23 +389,14 @@ undeploy-aio: kustomize ## 卸载 all-in-one 部署
 
 .PHONY: deploy
 deploy: manifests kustomize ## 根据 ENV 部署 (usage: make deploy ENV=production)
-	# 1. 强制创建 Namespace (如果已存在则忽略错误)
 	$(KUBECTL) create namespace lattice-system --dry-run=client -o yaml | $(KUBECTL) apply -f -
-
 	@echo "正在部署到环境: $(ENV)..."
-	# 1. 动态修改对应环境的镜像标签
-	cd $(OVERLAYS_PATH) && $(KUSTOMIZE) edit set image manager=${IMG}
-
-	# 2. 部署 CRD (通常 CRD 是全局的，可以继续用 base)
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 	@echo "等待 CRDs 就绪..."
 	$(KUBECTL) wait --for=condition=Established crd --all --timeout=60s
-
-	# 3. 部署指定环境的完整资源
-	$(KUSTOMIZE) build $(OVERLAYS_PATH) | $(KUBECTL) apply -f -
-
-	# 3. 立即还原该文件（文件变干净）
-	git checkout config/lattice/overlays/$(ENV)/kustomization.yaml
+	$(KUSTOMIZE) build $(OVERLAYS_PATH) | \
+		sed "s|ghcr.io/alatticeio/manager:.*|$(IMG)|g" | \
+		$(KUBECTL) apply -f -
 
 .PHONY: yaml
 yaml:

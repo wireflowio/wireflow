@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Go Report Card](https://goreportcard.com/badge/github.com/alatticeio/lattice)](https://goreportcard.com/report/github.com/alatticeio/lattice)
 [![Release](https://img.shields.io/github/v/release/alatticeio/lattice)](https://github.com/alatticeio/lattice/releases/latest)
-[![Docker](https://img.shields.io/docker/pulls/alatticeio/lattice)](https://hub.docker.com/r/alatticeio/lattice)
+[![Container](https://img.shields.io/badge/ghcr.io-alatticeio%2Flattice-blue)](https://github.com/alatticeio/lattice/pkgs/container/lattice)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 Lattice simplifies the construction of encrypted overlay networks across multi-cloud, cross-datacenter, and edge environments — without touching firewalls or exposing public IPs.
@@ -235,7 +235,7 @@ If ping times out, the tunnel has not been established. Common causes:
 Remove a specific agent from the workspace:
 
 ```bash
-lattice token delete <token>
+lattice token remove <token>
 ```
 
 Delete a workspace and all its peers:
@@ -282,7 +282,7 @@ lattice workspace remove <namespace>
 ```bash
 lattice token create <name> [-n <namespace>] [--limit <n>] [--expiry <duration>]
 lattice token list  [-n <namespace>]
-lattice token delete <token>
+lattice token remove <token>
 ```
 
 ### Policy
