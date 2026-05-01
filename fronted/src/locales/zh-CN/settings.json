@@ -164,6 +164,20 @@
     "detailBtn": "详情",
     "empty": "暂无审计记录"
   },
+  "platform": {
+    "title": "平台设置",
+    "desc": "管理全局平台配置，影响所有工作空间和 Agent 节点。",
+    "natsUrlLabel": "NATS 信令地址",
+    "natsUrlPlaceholder": "nats://nats-cluster:4222",
+    "natsUrlHint": "Agent 节点通过此地址连接信令服务器。格式：nats://host:port",
+    "saveBtn": "保存更改",
+    "saving": "保存中...",
+    "saved": "平台设置已保存",
+    "saveFailed": "保存失败",
+    "loadFailed": "加载失败",
+    "validationRequired": "NATS URL 不能为空",
+    "validationPrefix": "NATS URL 必须以 nats:// 或 nats+tls:// 开头"
+  },
   "relays": {
     "title": "中继节点",
     "desc": "管理 WireGuard 中继服务器。",
