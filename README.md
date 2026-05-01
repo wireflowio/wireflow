@@ -119,20 +119,22 @@ sudo mv lattice /usr/local/bin/
 
 ## Quick Start
 
-Lattice's control plane runs on Kubernetes. The quickstart script handles cluster creation and deployment automatically.
+### Docker (single command, no Kubernetes required)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/alatticeio/lattice/master/hack/quickstart.sh | bash
+docker run -d \
+  --name lattice-k3s \
+  --privileged \
+  -p 8080:8080 \
+  -p 4222:4222 \
+  ghcr.io/alatticeio/lattice-k3s:latest
 ```
 
-The script will:
-1. Verify Docker, k3d, and kubectl are present (installing missing tools automatically).
-2. Check that ports **8080** (Dashboard / API) and **4222** (NATS signaling) are free.
-3. Create a local k3d cluster and apply CRDs, RBAC, and Deployments.
-4. Wait for the pod to become healthy.
-5. Print a ready-to-use `lattice up` command with the NATS address and initial token.
+This starts a self-contained container with k3s (lightweight Kubernetes) and the Lattice control plane already deployed inside. After ~30 seconds:
+- Dashboard / API: `http://localhost:8080`
+- NATS signaling: `nats://localhost:4222`
 
-**Existing cluster (kustomize):**
+### Existing Kubernetes cluster (kustomize)
 
 ```bash
 kubectl apply -k https://github.com/alatticeio/lattice/config/lattice/overlays/all-in-one
