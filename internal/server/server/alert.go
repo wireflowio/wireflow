@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/alatticeio/lattice/internal/server/server/middleware"
+	"github.com/alatticeio/lattice/internal/server/dto"
 	"github.com/alatticeio/lattice/internal/server/service"
 	"github.com/alatticeio/lattice/pkg/utils/resp"
 	"strconv"
@@ -11,28 +11,28 @@ import (
 
 func (s *Server) alertRouter() {
 	r := s.Group("/api/v1/alerts")
-	r.Use(middleware.AuthMiddleware())
+	r.Use(s.middleware.WorkspaceAuthMiddleware(dto.RoleViewer))
 	{
 		// Alert rules
-		r.GET("/rules", s.tenantMiddleware.Handle(), s.listAlertRules())
-		r.GET("/rules/:id", s.tenantMiddleware.Handle(), s.getAlertRule())
-		r.POST("/rules", s.tenantMiddleware.Handle(), s.createAlertRule())
-		r.PUT("/rules/:id", s.tenantMiddleware.Handle(), s.updateAlertRule())
-		r.DELETE("/rules/:id", s.tenantMiddleware.Handle(), s.deleteAlertRule())
+		r.GET("/rules", s.listAlertRules())
+		r.GET("/rules/:id", s.getAlertRule())
+		r.POST("/rules", s.createAlertRule())
+		r.PUT("/rules/:id", s.updateAlertRule())
+		r.DELETE("/rules/:id", s.deleteAlertRule())
 
 		// Alert history
-		r.GET("/history", s.tenantMiddleware.Handle(), s.listAlertHistory())
+		r.GET("/history", s.listAlertHistory())
 
 		// Alert channels
-		r.GET("/channels", s.tenantMiddleware.Handle(), s.listAlertChannels())
-		r.POST("/channels", s.tenantMiddleware.Handle(), s.createAlertChannel())
-		r.PUT("/channels/:id", s.tenantMiddleware.Handle(), s.updateAlertChannel())
-		r.DELETE("/channels/:id", s.tenantMiddleware.Handle(), s.deleteAlertChannel())
+		r.GET("/channels", s.listAlertChannels())
+		r.POST("/channels", s.createAlertChannel())
+		r.PUT("/channels/:id", s.updateAlertChannel())
+		r.DELETE("/channels/:id", s.deleteAlertChannel())
 
 		// Alert silences
-		r.GET("/silences", s.tenantMiddleware.Handle(), s.listAlertSilences())
-		r.POST("/silences", s.tenantMiddleware.Handle(), s.createAlertSilence())
-		r.DELETE("/silences/:id", s.tenantMiddleware.Handle(), s.deleteAlertSilence())
+		r.GET("/silences", s.listAlertSilences())
+		r.POST("/silences", s.createAlertSilence())
+		r.DELETE("/silences/:id", s.deleteAlertSilence())
 	}
 }
 

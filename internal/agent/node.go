@@ -250,10 +250,10 @@ func NewNode(ctx context.Context, cfg *NodeConfig) (*Node, error) {
 	// WRRP is an optional relay channel used as a fallback when ICE traversal
 	// fails (e.g. symmetric NAT on both sides).
 	if cfg.Flags.EnableWrrp {
-		if cfg.Flags.WrrpQuicURL != "" {
-			wrrp, err = relay.NewQUICClient(ctx, localIdentity.ID(), cfg.Flags.WrrpQuicURL, node.probeFactory.Handle)
+		if cfg.Flags.RelayQuicURL != "" {
+			wrrp, err = relay.NewQUICClient(ctx, localIdentity.ID(), cfg.Flags.RelayQuicURL, node.probeFactory.Handle)
 		} else {
-			wrrpUrl := cfg.Flags.WrrperURL
+			wrrpUrl := cfg.Flags.RelayURL
 			if wrrpUrl == "" {
 				wrrpUrl = node.current.WrrpUrl
 			}

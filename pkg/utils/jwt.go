@@ -9,6 +9,7 @@ import (
 	"github.com/alatticeio/lattice/internal/server/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // ParseToken 解析并校验 JWT
@@ -49,6 +50,7 @@ func GenerateBusinessJWT(userID, email, username, systemRole string) (string, er
 		Username:   username,
 		SystemRole: systemRole,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.New().String(), // jti for revocation tracking
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "lattice-bff",

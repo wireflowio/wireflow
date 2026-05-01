@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/alatticeio/lattice/internal/server/server/middleware"
+	"github.com/alatticeio/lattice/internal/server/dto"
 	"github.com/alatticeio/lattice/internal/server/service"
 	"github.com/alatticeio/lattice/pkg/utils/resp"
 
@@ -10,12 +10,12 @@ import (
 
 func (s *Server) customMetricRouter() {
 	r := s.Group("/api/v1/metrics/custom")
-	r.Use(middleware.AuthMiddleware())
+	r.Use(s.middleware.WorkspaceAuthMiddleware(dto.RoleViewer))
 	{
-		r.GET("", s.tenantMiddleware.Handle(), s.listCustomMetrics())
-		r.POST("", s.tenantMiddleware.Handle(), s.createCustomMetric())
-		r.PUT("/:id", s.tenantMiddleware.Handle(), s.updateCustomMetric())
-		r.DELETE("/:id", s.tenantMiddleware.Handle(), s.deleteCustomMetric())
+		r.GET("", s.listCustomMetrics())
+		r.POST("", s.createCustomMetric())
+		r.PUT("/:id", s.updateCustomMetric())
+		r.DELETE("/:id", s.deleteCustomMetric())
 	}
 }
 

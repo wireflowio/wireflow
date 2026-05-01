@@ -57,6 +57,15 @@ brew tap alatticeio/tap
 brew install lattice
 ```
 
+> **Note:** If prompted for GitHub credentials, you've hit GitHub's API rate limit.
+> Authenticate brew with a [Personal Access Token](https://github.com/settings/tokens):
+>
+> ```bash
+> export HOMEBREW_GITHUB_API_TOKEN=<your-token>
+> brew tap alatticeio/tap
+> brew install lattice
+> ```
+
 ### YUM (RHEL / CentOS / Rocky / Fedora)
 
 Create `/etc/yum.repos.d/lattice.repo`:

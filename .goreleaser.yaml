@@ -140,8 +140,11 @@ brews:
     commit_author:
       name: alatticeio-bot
       email: maintainers@alatticeio.io
-    skip_upload: auto
+    skip_upload: false
     dependencies: []
+
+release:
+  prerelease: auto
 
 checksum:
   name_template: "checksums.txt"

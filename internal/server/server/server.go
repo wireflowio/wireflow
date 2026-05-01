@@ -24,12 +24,15 @@ import (
 	"github.com/alatticeio/lattice/internal/agent/store"
 	"github.com/alatticeio/lattice/internal/db"
 	"github.com/alatticeio/lattice/internal/monitor"
+	"github.com/alatticeio/lattice/internal/server/auth"
 	"github.com/alatticeio/lattice/internal/server/controller"
 	"github.com/alatticeio/lattice/internal/server/llm"
 	managementnats "github.com/alatticeio/lattice/internal/server/nats"
+	"github.com/alatticeio/lattice/internal/server/permission"
 	"github.com/alatticeio/lattice/internal/server/resource"
 	"github.com/alatticeio/lattice/internal/server/server/middleware"
 	"github.com/alatticeio/lattice/internal/server/service"
+	"github.com/alatticeio/lattice/pkg/utils"
 	"github.com/alatticeio/lattice/pkg/version"
 	"time"
 
@@ -72,7 +75,8 @@ type Server struct {
 	aiService      service.AIService
 	peeringService service.PeeringService
 
-	tenantMiddleware *middleware.TenantMiddleware
+	middleware       *middleware.Middleware
+	revocationList   *auth.RevocationList
 	auditService     service.AuditService
 	workflowService  service.WorkflowService
 
@@ -184,6 +188,11 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		mon.StartAlertEngine(context.Background())
 	}
 
+	revocationList := auth.NewRevocationList()
+	revocationList.StartCleanup(5 * time.Minute)
+
+	checker := permission.NewChecker(st, nil)
+
 	s := &Server{
 		Engine:               gin.Default(),
 		logger:               logger,
@@ -202,14 +211,15 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 		memberController:     controller.NewWorkspaceMemberController(st),
 		tokenController:      controller.NewTokenController(client, st),
 		relayController:      controller.NewRelayController(client, st),
-		invitationController: controller.NewInvitationController(st),
+		invitationController: controller.NewInvitationController(st, string(utils.GetJWTSecret())),
 		monitorController:    controller.NewMonitorController(cfg.Monitor.Address, st),
 		alertController:          controller.NewAlertController(st),
 		customMetricController:   controller.NewCustomMetricController(st),
 		profileController:        controller.NewProfileController(st),
 		auditController:      controller.NewAuditController(auditSvc),
 		workflowController:   controller.NewWorkflowController(workflowSvc),
-		tenantMiddleware:     middleware.NewTenantMiddleware(st),
+		middleware:           middleware.NewMiddleware(checker, st, revocationList),
+		revocationList:       revocationList,
 		auditService:         auditSvc,
 		workflowService:      workflowSvc,
 		store:                st,

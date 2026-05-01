@@ -13,6 +13,14 @@ import (
 //return
 //}
 
+// WorkspaceMember status constants.
+const (
+	MemberStatusActive    = "active"
+	MemberStatusPending   = "pending"
+	MemberStatusSuspended = "suspended"
+	MemberStatusRemoved   = "removed"
+)
+
 // WorkspaceMember 关联表：连接 User 和 Workspace (Namespace)  这里其实就是RoleBinding 所有的权限校验在数据库层面，不去找k8s的
 type WorkspaceMember struct {
 	Model

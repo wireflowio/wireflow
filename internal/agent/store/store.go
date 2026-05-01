@@ -68,6 +68,7 @@ type WorkspaceMemberRepository interface {
 	GetMembership(ctx context.Context, workspaceID, userID string) (*models.WorkspaceMember, error)
 	AddMember(ctx context.Context, member *models.WorkspaceMember) error
 	RemoveMember(ctx context.Context, workspaceID, userID string) error
+	SoftRemove(ctx context.Context, workspaceID, userID string) error
 	DeleteByWorkspace(ctx context.Context, workspaceID string) error
 	ListMembers(ctx context.Context, workspaceID string) ([]*models.WorkspaceMember, error)
 	ListByUser(ctx context.Context, userID string, page, pageSize int) ([]*models.WorkspaceMember, int64, error)
