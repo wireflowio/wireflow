@@ -35,7 +35,7 @@ make build-ui                 # Build Vue frontend → internal/web/dist/
 make lint                     # golangci-lint
 make test                     # Unit tests
 make test-e2e                 # E2E tests (needs k3d cluster)
-make ebpf-gen                 # Generate eBPF bindings
+make ebpf-gen                 # Generate eBPF bindings (requires LLVM with BPF target)
 make EDITION=pro build        # PRO build with -tags pro
 ```
 
@@ -49,6 +49,18 @@ make EDITION=pro build        # PRO build with -tags pro
 Makefile: `EDITION ?= community` → default no tags. `EDITION=pro` adds `-tags pro`.
 
 Community stubs return `402 Payment Required` or `errors.New("... is a Pro feature")`.
+
+### eBPF Build Environment
+
+macOS requires Homebrew LLVM for BPF cross-compilation (Apple Xcode clang doesn't support BPF target):
+
+```bash
+brew install llvm
+```
+
+The Makefile sets `BPF2GO_CC=/opt/homebrew/opt/llvm/bin/clang` on macOS to pick the correct compiler.
+
+**Important:** Do NOT add `-cc clang` to the `//go:generate` directive in `doc.go` — it overrides the `BPF2GO_CC` env var from the Makefile and causes "No available targets are compatible with triple 'bpfel'" on macOS.
 
 ## Git Workflow
 
