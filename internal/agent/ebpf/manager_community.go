@@ -34,8 +34,8 @@ func NewManager(iface string, logger *log.Logger) *Manager {
 	return &Manager{logger: logger}
 }
 
-func (m *Manager) Load() error                    { return errEBPFNotAvailable }
+func (m *Manager) Load() error                           { return errEBPFNotAvailable }
 func (m *Manager) Provision(_ *infra.FirewallRule) error { return errEBPFNotAvailable }
-func (m *Manager) Cleanup() error                 { return nil }
-func (m *Manager) Name() string                   { return "ebpf" }
-func (m *Manager) SetupNAT(_ string) error        { return nil }
+func (m *Manager) Cleanup() error                        { return nil }
+func (m *Manager) Name() string                          { return "ebpf" }
+func (m *Manager) SetupNAT(_ string) error               { return nil }

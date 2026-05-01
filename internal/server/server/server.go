@@ -65,20 +65,20 @@ type Server struct {
 	relayController      controller.RelayController
 	invitationController controller.InvitationController
 
-	monitorController  controller.MonitorController
-	alertController    controller.AlertController
+	monitorController      controller.MonitorController
+	alertController        controller.AlertController
 	customMetricController controller.CustomMetricController
-	profileController  controller.ProfileController
-	auditController    controller.AuditController
-	workflowController controller.WorkflowController
+	profileController      controller.ProfileController
+	auditController        controller.AuditController
+	workflowController     controller.WorkflowController
 
 	aiService      service.AIService
 	peeringService service.PeeringService
 
-	middleware       *middleware.Middleware
-	revocationList   *auth.RevocationList
-	auditService     service.AuditService
-	workflowService  service.WorkflowService
+	middleware      *middleware.Middleware
+	revocationList  *auth.RevocationList
+	auditService    service.AuditService
+	workflowService service.WorkflowService
 
 	store    store.Store
 	presence *managementnats.NodePresenceStore
@@ -194,38 +194,38 @@ func NewServer(ctx context.Context, serverConfig *ServerConfig) (*Server, error)
 	checker := permission.NewChecker(st, nil)
 
 	s := &Server{
-		Engine:               gin.Default(),
-		logger:               logger,
-		listen:               cfg.Listen,
-		nats:                 signal,
-		manager:              mgr,
-		cacheReady:           cacheReady,
-		client:               client,
-		cfg:                  cfg,
-		presence:             presence,
-		peerController:       controller.NewPeerController(client, st, presence),
-		networkController:    controller.NewNetworkController(client, st),
-		userController:       controller.NewUserController(st),
-		policyController:     controller.NewPolicyController(client, st),
-		workspaceController:  controller.NewWorkspaceController(client, st),
-		memberController:     controller.NewWorkspaceMemberController(st),
-		tokenController:      controller.NewTokenController(client, st),
-		relayController:      controller.NewRelayController(client, st),
-		invitationController: controller.NewInvitationController(st, string(utils.GetJWTSecret())),
-		monitorController:    controller.NewMonitorController(cfg.Monitor.Address, st),
-		alertController:          controller.NewAlertController(st),
-		customMetricController:   controller.NewCustomMetricController(st),
-		profileController:        controller.NewProfileController(st),
-		auditController:      controller.NewAuditController(auditSvc),
-		workflowController:   controller.NewWorkflowController(workflowSvc),
-		middleware:           middleware.NewMiddleware(checker, st, revocationList),
-		revocationList:       revocationList,
-		auditService:         auditSvc,
-		workflowService:      workflowSvc,
-		store:                st,
-		aiService:            aiSvc,
-		peeringService:       service.NewPeeringService(client, st),
-		monitor:              mon,
+		Engine:                 gin.Default(),
+		logger:                 logger,
+		listen:                 cfg.Listen,
+		nats:                   signal,
+		manager:                mgr,
+		cacheReady:             cacheReady,
+		client:                 client,
+		cfg:                    cfg,
+		presence:               presence,
+		peerController:         controller.NewPeerController(client, st, presence),
+		networkController:      controller.NewNetworkController(client, st),
+		userController:         controller.NewUserController(st),
+		policyController:       controller.NewPolicyController(client, st),
+		workspaceController:    controller.NewWorkspaceController(client, st),
+		memberController:       controller.NewWorkspaceMemberController(st),
+		tokenController:        controller.NewTokenController(client, st),
+		relayController:        controller.NewRelayController(client, st),
+		invitationController:   controller.NewInvitationController(st, string(utils.GetJWTSecret())),
+		monitorController:      controller.NewMonitorController(cfg.Monitor.Address, st),
+		alertController:        controller.NewAlertController(st),
+		customMetricController: controller.NewCustomMetricController(st),
+		profileController:      controller.NewProfileController(st),
+		auditController:        controller.NewAuditController(auditSvc),
+		workflowController:     controller.NewWorkflowController(workflowSvc),
+		middleware:             middleware.NewMiddleware(checker, st, revocationList),
+		revocationList:         revocationList,
+		auditService:           auditSvc,
+		workflowService:        workflowSvc,
+		store:                  st,
+		aiService:              aiSvc,
+		peeringService:         service.NewPeeringService(client, st),
+		monitor:                mon,
 	}
 
 	// initAdmins：DB 已就绪后执行；失败只告警，不阻断启动。

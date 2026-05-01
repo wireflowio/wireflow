@@ -9,10 +9,10 @@ import (
 
 	"github.com/alatticeio/lattice/internal/agent/log"
 	"github.com/alatticeio/lattice/internal/agent/store"
-	"github.com/alatticeio/lattice/internal/server/models"
 	"github.com/alatticeio/lattice/internal/monitor/adapter"
 	"github.com/alatticeio/lattice/internal/monitor/alert/notifier"
 	"github.com/alatticeio/lattice/internal/monitor/gateway"
+	"github.com/alatticeio/lattice/internal/server/models"
 )
 
 // ActiveAlert tracks an alert that is currently in "firing" state.

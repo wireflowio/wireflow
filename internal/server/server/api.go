@@ -45,8 +45,8 @@ func (s *Server) apiRouter() error {
 		netApi := api.Group("")
 		netApi.Use(s.middleware.WorkspaceAuthMiddleware(dto.RoleViewer))
 		{
-			netApi.POST("/networks", CreateNetwork) // 创建新网络
-			netApi.GET("/networks", s.ListNetworks) // 获取网络列表
+			netApi.POST("/networks", CreateNetwork)   // 创建新网络
+			netApi.GET("/networks", s.ListNetworks)   // 获取网络列表
 			netApi.GET("/networks/peers", s.GetPeers) // 获取该网络下的所有机器
 		}
 	}

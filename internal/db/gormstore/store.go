@@ -61,10 +61,10 @@ func (s *GormStore) UserIdentities() store.UserIdentityRepository      { return 
 func (s *GormStore) WorkspaceInvitations() store.WorkspaceInvitationRepository {
 	return s.workspaceInvitations
 }
-func (s *GormStore) AuditLogs() store.AuditLogRepository        { return s.auditLogs }
-func (s *GormStore) WorkflowRequests() store.WorkflowRepository { return s.workflowRequests }
-func (s *GormStore) Policies() store.PolicyRepository           { return s.policies }
-func (s *GormStore) Alerts() store.AlertRepository              { return s.alerts }
+func (s *GormStore) AuditLogs() store.AuditLogRepository         { return s.auditLogs }
+func (s *GormStore) WorkflowRequests() store.WorkflowRepository  { return s.workflowRequests }
+func (s *GormStore) Policies() store.PolicyRepository            { return s.policies }
+func (s *GormStore) Alerts() store.AlertRepository               { return s.alerts }
 func (s *GormStore) CustomMetrics() store.CustomMetricRepository { return s.customMetrics }
 
 // Tx 在数据库事务中执行 fn，fn 内通过临时 Store 访问所有 Repository。
