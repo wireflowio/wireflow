@@ -16,4 +16,5 @@ internal/web/dist/*
 docs/design/
 docs/superpowers
 *.out
-.superpowers
+.superpowerslatticed
+.superpowers/
